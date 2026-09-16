@@ -13,27 +13,47 @@ signal dialog_done
 @onready var toast: Label = %Toast
 
 var _target_world := Vector2.ZERO
+var _target_node: Node2D = null
+var _has_target := false
 var _toast_tween: Tween = null
+var _finish_tween: Tween = null
+var _visual_token := 0
 
 func _ready() -> void:
 	add_to_group("tutorial_guide")
-	# 已完成教学：直接隐藏整个引导层，不干扰正常游戏
-	if SaveManager.is_tutorial_done():
+	# 已完成教学：直接隐藏整个引导层，不干扰正常游戏；开发重播参数例外
+	var replay := TutorialManager.has_method("is_replay_requested") and TutorialManager.is_replay_requested()
+	if SaveManager.is_tutorial_done() and not replay:
 		visible = false
 		return
-	dim.visible = true
-	marker.visible = false
-	hint_panel.visible = false
-	toast.visible = false
-	dialog.hide_box()
-	skip_button.pressed.connect(_on_skip)
+	prepare_for_start()
+	if not skip_button.pressed.is_connected(_on_skip):
+		skip_button.pressed.connect(_on_skip)
 	if not dialog.finished.is_connected(_on_dialog_finished):
 		dialog.finished.connect(_on_dialog_finished)
 	# 首次进入游戏自动开始新手教学
 	TutorialManager.start()
 
+func prepare_for_start() -> void:
+	_visual_token += 1
+	if _finish_tween != null and _finish_tween.is_valid():
+		_finish_tween.kill()
+	_finish_tween = null
+	if _toast_tween != null and _toast_tween.is_valid():
+		_toast_tween.kill()
+	_toast_tween = null
+	visible = true
+	dim.visible = true
+	dim.color.a = 0.5
+	marker.visible = false
+	hint_panel.visible = false
+	toast.visible = false
+	skip_button.visible = true
+	dialog.hide_box()
+
 func _on_skip() -> void:
 	TutorialManager.skip_all()
+	get_viewport().set_input_as_handled()
 
 ## 过场期间调整暗幕透明度（0=全亮，0.5=常规），保持画面观察
 func set_dim(alpha: float) -> void:
@@ -47,24 +67,30 @@ func setup(step: Dictionary) -> void:
 	# 高亮目标
 	var target = step.get("target")
 	_target_world = Vector2.ZERO
+	_target_node = null
+	_has_target = false
 	if target != null:
 		var node: Node2D = TutorialManager.resolve_target(target)
 		if node:
+			_target_node = node
 			_target_world = node.global_position
+			_has_target = true
 		elif target is Vector2:
 			_target_world = target
-	marker.visible = _target_world != Vector2.ZERO
+			_has_target = true
+	marker.visible = _has_target
 
 func _process(_delta: float) -> void:
-	if not marker.visible or _target_world == Vector2.ZERO:
+	if not marker.visible or not _has_target:
 		return
-	var cam := get_viewport().get_camera_2d()
-	if cam == null:
-		return
-	var rel := (_target_world - cam.global_position) * cam.zoom
-	var sp := rel + get_viewport().get_visible_rect().size * 0.5
-	# 标记底部中心对准目标
-	marker.position = Vector2(roundi(sp.x) - marker.size.x * 0.5, roundi(sp.y) - marker.size.y)
+	if is_instance_valid(_target_node):
+		_target_world = _target_node.global_position
+	# Canvas transform 包含相机缩放、位置和 limit 裁剪，避免地图边缘手算漂移
+	var screen_position := get_viewport().get_canvas_transform() * _target_world
+	marker.position = Vector2(
+		roundi(screen_position.x - marker.size.x * 0.5),
+		roundi(screen_position.y - marker.size.y)
+	)
 
 func play_dialog(speaker: String, lines: Array, ptex: Texture2D = null) -> void:
 	dialog.visible = true
@@ -88,13 +114,23 @@ func show_toast(text: String) -> void:
 	_toast_tween.tween_property(toast, "modulate:a", 0.0, 0.4)
 
 func finish_all() -> void:
+	_visual_token += 1
+	var token := _visual_token
+	if _toast_tween != null and _toast_tween.is_valid():
+		_toast_tween.kill()
+	_toast_tween = null
 	marker.visible = false
+	_has_target = false
+	_target_node = null
 	hint_panel.visible = false
 	dialog.hide_box()
 	toast.visible = false
 	skip_button.visible = false
-	var t := create_tween()
-	t.tween_property(dim, "color:a", 0.0, 0.5)
-	await t.finished
+	_finish_tween = create_tween()
+	_finish_tween.tween_property(dim, "color:a", 0.0, 0.5)
+	await _finish_tween.finished
+	_finish_tween = null
+	if token != _visual_token:
+		return
 	dim.visible = false
 	visible = false

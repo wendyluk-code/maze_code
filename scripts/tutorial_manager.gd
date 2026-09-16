@@ -14,11 +14,32 @@ var player = null
 
 ## 过场镜头驻留状态：停在前台直到后续对话播完
 var _camera_parked := false
+var _camera_cutscene_active := false
 var _parked_guest: Node2D = null
 var _base_zoom := Vector2(0.85, 0.85)
+var _base_zoom_captured := false
+var _camera_tween: Tween = null
+var _run_token := 0
+var _replay_requested := false
+var _player_lock_owned := false
+var _player_input_locked_before := false
+var _player_physics_before := true
 
 func _ready() -> void:
 	process_mode = PROCESS_MODE_ALWAYS
+	_replay_requested = _has_replay_argument()
+
+func _has_replay_argument() -> bool:
+	for arg in OS.get_cmdline_user_args():
+		if arg == "--replay-tutorial":
+			return true
+	for arg in OS.get_cmdline_args():
+		if arg == "--replay-tutorial":
+			return true
+	return false
+
+func is_replay_requested() -> bool:
+	return _replay_requested
 
 ## 启动教程。custom_steps 为空时使用默认的"第一节：餐厅首单教学"
 func start(custom_steps: Array = []) -> void:
@@ -30,14 +51,18 @@ func start(custom_steps: Array = []) -> void:
 		return
 	if not guide.dialog_done.is_connected(_on_dialog_done):
 		guide.dialog_done.connect(_on_dialog_done)
+	_run_token += 1
+	if guide.has_method("prepare_for_start"):
+		guide.prepare_for_start()
 	active = true
 	steps = custom_steps if not custom_steps.is_empty() else restaurant_lesson()
 	idx = 0
+	_player_lock_owned = false
 	player = get_tree().get_first_node_in_group("player") as Node2D
 	if player and player.has_signal("interacted") and not player.interacted.is_connected(_on_player_interact):
 		player.interacted.connect(_on_player_interact)
-	tutorial_started.emit()
-	_run_step()
+		tutorial_started.emit()
+	_run_step(_run_token)
 
 ## 第一节：餐厅首单教学（脚本化演示，后续接真实经营系统）
 ## 叙事：片头视频（占位）→ 芽芽唤醒失忆的主角 → 饥肠辘辘的客人(？？？)来临 → 芽芽引导做菜
@@ -180,10 +205,13 @@ func resolve_target(target) -> Node2D:
 	return null
 
 func skip_all() -> void:
-	_finish()
+	_finish(true)
 
-func _run_step() -> void:
-	if not active:
+func _run_is_valid(token: int) -> bool:
+	return active and token == _run_token
+
+func _run_step(token: int) -> void:
+	if not _run_is_valid(token):
 		return
 	if idx >= steps.size():
 		_finish()
@@ -192,7 +220,9 @@ func _run_step() -> void:
 	var st_type := str(step.get("type", ""))
 	# 过场镜头驻留：一旦进入非对话步骤（该回到主角行动），回收镜头
 	if _camera_parked and st_type != "dialog" and st_type != "cutscene_guest":
-		await _unpark_camera()
+		await _unpark_camera(token)
+		if not _run_is_valid(token):
+			return
 	step_changed.emit(idx, steps.size())
 	guide.setup(step)
 	match st_type:
@@ -206,12 +236,15 @@ func _run_step() -> void:
 		"notify":
 			guide.show_toast(str(step.get("toast", "")))
 			await get_tree().create_timer(float(step.get("delay", 1.4))).timeout
-			_complete_step()
+			if _run_is_valid(token):
+				_complete_step(token)
 		"cutscene_guest":
 			_set_player_locked(true)
-			await _play_guest_cutscene(step)
+			await _play_guest_cutscene(step, token)
+			if not _run_is_valid(token):
+				return
 			_set_player_locked(false)
-			_complete_step()
+			_complete_step(token)
 		"finish":
 			_finish()
 		_:
@@ -226,18 +259,24 @@ func _get_camera() -> Camera2D:
 
 ## 过场：放大+推镜到前台 → 铁山占位角色进场（头顶"…"气泡）→ 短暂停留
 ## 结束后镜头保持驻留（camera_parked），直到后续对话播完才回收
-func _play_guest_cutscene(step: Dictionary) -> void:
+func _play_guest_cutscene(step: Dictionary, token: int) -> void:
 	var cam := _get_camera()
 	if cam:
+		_kill_camera_tween()
 		cam.paused = true
 		_base_zoom = cam.zoom
-		var cam_tween := create_tween()
-		cam_tween.set_parallel(true)
-		cam_tween.tween_property(cam, "global_position", step.get("camera_pos", Vector2(1000, 320)), 1.1)\
+		_base_zoom_captured = true
+		_camera_cutscene_active = true
+		_camera_tween = create_tween()
+		_camera_tween.set_parallel(true)
+		_camera_tween.tween_property(cam, "global_position", step.get("camera_pos", Vector2(1000, 320)), 1.1)\
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		cam_tween.tween_property(cam, "zoom", step.get("camera_zoom", Vector2(1.35, 1.35)), 1.1)\
+		_camera_tween.tween_property(cam, "zoom", step.get("camera_zoom", Vector2(1.35, 1.35)), 1.1)\
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		await cam_tween.finished
+		await _camera_tween.finished
+		_camera_tween = null
+		if not _run_is_valid(token):
+			return
 		cam.paused = true
 		_camera_parked = true
 	if guide and guide.has_method("set_dim"):
@@ -255,31 +294,40 @@ func _play_guest_cutscene(step: Dictionary) -> void:
 	await get_tree().create_timer(float(step.get("delay", 0.9))).timeout
 
 ## 过场结束：镜头回到主角、恢复原倍率；铁山角色继续留在前台（教程结束时统一回收）
-func _unpark_camera() -> void:
-	if not _camera_parked:
+func _unpark_camera(token: int) -> void:
+	if not _camera_parked and not _camera_cutscene_active:
 		return
 	var cam := _get_camera()
 	if cam:
-		var t := create_tween()
-		t.set_parallel(true)
+		_kill_camera_tween()
+		_camera_tween = create_tween()
+		_camera_tween.set_parallel(true)
 		if player:
-			t.tween_property(cam, "global_position", player.global_position, 0.8)\
+			_camera_tween.tween_property(cam, "global_position", player.global_position, 0.8)\
 				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-		t.tween_property(cam, "zoom", _base_zoom, 0.8)
-		await t.finished
+		_camera_tween.tween_property(cam, "zoom", _base_zoom, 0.8)
+		await _camera_tween.finished
+		_camera_tween = null
+		if not _run_is_valid(token):
+			return
 		cam.paused = false
 	_camera_parked = false
+	_camera_cutscene_active = false
 
-func _complete_step() -> void:
+func _complete_step(token: int) -> void:
+	if not _run_is_valid(token):
+		return
 	idx += 1
-	_run_step()
+	_run_step(token)
 
 func _on_dialog_done() -> void:
+	if not active:
+		return
 	_set_player_locked(false)
-	_complete_step()
+	_complete_step(_run_token)
 
 func _on_player_interact(node: Node2D) -> void:
-	if not active:
+	if not active or idx < 0 or idx >= steps.size():
 		return
 	var step: Dictionary = steps[idx]
 	if step.get("type", "") != "interact":
@@ -290,10 +338,10 @@ func _on_player_interact(node: Node2D) -> void:
 	var toast := str(step.get("toast", ""))
 	if not toast.is_empty():
 		guide.show_toast(toast)
-	_complete_step()
+	_complete_step(_run_token)
 
 func _process(_delta: float) -> void:
-	if not active or player == null:
+	if not active or player == null or idx < 0 or idx >= steps.size():
 		return
 	var step: Dictionary = steps[idx]
 	if step.get("type", "") != "move_to":
@@ -302,32 +350,63 @@ func _process(_delta: float) -> void:
 	if target == null:
 		return
 	if player.global_position.distance_to(target.global_position) <= float(step.get("radius", 120.0)):
-		_complete_step()
+		_complete_step(_run_token)
 
 func _set_player_locked(locked: bool) -> void:
-	if player:
+	if player == null:
+		return
+	if locked:
+		if not _player_lock_owned:
+			_player_lock_owned = true
+			_player_input_locked_before = bool(player.get("input_locked")) if "input_locked" in player else false
+			_player_physics_before = player.is_physics_processing()
 		if "input_locked" in player:
-			player.input_locked = locked
-		player.set_physics_process(not locked)
+			player.input_locked = true
+		player.set_physics_process(false)
+		return
+	if _player_lock_owned:
+		if "input_locked" in player:
+			player.input_locked = _player_input_locked_before
+		player.set_physics_process(_player_physics_before)
+		_player_lock_owned = false
+	else:
+		if "input_locked" in player:
+			player.input_locked = false
+		player.set_physics_process(true)
 
-func _finish() -> void:
+func _kill_camera_tween() -> void:
+	if _camera_tween != null and _camera_tween.is_valid():
+		_camera_tween.kill()
+	_camera_tween = null
+
+func _finish(remove_guest := false) -> void:
 	if not active:
 		return
 	active = false
+	_run_token += 1
 	_set_player_locked(false)
-	_cleanup_cutscene()
+	_cleanup_cutscene(remove_guest)
 	if guide and guide.has_method("finish_all"):
 		guide.finish_all()
 	var sm := get_node_or_null("/root/SaveManager")
-	if sm:
+	if sm and not sm.is_tutorial_done():
 		sm.mark_tutorial_done()
 		sm.save()
 	tutorial_finished.emit()
 
-## 无论正常结束还是跳过：解除镜头驻留；铁山角色保留在当前场景（作为常驻客，直到场景卸载）
-func _cleanup_cutscene() -> void:
+## 无论正常结束还是跳过：解除镜头驻留；跳过时同时移除未完成的占位演出
+func _cleanup_cutscene(remove_guest := false) -> void:
+	_kill_camera_tween()
 	var cam := _get_camera()
 	if cam:
 		cam.paused = false
-		cam.zoom = _base_zoom
+		if _base_zoom_captured:
+			cam.zoom = _base_zoom
+		if player and (_camera_cutscene_active or _camera_parked):
+			cam.global_position = player.global_position
 	_camera_parked = false
+	_camera_cutscene_active = false
+	_base_zoom_captured = false
+	if remove_guest and is_instance_valid(_parked_guest):
+		_parked_guest.queue_free()
+	_parked_guest = null

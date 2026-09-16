@@ -40,6 +40,7 @@ offset_top = -154.0
 offset_right = 546.0
 offset_bottom = -30.0
 grow_horizontal = 2
+mouse_filter = 0
 script = ExtResource("1_dlg")
 
 [node name="Panel" type="PanelContainer" parent="."]
