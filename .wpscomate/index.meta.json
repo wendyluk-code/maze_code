@@ -1,0 +1,16 @@
+{
+  "version": 3,
+  "managed": true,
+  "indexPath": ".wpscomate/index.md",
+  "structureHash": "sha256:c0db006e6c3ef9c0",
+  "contentSignalHash": "sha256:34c39ca3f21d7627",
+  "descriptionHash": "sha256:e3b0c44298fc1c14",
+  "descriptionStatus": "pending",
+  "generatedAt": "2026-09-04T09:59:09.143Z",
+  "scanTruncated": false,
+  "scanTruncateReason": null,
+  "renderedTruncated": false,
+  "renderedTruncateReason": null,
+  "truncated": false,
+  "truncateReason": null
+}

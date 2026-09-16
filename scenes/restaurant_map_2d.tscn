@@ -1,0 +1,151 @@
+; 场景文件头：声明格式版本=3（Godot 4），并记录本场景的资源 UID
+[gd_scene format=3 uid="uid://baigpo6l3epcd"]
+
+; ↓↓↓ 外部资源引用（ExtResource）：把项目里已有的图片/脚本/场景文件拉进来用 ↓↓↓
+; 引用地图背景图 restaurant_map.png（1448×1086，餐厅手绘地图）
+[ext_resource type="Texture2D" uid="uid://dyvbtyx8scrij" path="res://assets/maps/restaurant_map.png" id="1_bg"]
+; 引用主角脚本 player_map.gd（屏幕方向移动 + 朝向切图 + 靠近交互点提示）
+[ext_resource type="Script" uid="uid://bqkbmauc8k6wq" path="res://scripts/player_map.gd" id="2_player"]
+; 引用相机脚本 camera_map.gd（跟随主角的 2D 相机）
+[ext_resource type="Script" uid="uid://djbs06hp6urr7" path="res://scripts/camera_map.gd" id="3_cam"]
+; 引用主角正面贴图 hero_front.png
+[ext_resource type="Texture2D" uid="uid://cwknmyb7fega" path="res://assets/characters/hero/hero_front.png" id="4_hero"]
+; 引用可走区域脚本 walk_zone.gd（从掩码图提取可走多边形 + 内部道具岛）
+[ext_resource type="Script" uid="uid://bram1gv7aihmr" path="res://scripts/walk_zone.gd" id="5_walk"]
+; 引用交互点脚本 interactable_point.gd（注册到 interactable 组并带 display_name）
+[ext_resource type="Script" path="res://scripts/interactable_point.gd" id="6_interact"]
+; 引用 UI 覆盖层场景 ui_overlay.tscn（靠近交互点时的悬浮操作按钮）
+[ext_resource type="PackedScene" path="res://scenes/ui_overlay.tscn" id="7_ui"]
+; 引用新手教学引导层（暗幕/高亮/提示/对话框）
+[ext_resource type="PackedScene" path="res://scenes/ui/tutorial_guide.tscn" id="8_guide"]
+
+; ↓↓↓ 子资源（SubResource）：场景内联定义的资源 ↓↓↓
+; 定义一个圆形碰撞形状，作为主角脚底的碰撞体
+[sub_resource type="CircleShape2D" id="player_shape"]
+; 圆的半径 = 20 像素
+radius = 20.0
+
+; ↓↓↓ 场景节点定义 ↓↓↓
+; 场景根节点 RestaurantMap，类型 Node2D（2D 节点，坐标为左上角原点）
+[node name="RestaurantMap" type="Node2D" unique_id=391233345]
+
+; 背景节点 BG：显示整张餐厅地图
+[node name="BG" type="Sprite2D" parent="." unique_id=1795682080]
+; 指定贴图 = 上面引用的 restaurant_map.png
+texture = ExtResource("1_bg")
+; centered=false 表示贴图左上角对齐节点位置（该节点在原点，即地图左上角=世界原点）
+centered = false
+
+; 交互点容器：所有可交互道具集中放在这个节点下
+[node name="InteractPoints" type="Node2D" parent="." unique_id=1523598777]
+
+; 按钮显示偏移说明：在交互点节点下加一行  ui_offset = Vector2(右, 下)
+; 只移动按钮"显示位置"（地图像素），交互触发点仍以 position 为准，两者互不影响
+; 例：ui_offset = Vector2(0, -60)  # 按钮上移 60 像素
+
+; 交互点①：魔法汤锅，位置在图片 (773, 621) 像素处
+[node name="Cauldron" type="Node2D" parent="InteractPoints" unique_id=2068614796]
+position = Vector2(773, 621)
+; 挂上交互点脚本，进入 interactable 组
+script = ExtResource("6_interact")
+; 显示名 = "魔法汤锅"，按钮文字由 ui_layer 映射为 "烹饪"
+display_name = "魔法汤锅"
+; 按钮显示位置：右移 95、上移 25 像素（触发点仍为 position，坐标为地图像素）
+ui_offset = Vector2(95, -25)
+
+; 交互点②：小餐车，位于 (1159, 543)
+[node name="FoodCart" type="Node2D" parent="InteractPoints" unique_id=277123665]
+position = Vector2(1159, 543)
+script = ExtResource("6_interact")
+display_name = "小餐车"
+
+; 交互点③：冰柜，位于 (403, 762)
+[node name="Fridge" type="Node2D" parent="InteractPoints" unique_id=697127634]
+position = Vector2(403, 762)
+script = ExtResource("6_interact")
+display_name = "冰柜"
+
+; 交互点④：吧台，位于 (390, 338)
+[node name="BarCounter" type="Node2D" parent="InteractPoints"]
+position = Vector2(390, 338)
+script = ExtResource("6_interact")
+display_name = "吧台"
+
+; 交互点⑤：前台（收银台），位于 (1000, 210)
+[node name="Register" type="Node2D" parent="InteractPoints"]
+position = Vector2(1000, 210)
+script = ExtResource("6_interact")
+display_name = "前台"
+; 按钮显示位置：左移 20、下移 30 像素（触发点仍为 position，坐标为地图像素）
+ui_offset = Vector2(-20, 30)
+
+; 交互点⑥：仓库，位于 (1254, 230)
+[node name="Store" type="Node2D" parent="InteractPoints"]
+position = Vector2(1254, 230)
+script = ExtResource("6_interact")
+display_name = "仓库"
+; 按钮显示位置：右移 35、上移累计 40 像素（触发点仍为 position，坐标为地图像素）
+ui_offset = Vector2(35, -40)
+
+; 可走区域节点：负责角色行动范围判定
+[node name="WalkZone" type="Node2D" parent="." unique_id=1692919276]
+script = ExtResource("5_walk")
+; 可走掩码图路径：绿色像素 = 角色可走区域
+mask_path = "res://assets/maps/walkable_mask.png"
+
+; 主角节点：CharacterBody2D（带碰撞体、可移动）
+[node name="Player" type="CharacterBody2D" parent="." unique_id=1162146397]
+; 初始出生位置 (720, 720)（运行时会被 walk_zone 重定位到可走区中心）
+position = Vector2(720, 720)
+script = ExtResource("2_player")
+
+; 主角脚下的碰撞形状
+[node name="Collision" type="CollisionShape2D" parent="Player" unique_id=839678104]
+; 使用上面定义的圆形（半径为 20）
+shape = SubResource("player_shape")
+
+; 主角的显示贴图（正面人物）
+[node name="Body" type="Sprite2D" parent="Player" unique_id=1089187191]
+; 缩放（把原贴图缩到合适身高，1/4.92 左右）
+scale = Vector2(0.203125, 0.203125)
+; 正面贴图
+texture = ExtResource("4_hero")
+
+; 跟随主角的 2D 相机
+[node name="Camera" type="Camera2D" parent="." unique_id=1562908801]
+position = Vector2(720, 720)
+; 缩放 0.85：画面缩小，看到更大范围
+zoom = Vector2(0.85, 0.85)
+script = ExtResource("3_cam")
+; 跟随目标 = 场景中的 Player 节点
+target_path = NodePath("../Player")
+
+; HUD 层：屏幕 UI 画在第一层 CanvasLayer（不随世界滚动）
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1262161006]
+
+; 底部提示文字（靠近交互点时提示按 E）
+[node name="HintLabel" type="Label" parent="HUD" unique_id=2052962510]
+; 允许用 %HintLabel 直接引用该节点
+unique_name_in_owner = true
+; 默认隐藏
+visible = false
+; 锚点预设 7 = 底部居中（相对于屏幕）
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+; 四个方向的偏移量：水平居中 ±200，垂直在底部 -80 ~ -40
+offset_left = -200.0
+offset_top = -80.0
+offset_right = 200.0
+offset_bottom = -40.0
+; 字号 26
+theme_override_font_sizes/font_size = 26
+; 文字水平居中
+horizontal_alignment = 1
+
+; 实例化 UI 覆盖层（靠近交互点时的悬浮操作按钮）
+[node name="UIOverlay" parent="." instance=ExtResource("7_ui")]
+; 新手教学引导层（首次进入自动播放，完成后写存档跳过）
+[node name="TutorialGuide" parent="UIOverlay" instance=ExtResource("8_guide")]

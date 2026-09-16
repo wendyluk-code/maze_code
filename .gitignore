@@ -1,0 +1,23 @@
+# BEGIN KCWork auto-injected skill symlinks (managed â€” do not commit)
+.claude/skills/cron
+.claude/skills/kcwork-config
+.claude/skills/officecli
+.claude/skills/skill-creator
+.opencode/skills/cron
+.opencode/skills/kcwork-config
+.opencode/skills/officecli
+.opencode/skills/skill-creator
+# END KCWork auto-injected skill symlinks
+
+# Godot
+.godot/
+*.import.lock
+*.translation
+
+# å¼€å‘ä¸´æ—¶äº§ç‰©
+generated-images/
+log/
+
+# ÄÚÇ¶¹¤¾ßÔ´Âë£¨µ¥¶ÀÎ¬»¤£¬²»Èë¿â£©
+tools/mmd_tools_src/
+

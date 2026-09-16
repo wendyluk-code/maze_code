@@ -1,0 +1,144 @@
+[gd_scene load_steps=6 format=3 uid="uid://mzguide0000001"]
+
+[ext_resource type="Script" path="res://scripts/tutorial_guide.gd" id="1_guide"]
+[ext_resource type="Script" path="res://scripts/target_marker.gd" id="2_marker"]
+[ext_resource type="PackedScene" path="res://scenes/ui/dialog_box.tscn" id="3_dlg"]
+[ext_resource type="FontFile" path="res://assets/ui/zcool_kuail.ttf" id="4_font"]
+
+[sub_resource type="StyleBoxFlat" id="skip_style"]
+bg_color = Color(0.1, 0.13, 0.12, 0.7)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 14.0
+content_margin_top = 6.0
+content_margin_right = 14.0
+content_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxFlat" id="hint_style"]
+bg_color = Color(0.08, 0.1, 0.1, 0.62)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+content_margin_left = 24.0
+content_margin_top = 10.0
+content_margin_right = 24.0
+content_margin_bottom = 10.0
+
+[node name="TutorialGuide" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_guide")
+
+[node name="Dim" type="ColorRect" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0, 0, 0, 0.5)
+
+[node name="TargetMarker" type="Control" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+offset_left = -45.0
+offset_top = -118.0
+offset_right = 45.0
+offset_bottom = -8.0
+mouse_filter = 2
+script = ExtResource("2_marker")
+
+[node name="SkipButton" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -130.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = 56.0
+grow_horizontal = 0
+theme_override_colors/font_color = Color(1, 1, 1, 0.92)
+theme_override_colors/font_hover_color = Color(1, 0.9, 0.6, 1)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = SubResource("skip_style")
+theme_override_styles/hover = SubResource("skip_style")
+theme_override_styles/pressed = SubResource("skip_style")
+text = "跳过 ▸"
+
+[node name="HintPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -260.0
+offset_top = -330.0
+offset_right = 260.0
+offset_bottom = -276.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("hint_style")
+
+[node name="HintLabel" type="Label" parent="HintPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 0.92, 1)
+theme_override_colors/font_outline_color = Color(0.08, 0.1, 0.08, 1)
+theme_override_constants/outline_size = 3
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 21
+text = "提示文字"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Toast" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_top = 0.0
+anchor_right = 0.5
+anchor_bottom = 0.0
+offset_left = -320.0
+offset_top = 116.0
+offset_right = 320.0
+offset_bottom = 160.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(1, 0.86, 0.4, 1)
+theme_override_colors/font_outline_color = Color(0.08, 0.1, 0.08, 1)
+theme_override_constants/outline_size = 4
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 25
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DialogBox" parent="." instance=ExtResource("3_dlg")]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -546.0
+offset_top = -154.0
+offset_right = 546.0
+offset_bottom = -30.0
+grow_horizontal = 2

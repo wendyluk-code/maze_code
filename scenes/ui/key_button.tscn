@@ -1,0 +1,40 @@
+[gd_scene format=3 uid="uid://bsx4ajp8mwcfg"]
+
+[ext_resource type="Texture2D" path="res://assets/ui/key_square26_frame0.png" id="1_key"]
+[ext_resource type="FontFile" path="res://assets/ui/sprout_lands.ttf" id="2_font"]
+
+[sub_resource type="FontVariation" id="key_font_var"]
+base_font = ExtResource("2_font")
+variation_embolden = 0.8
+
+[node name="KeyButton" type="Control"]
+custom_minimum_size = Vector2(48, 48)
+mouse_filter = 2
+
+[node name="KeyIcon" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("1_key")
+expand_mode = 0
+stretch_mode = 5
+texture_filter = 1
+
+[node name="KeyLabel" type="Label" parent="KeyIcon"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.16, 0.28, 0.15, 1)
+theme_override_colors/font_outline_color = Color(1, 0.95, 0.85, 0.85)
+theme_override_constants/outline_size = 1
+theme_override_fonts/font = SubResource("key_font_var")
+theme_override_font_sizes/font_size = 20
+text = "E"
+horizontal_alignment = 1
+vertical_alignment = 1

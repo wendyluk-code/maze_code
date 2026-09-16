@@ -1,0 +1,145 @@
+[gd_scene format=3 uid="uid://dpphh3ptov5aq"]
+
+[ext_resource type="Script" uid="uid://dq87dbef7ogcy" path="res://scripts/iso_ground.gd" id="1_cmccf"]
+[ext_resource type="Script" uid="uid://brhbixhy8uwb1" path="res://scripts/player_2d.gd" id="2_rj1rk"]
+[ext_resource type="Script" uid="uid://c43jtk00wsn5o" path="res://scripts/iso_cube_fresh.gd" id="3_23ay8"]
+
+[node name="Restaurant2D" type="Node2D" unique_id=569071774]
+
+[node name="Ground" type="Node2D" parent="." unique_id=516089522]
+script = ExtResource("1_cmccf")
+
+[node name="Camera" type="Camera2D" parent="." unique_id=98037216]
+zoom = Vector2(0.7, 0.7)
+
+[node name="Player" type="CharacterBody2D" parent="." unique_id=1225503346]
+position = Vector2(-96, 48)
+script = ExtResource("2_rj1rk")
+
+[node name="Body" type="Sprite2D" parent="Player" unique_id=1367276791]
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=224934407]
+
+[node name="HintLabel" type="Label" parent="HUD" unique_id=771456]
+unique_name_in_owner = true
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -0.5
+offset_top = -63.0
+offset_right = 0.5
+offset_bottom = -40.0
+theme_override_font_sizes/font_size = 28
+
+[node name="FrontCounter" type="Node2D" parent="." unique_id=741290566 groups=["interactable"]]
+script = ExtResource("3_23ay8")
+origin = Vector2(-9, -5.5)
+half_w = 2.0
+half_d = 0.85
+height = 1.1
+color = Color(0.82, 0.55, 0.39, 1)
+
+[node name="FacLabel" type="Label" parent="FrontCounter" unique_id=1466577333]
+offset_left = -120.0
+offset_top = -290.0
+offset_right = -88.0
+offset_bottom = -267.0
+theme_override_font_sizes/font_size = 26
+text = "前台"
+
+[node name="CookTop" type="Node2D" parent="." unique_id=1410133656 groups=["interactable"]]
+script = ExtResource("3_23ay8")
+origin = Vector2(0, 5)
+half_w = 2.1
+half_d = 1.1
+color = Color(0.55, 0.66, 0.75, 1)
+
+[node name="FacLabel" type="Label" parent="CookTop" unique_id=1658798406]
+offset_left = 10.0
+offset_top = 20.0
+offset_right = 58.0
+offset_bottom = 43.0
+theme_override_font_sizes/font_size = 26
+text = "料理台"
+
+[node name="Freezer" type="Node2D" parent="." unique_id=38962140 groups=["interactable"]]
+script = ExtResource("3_23ay8")
+origin = Vector2(-3.4, 3.4)
+half_w = 0.9
+half_d = 0.65
+height = 2.2
+color = Color(0.72, 0.85, 0.92, 1)
+
+[node name="FacLabel" type="Label" parent="Freezer" unique_id=882499978]
+offset_left = 10.0
+offset_top = -70.0
+offset_right = 42.0
+offset_bottom = -47.0
+theme_override_font_sizes/font_size = 26
+text = "冰柜"
+
+[node name="Warehouse" type="Node2D" parent="." unique_id=804764105 groups=["interactable"]]
+script = ExtResource("3_23ay8")
+origin = Vector2(11.3, 1)
+half_w = 1.1
+half_d = 1.8
+height = 2.6
+color = Color(0.6, 0.45, 0.3, 1)
+
+[node name="FacLabel" type="Label" parent="Warehouse" unique_id=605536882]
+offset_left = 60.0
+offset_top = -80.0
+offset_right = 92.0
+offset_bottom = -57.0
+theme_override_font_sizes/font_size = 26
+text = "仓库"
+
+[node name="DiningTable" type="Node2D" parent="." unique_id=28188629 groups=["interactable"]]
+script = ExtResource("3_23ay8")
+origin = Vector2(8, -6.2)
+half_w = 2.0
+half_d = 0.8
+height = 0.15
+color = Color(0.75, 0.62, 0.42, 1)
+
+[node name="FacLabel" type="Label" parent="DiningTable" unique_id=1546628944]
+offset_left = 40.0
+offset_top = -40.0
+offset_right = 88.0
+offset_bottom = -17.0
+theme_override_font_sizes/font_size = 26
+text = "用餐区"
+
+[node name="Entrance" type="Node2D" parent="." unique_id=844479826 groups=["interactable"]]
+script = ExtResource("3_23ay8")
+origin = Vector2(-12.3, 0)
+half_w = 0.3
+half_d = 1.3
+height = 3.4
+color = Color(0.35, 0.24, 0.18, 1)
+
+[node name="FacLabel" type="Label" parent="Entrance" unique_id=1239152051]
+offset_left = 40.0
+offset_top = -50.0
+offset_right = 72.0
+offset_bottom = -27.0
+theme_override_font_sizes/font_size = 26
+text = "大门"
+
+[node name="FoodCart" type="Node2D" parent="." unique_id=1946631201 groups=["interactable"]]
+script = ExtResource("3_23ay8")
+origin = Vector2(10.5, 6.3)
+half_w = 0.7
+half_d = 0.45
+height = 0.9
+color = Color(0.9, 0.35, 0.25, 1)
+
+[node name="FacLabel" type="Label" parent="FoodCart" unique_id=1571930812]
+offset_left = -10.0
+offset_top = -80.0
+offset_right = 38.0
+offset_bottom = -57.0
+theme_override_font_sizes/font_size = 26
+text = "小餐车"

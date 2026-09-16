@@ -1,0 +1,74 @@
+[gd_scene format=3 uid="uid://xa8yg4fhsorh"]
+
+[ext_resource type="Script" uid="uid://dn3o6okmyd633" path="res://scripts/player_3d.gd" id="2_xdcpt"]
+[ext_resource type="Script" uid="uid://bgrpgl1c6ag52" path="res://scripts/camera_follow.gd" id="3_ri315"]
+[ext_resource type="PackedScene" uid="uid://qeqmo0yqw44v" path="res://assets/models/village_textured.glb" id="3_uw0du"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_y1o4l"]
+sky_top_color = Color(0.38, 0.45, 0.55, 1)
+sky_horizon_color = Color(0.65, 0.67, 0.7, 1)
+ground_bottom_color = Color(0.2, 0.17, 0.13, 1)
+ground_horizon_color = Color(0.65, 0.67, 0.7, 1)
+
+[sub_resource type="Sky" id="Sky_rjjfa"]
+sky_material = SubResource("ProceduralSkyMaterial_y1o4l")
+
+[sub_resource type="Environment" id="Environment_eiad2"]
+background_mode = 2
+sky = SubResource("Sky_rjjfa")
+ambient_light_source = 3
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_co8ek"]
+size = Vector3(28, 1, 28)
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_3k48u"]
+radius = 0.35
+height = 1.6
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_beb13"]
+transparency = 1
+albedo_color = Color(0, 0, 0, 0.35)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_rjqfj"]
+top_radius = 0.45
+bottom_radius = 0.45
+height = 0.02
+
+[node name="Village3D" type="Node3D" unique_id=1199857157]
+
+[node name="Environment" type="WorldEnvironment" parent="." unique_id=1683631688]
+environment = SubResource("Environment_eiad2")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=825792707]
+transform = Transform3D(0.81915206, -0.43938506, 0.36868784, 0, 0.64278764, 0.76604444, -0.57357645, -0.62750685, 0.5265408, 0, 0, 0)
+
+[node name="GroundBody" type="StaticBody3D" parent="." unique_id=1209066089]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.28, 0)
+
+[node name="Shape" type="CollisionShape3D" parent="GroundBody" unique_id=2081710407]
+shape = SubResource("BoxShape3D_co8ek")
+
+[node name="Player" type="CharacterBody3D" parent="." unique_id=1941091351]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 3)
+script = ExtResource("2_xdcpt")
+
+[node name="Shape" type="CollisionShape3D" parent="Player" unique_id=1739024785]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+shape = SubResource("CapsuleShape3D_3k48u")
+
+[node name="Body" type="Sprite3D" parent="Player" unique_id=1561692252]
+billboard = 1
+alpha_cut = 2
+
+[node name="Shadow" type="MeshInstance3D" parent="Player" unique_id=1953429997]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0)
+material_override = SubResource("StandardMaterial3D_beb13")
+mesh = SubResource("CylinderMesh_rjqfj")
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=1017862892]
+current = true
+script = ExtResource("3_ri315")
+target_path = NodePath("../Player")
+offset = Vector3(5.5, 7, 7)
+
+[node name="village_textured" parent="." unique_id=199392913 instance=ExtResource("3_uw0du")]

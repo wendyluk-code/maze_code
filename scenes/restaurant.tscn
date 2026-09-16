@@ -1,0 +1,198 @@
+[gd_scene format=3 uid="uid://cw70wcvxkraw7"]
+
+[ext_resource type="Material" uid="uid://nljtukpbwsxx" path="res://materials/floor_placeholder.tres" id="1_iw0ck"]
+[ext_resource type="Script" path="res://scripts/player.gd" id="2_y2pbi"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_f3ktr"]
+sky_top_color = Color(0.38, 0.45, 0.55, 1)
+sky_horizon_color = Color(0.65, 0.67, 0.7, 1)
+ground_bottom_color = Color(0.2, 0.17, 0.13, 1)
+ground_horizon_color = Color(0.65, 0.67, 0.7, 1)
+
+[sub_resource type="Sky" id="Sky_50xnb"]
+sky_material = SubResource("ProceduralSkyMaterial_f3ktr")
+
+[sub_resource type="Environment" id="Environment_uk3xj"]
+background_mode = 2
+sky = SubResource("Sky_50xnb")
+ambient_light_source = 3
+
+[sub_resource type="BoxMesh" id="BoxMesh_bp8vj"]
+size = Vector3(27, 0.3, 16)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rwm3f"]
+albedo_color = Color(0.82, 0.55, 0.39, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_1sijj"]
+size = Vector3(4, 1.1, 1.7)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_u1ary"]
+albedo_color = Color(0.55, 0.66, 0.75, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_qujyy"]
+size = Vector3(4.2, 1, 2.2)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_0duca"]
+albedo_color = Color(0.72, 0.85, 0.92, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_5scnu"]
+size = Vector3(1.8, 2.2, 1.3)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_3m6t0"]
+albedo_color = Color(0.6, 0.45, 0.3, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_jruaf"]
+size = Vector3(2.2, 2.6, 3.6)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_4dltu"]
+albedo_color = Color(0.75, 0.62, 0.42, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_2pc27"]
+size = Vector3(4, 0.15, 1.6)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gh422"]
+albedo_color = Color(0.35, 0.24, 0.18, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_n8gan"]
+size = Vector3(0.6, 3.4, 2.6)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_kmuv4"]
+albedo_color = Color(0.9, 0.35, 0.25, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_00r41"]
+size = Vector3(1.4, 0.8, 0.9)
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_042i7"]
+radius = 0.35
+height = 1.4
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_i5cqm"]
+albedo_color = Color(0.95, 0.55, 0.3, 1)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_dmxl3"]
+radius = 0.35
+height = 1.4
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_638ju"]
+size = Vector3(27, 0.3, 16)
+
+[node name="Restaurant" type="Node3D" unique_id=1514554686]
+
+[node name="Environment" type="WorldEnvironment" parent="." unique_id=1257457372]
+environment = SubResource("Environment_uk3xj")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=229823220]
+transform = Transform3D(0.81915206, -0.46984634, 0.32898995, 0, 0.57357645, 0.81915206, -0.57357645, -0.6710101, 0.46984634, 0, 0, 0)
+
+[node name="CameraPivot" type="Node3D" parent="." unique_id=1093932668]
+
+[node name="Camera3D" type="Camera3D" parent="CameraPivot" unique_id=1158226800]
+transform = Transform3D(1, 0, 0, 0, 0.66913056, 0.74314487, 0, -0.74314487, 0.66913056, 0, 17, 13)
+current = true
+
+[node name="Ground" type="MeshInstance3D" parent="." unique_id=1607309375]
+material_override = ExtResource("1_iw0ck")
+mesh = SubResource("BoxMesh_bp8vj")
+
+[node name="Facilities" type="Node3D" parent="." unique_id=5209104]
+
+[node name="FrontCounter" type="MeshInstance3D" parent="Facilities" unique_id=2054172867 groups=["interactable"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 0.55, -5.5)
+material_override = SubResource("StandardMaterial3D_rwm3f")
+mesh = SubResource("BoxMesh_1sijj")
+
+[node name="Label_Front" type="Label3D" parent="Facilities/FrontCounter" unique_id=896683310]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
+text = "前台"
+font_size = 80
+
+[node name="CookTop" type="MeshInstance3D" parent="Facilities" unique_id=153910364 groups=["interactable"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 5)
+material_override = SubResource("StandardMaterial3D_u1ary")
+mesh = SubResource("BoxMesh_qujyy")
+
+[node name="Label_Cook" type="Label3D" parent="Facilities/CookTop" unique_id=1952369765]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0)
+text = "料理台"
+font_size = 80
+
+[node name="Freezer" type="MeshInstance3D" parent="Facilities" unique_id=1757700830 groups=["interactable"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.4, 1.1, 3.4)
+material_override = SubResource("StandardMaterial3D_0duca")
+mesh = SubResource("BoxMesh_5scnu")
+
+[node name="Label_Freezer" type="Label3D" parent="Facilities/Freezer" unique_id=1783065242]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+text = "冰柜"
+font_size = 80
+
+[node name="Warehouse" type="MeshInstance3D" parent="Facilities" unique_id=1239724546 groups=["interactable"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.3, 1.3, 1)
+material_override = SubResource("StandardMaterial3D_3m6t0")
+mesh = SubResource("BoxMesh_jruaf")
+
+[node name="Label_Warehouse" type="Label3D" parent="Facilities/Warehouse" unique_id=1961719920]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 0)
+text = "仓库"
+font_size = 80
+
+[node name="DiningTable" type="MeshInstance3D" parent="Facilities" unique_id=835621094 groups=["interactable"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.5, -6.2)
+material_override = SubResource("StandardMaterial3D_4dltu")
+mesh = SubResource("BoxMesh_2pc27")
+
+[node name="Label_Dining" type="Label3D" parent="Facilities/DiningTable" unique_id=435420507]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+text = "用餐区"
+font_size = 80
+
+[node name="Entrance" type="MeshInstance3D" parent="Facilities" unique_id=722607552 groups=["interactable"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.3, 1.7, 0)
+material_override = SubResource("StandardMaterial3D_gh422")
+mesh = SubResource("BoxMesh_n8gan")
+
+[node name="Label_Entrance" type="Label3D" parent="Facilities/Entrance" unique_id=848603783]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.6, 0)
+text = "大门"
+font_size = 80
+
+[node name="FoodCart" type="MeshInstance3D" parent="Facilities" unique_id=1184097375 groups=["interactable"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 0.4, 6.3)
+material_override = SubResource("StandardMaterial3D_kmuv4")
+mesh = SubResource("BoxMesh_00r41")
+
+[node name="Label_Cart" type="Label3D" parent="Facilities/FoodCart" unique_id=1969098979]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+text = "小餐车"
+font_size = 80
+
+[node name="Player" type="CharacterBody3D" parent="." unique_id=880008944]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 3)
+script = ExtResource("2_y2pbi")
+
+[node name="Collision" type="CollisionShape3D" parent="Player" unique_id=1109444205]
+shape = SubResource("CapsuleShape3D_042i7")
+
+[node name="Visual" type="MeshInstance3D" parent="Player" unique_id=691338831]
+material_override = SubResource("StandardMaterial3D_i5cqm")
+mesh = SubResource("CapsuleMesh_dmxl3")
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=772536875]
+
+[node name="HintLabel" type="Label" parent="HUD" unique_id=1402484349]
+unique_name_in_owner = true
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -0.5
+offset_top = -63.0
+offset_right = 0.5
+offset_bottom = -40.0
+theme_override_font_sizes/font_size = 28
+
+[node name="GroundCollision" type="StaticBody3D" parent="." unique_id=2041451964]
+
+[node name="Shape" type="CollisionShape3D" parent="GroundCollision" unique_id=464990585]
+shape = SubResource("BoxShape3D_638ju")
