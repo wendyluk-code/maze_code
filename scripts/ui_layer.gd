@@ -9,12 +9,16 @@ const BUTTON_SCENE := preload("res://scenes/ui/interact_button.tscn")
 const TOP_GAP := 8.0
 const BUTTON_HEIGHT := 48.0
 
+@export var interaction_distance: float = 95.0
+
 ## interactable 节点 -> 对应按钮 Control
 var _buttons := {}
 var _hiding := false
+var player: Node2D = null
 
 func _ready() -> void:
 	add_to_group("ui_layer")
+	player = get_tree().get_first_node_in_group("player") as Node2D
 	call_deferred("_rebuild_buttons")
 
 func _rebuild_buttons() -> void:
@@ -23,6 +27,7 @@ func _rebuild_buttons() -> void:
 		if node == null or _buttons.has(node):
 			continue
 		var btn: Control = BUTTON_SCENE.instantiate()
+		btn.visible = false
 		add_child(btn)   # CanvasLayer 下，屏幕空间
 		var act := "交互"
 		if node.has_method("get") and "display_name" in node:
@@ -36,7 +41,7 @@ func _rebuild_buttons() -> void:
 		_buttons[node] = btn
 
 func _process(_delta: float) -> void:
-	# 教学对话框/过场时隐藏；其余时刻所有按钮常显
+	# 教学对话框/过场时隐藏；其余时刻按各自 target 的交互距离显示
 	var tm := get_node_or_null("/root/TutorialManager")
 	var hiding := false
 	if tm and tm.active and tm.idx < tm.steps.size():
@@ -46,10 +51,12 @@ func _process(_delta: float) -> void:
 	if hiding != _hiding:
 		_hiding = hiding
 		for b in _buttons.values():
-			if is_instance_valid(b):
-				b.visible = not hiding
+			if hiding and is_instance_valid(b):
+				b.visible = false
 	if hiding:
 		return
+	if not is_instance_valid(player):
+		player = get_tree().get_first_node_in_group("player") as Node2D
 	# 每帧更新每个按钮位置：target 世界坐标 → 相机投影 → 屏幕
 	var cam := get_viewport().get_camera_2d()
 	if cam == null:
@@ -60,7 +67,15 @@ func _process(_delta: float) -> void:
 		var btn: Control = _buttons[node]
 		if not is_instance_valid(btn) or not is_instance_valid(node):
 			continue
+		btn.visible = is_target_in_interaction_range(node)
 		_place_button(btn, node, cam, zone, vp)
+
+func is_target_in_interaction_range(target: Node2D) -> bool:
+	if not is_instance_valid(player) or not is_instance_valid(target):
+		return false
+	if not player.has_method("interaction_distance_to"):
+		return false
+	return player.interaction_distance_to(target) <= interaction_distance
 
 ## 世界坐标 → 屏幕：仅用于定位，按钮尺寸始终为屏幕像素
 func _place_button(btn: Control, node: Node2D, cam: Camera2D, zone: Node, vp: Vector2) -> void:

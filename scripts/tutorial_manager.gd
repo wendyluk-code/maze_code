@@ -72,7 +72,7 @@ func restaurant_lesson() -> Array:
 			"type": "dialog", "speaker": "芽芽",
 			"portrait": "res://assets/characters/yaya_portrait.png",
 			"lines": [
-				"……你醒了。",
+				"……你终于醒了。",
 			],
 		},
 		{
@@ -93,7 +93,7 @@ func restaurant_lesson() -> Array:
 			"type": "dialog", "speaker": "芽芽",
 			"portrait": "res://assets/characters/yaya_portrait.png",
 			"lines": [
-				"……果然，你还是什么都想不起来。",
+				"……果然，你又想不起来了。",
 			],
 		},
 		{
@@ -349,7 +349,7 @@ func _process(_delta: float) -> void:
 	var target := resolve_target(step.get("target"))
 	if target == null:
 		return
-	if player.global_position.distance_to(target.global_position) <= float(step.get("radius", 120.0)):
+	if player.interaction_distance_to(target) <= float(step.get("radius", 120.0)):
 		_complete_step(_run_token)
 
 func _set_player_locked(locked: bool) -> void:

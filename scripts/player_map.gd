@@ -16,6 +16,7 @@ var anim_t := 0.0
 
 @onready var label: Label = %HintLabel
 @onready var body: Sprite2D = $Body
+@onready var collision: CollisionShape2D = $Collision
 
 var walk_zone: Node = null
 var last_valid := Vector2.ZERO
@@ -93,11 +94,25 @@ func nearest_interactable() -> Node2D:
 		var node := n as Node2D
 		if not node:
 			continue
-		var d := global_position.distance_to(node.global_position)
-		if d < best_d:
+		var d := interaction_distance_to(node)
+		if d <= best_d and (best == null or d < best_d or str(node.get_path()) < str(best.get_path())):
 			best_d = d
 			best = node
 	return best
+
+func interaction_distance_to(target: Node2D) -> float:
+	var center := collision.global_position if is_instance_valid(collision) else global_position
+	var center_distance := center.distance_to(target.global_position)
+	if target.has_method("interaction_distance_from"):
+		center_distance = target.interaction_distance_from(center)
+	return maxf(0.0, center_distance - collision_radius_world())
+
+func collision_radius_world() -> float:
+	if not is_instance_valid(collision) or not collision.shape is CircleShape2D:
+		return 0.0
+	var circle := collision.shape as CircleShape2D
+	var transform := collision.global_transform
+	return circle.radius * minf(transform.x.length(), transform.y.length())
 
 func _update_hint() -> void:
 	if not label:

@@ -40,7 +40,7 @@ centered = false
 [node name="InteractPoints" type="Node2D" parent="." unique_id=1523598777]
 
 ; 按钮显示偏移说明：在交互点节点下加一行  ui_offset = Vector2(右, 下)
-; 只移动按钮"显示位置"（地图像素），交互触发点仍以 position 为准，两者互不影响
+; 只移动按钮"显示位置"（地图像素），不影响道具交互区域
 ; 例：ui_offset = Vector2(0, -60)  # 按钮上移 60 像素
 
 ; 交互点①：魔法汤锅，位置在图片 (773, 621) 像素处
@@ -70,12 +70,14 @@ display_name = "冰柜"
 position = Vector2(390, 338)
 script = ExtResource("6_interact")
 display_name = "吧台"
+interaction_polygon = PackedVector2Array(-235, -17, -186, -29, 310, -74, 352, -56, 352, 60, 314, 83, -201, 142, -227, 116)
 
 ; 交互点⑤：前台（收银台），位于 (1000, 210)
 [node name="Register" type="Node2D" parent="InteractPoints"]
 position = Vector2(1000, 210)
 script = ExtResource("6_interact")
 display_name = "前台"
+interaction_polygon = PackedVector2Array(-215, 43, 83, -19, 95, 1, 94, 90, -200, 138, -216, 124)
 ; 按钮显示位置：左移 20、下移 30 像素（触发点仍为 position，坐标为地图像素）
 ui_offset = Vector2(-20, 30)
 
@@ -84,6 +86,7 @@ ui_offset = Vector2(-20, 30)
 position = Vector2(1254, 230)
 script = ExtResource("6_interact")
 display_name = "仓库"
+interaction_polygon = PackedVector2Array(-64, 24, -21, -45, -21, -124, 11, -155, 111, -128, 194, 25, 194, 390, 136, 390, 126, 251, 98, 268, 14, 199, -26, 152, -70, 71)
 ; 按钮显示位置：右移 35、上移累计 40 像素（触发点仍为 position，坐标为地图像素）
 ui_offset = Vector2(35, -40)
 
