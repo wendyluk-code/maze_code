@@ -7,10 +7,28 @@ var _modal: SproutModal
 var _list: SproutScrollList
 var _empty_mode := false
 var _action_count := 0
+var _capture_path := ""
 
 func _ready() -> void:
 	theme = SproutTheme.make_theme()
 	_build_preview()
+	var args := OS.get_cmdline_user_args()
+	var capture_index := args.find("--ui00-capture")
+	if capture_index >= 0 and capture_index + 1 < args.size():
+		_capture_path = args[capture_index + 1]
+		_capture_after_render.call_deferred()
+
+func _capture_after_render() -> void:
+	await RenderingServer.frame_post_draw
+	await RenderingServer.frame_post_draw
+	var image := get_viewport().get_texture().get_image()
+	var result := image.save_png(_capture_path)
+	if result != OK:
+		push_error("UI00_CAPTURE_FAILED path=%s error=%d" % [_capture_path, result])
+		get_tree().quit(1)
+		return
+	print("UI00_CAPTURE_OK path=%s size=%dx%d" % [_capture_path, image.get_width(), image.get_height()])
+	get_tree().quit()
 
 func _build_preview() -> void:
 	var background := ColorRect.new()
@@ -22,17 +40,17 @@ func _build_preview() -> void:
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	margin.add_theme_constant_override("margin_left", 28)
-	margin.add_theme_constant_override("margin_top", 24)
+	margin.add_theme_constant_override("margin_top", 18)
 	margin.add_theme_constant_override("margin_right", 28)
-	margin.add_theme_constant_override("margin_bottom", 22)
+	margin.add_theme_constant_override("margin_bottom", 16)
 	add_child(margin)
 	var page := VBoxContainer.new()
-	page.add_theme_constant_override("separation", 14)
+	page.add_theme_constant_override("separation", 10)
 	margin.add_child(page)
 
 	var heading := PanelContainer.new()
 	heading.theme = SproutTheme.make_theme()
-	heading.custom_minimum_size.y = 80
+	heading.custom_minimum_size.y = 74
 	page.add_child(heading)
 	var heading_box := VBoxContainer.new()
 	heading.add_child(heading_box)
@@ -68,10 +86,16 @@ func _build_preview() -> void:
 func _make_section(title_text: String) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.theme = SproutTheme.make_theme()
+	var panel_style := SproutTheme.panel_style()
+	panel_style.content_margin_left = 14.0
+	panel_style.content_margin_top = 8.0
+	panel_style.content_margin_right = 14.0
+	panel_style.content_margin_bottom = 8.0
+	panel.add_theme_stylebox_override("panel", panel_style)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
+	box.add_theme_constant_override("separation", 6)
 	panel.add_child(box)
 	var heading := Label.new()
 	heading.text = title_text
@@ -147,7 +171,7 @@ func _make_categories_panel() -> PanelContainer:
 	var panel := _make_section("分类页与滚动列表")
 	var box := _section_content(panel)
 	var tabs := SproutCategoryTabs.new()
-	tabs.custom_minimum_size.y = 58
+	tabs.custom_minimum_size.y = 48
 	tabs.category_changed.connect(_on_category_changed)
 	box.add_child(tabs)
 	tabs.set_categories([
@@ -157,15 +181,16 @@ func _make_categories_panel() -> PanelContainer:
 	])
 	_category_content = Label.new()
 	_category_content.text = "分类内容：料理"
-	_category_content.custom_minimum_size.y = 30
+	_category_content.custom_minimum_size.y = 26
 	box.add_child(_category_content)
 	_list = SproutScrollList.new()
 	_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_list.custom_minimum_size.y = 260
 	_list.item_selected.connect(func(id: String) -> void: _set_status("列表选中模拟条目：%s" % id))
 	box.add_child(_list)
 	var empty_button := SproutButton.new()
 	empty_button.configure("切换空状态", 9)
-	empty_button.custom_minimum_size.y = 44
+	empty_button.custom_minimum_size.y = 40
 	empty_button.pressed.connect(_toggle_empty_state)
 	box.add_child(empty_button)
 	_list.set_items([

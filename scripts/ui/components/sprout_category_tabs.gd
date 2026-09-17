@@ -11,17 +11,18 @@ var selected_id := ""
 
 func _ready() -> void:
 	theme = SproutTheme.make_theme()
-	_build()
+	_ensure_built()
 
 func _build() -> void:
+	if is_instance_valid(_tabs_box):
+		return
 	_tabs_box = HBoxContainer.new()
 	_tabs_box.add_theme_constant_override("separation", 6)
 	_tabs_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	add_child(_tabs_box)
 
 func set_categories(categories: Array) -> void:
-	if _tabs_box == null:
-		_build()
+	_ensure_built()
 	_categories = categories.duplicate()
 	for child in _tabs_box.get_children():
 		child.queue_free()
@@ -41,6 +42,9 @@ func set_categories(categories: Array) -> void:
 		_tabs_box.add_child(button)
 		_buttons.append(button)
 	select_category(str(_categories[0].get("id", "")))
+
+func _ensure_built() -> void:
+	_build()
 
 func select_category(category_id: String) -> void:
 	selected_id = category_id

@@ -11,9 +11,11 @@ var _empty_label: Label
 func _ready() -> void:
 	theme = SproutTheme.make_theme()
 	custom_minimum_size = Vector2(300, 220)
-	_build()
+	_ensure_built()
 
 func _build() -> void:
+	if is_instance_valid(_scroll):
+		return
 	_scroll = ScrollContainer.new()
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -30,8 +32,7 @@ func _build() -> void:
 	_items_box.add_child(_empty_label)
 
 func set_items(items: Array) -> void:
-	if _items_box == null:
-		_build()
+	_ensure_built()
 	for child in _items_box.get_children():
 		if child != _empty_label:
 			child.queue_free()
@@ -47,3 +48,6 @@ func set_items(items: Array) -> void:
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.pressed.connect(func() -> void: item_selected.emit(str(item.get("id", ""))))
 		_items_box.add_child(row)
+
+func _ensure_built() -> void:
+	_build()
