@@ -63,12 +63,19 @@ func _process(_delta: float) -> void:
 		return
 	var zone := get_tree().get_first_node_in_group("walk_zone")
 	var vp := get_viewport().get_visible_rect().size
+	var selected: Node2D = player.nearest_interactable() if is_instance_valid(player) else null
+	# Clear every button before enabling the one chosen by the same selector used by E.
+	# This prevents a frame of overlap when the player crosses between targets.
 	for node in _buttons.keys():
 		var btn: Control = _buttons[node]
 		if not is_instance_valid(btn) or not is_instance_valid(node):
 			continue
-		btn.visible = is_target_in_interaction_range(node)
+		btn.visible = false
 		_place_button(btn, node, cam, zone, vp)
+	if is_instance_valid(selected):
+		var selected_button: Control = _buttons.get(selected)
+		if is_instance_valid(selected_button):
+			selected_button.visible = true
 
 func is_target_in_interaction_range(target: Node2D) -> bool:
 	if not is_instance_valid(player) or not is_instance_valid(target):

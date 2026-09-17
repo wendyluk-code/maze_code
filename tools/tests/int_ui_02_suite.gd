@@ -71,8 +71,10 @@ func run_suite() -> void:
 				continue
 			var result: Dictionary = await walk_route(target, side, route)
 			report["routes"].append(result)
-			check(result["moved"] and not result["far_visible"] and result["near_visible"]
-				and result["returned"] and not result["return_visible"],
+			var near_is_selected: bool = result["near"]["nearest"] == target.display_name
+			var return_is_selected: bool = result["return"]["nearest"] == target.display_name
+			check(result["moved"] and not result["far_visible"] and result["near_visible"] == near_is_selected
+				and result["returned"] and result["return_visible"] == return_is_selected,
 				"route_" + target.name + "_" + side, result)
 	await test_threshold(store)
 	await test_multi_target()
@@ -225,8 +227,37 @@ func test_multi_target() -> void:
 	report["multi_target"] = {"point": xy(point), "eligible": pair["eligible"],
 		"visible": visible, "nearest": nearest.display_name if nearest else "none",
 		"interacted": result["interacted"]}
-	check(visible.size() >= 2 and result["interacted"] == nearest.display_name,
+	check(nearest != null and visible.size() == 1 and visible[0] == nearest.display_name
+		and result["interacted"] == nearest.display_name,
 		"multi_target_nearest", report["multi_target"])
+	var overlap_checks := 0
+	var overlap_failures := 0
+	for y in range(420, 780, 8):
+		for x in range(900, 1320, 8):
+			var overlap_point := Vector2(x, y)
+			if not zone.is_point_inside(overlap_point):
+				continue
+			var eligible_count := 0
+			for target in targets:
+				if maxf(0.0, target.interaction_distance_from(overlap_point)
+						- player.collision_radius_world()) <= 95.0:
+					eligible_count += 1
+			if eligible_count < 2:
+				continue
+			overlap_checks += 1
+			player.global_position = overlap_point
+			player.last_valid = overlap_point
+			await get_tree().process_frame
+			await get_tree().process_frame
+			var overlap_nearest: Node2D = player.nearest_interactable()
+			var overlap_visible := 0
+			for target in targets:
+				var overlap_button: Control = ui._buttons.get(target)
+				if overlap_button != null and overlap_button.visible:
+					overlap_visible += 1
+			if overlap_visible > 1 or overlap_nearest == null or overlap_visible != 1:
+				overlap_failures += 1
+		check(overlap_failures == 0, "all_overlap_points_single_button", {"points": overlap_checks, "failures": overlap_failures})
 	var separating := {}
 	var first: Node2D = null
 	var second: Node2D = null

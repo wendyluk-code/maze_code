@@ -32,11 +32,18 @@ func capture() -> void:
 		await RenderingServer.frame_post_draw
 		var target := restaurant.get_node("InteractPoints/" + shot["target"])
 		var button: Control = ui._buttons.get(target)
+		var visible_names: Array[String] = []
+		for candidate in restaurant.get_node("InteractPoints").get_children():
+			var candidate_button: Control = ui._buttons.get(candidate)
+			if candidate_button != null and candidate_button.visible:
+				visible_names.append(candidate.display_name)
+		var nearest: Node2D = player.nearest_interactable()
 		var image := get_viewport().get_texture().get_image()
 		var path := output_dir.path_join("INT-UI-02-" + shot["name"] + "-scene.png")
 		var err := image.save_png(path)
 		print("INT_UI_02 capture=", path, " size=", image.get_size(),
-			" button_visible=", button.visible if button else false, " error=", err)
-		if err != OK or button == null or not button.visible:
+			" visible_names=", visible_names, " nearest=", nearest.display_name if nearest else "none", " error=", err)
+		if err != OK or visible_names.size() != 1 or nearest == null \
+			or (visible_names.size() == 1 and visible_names[0] != nearest.display_name):
 			failures += 1
 	get_tree().quit(0 if failures == 0 else 1)
