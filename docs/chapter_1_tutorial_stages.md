@@ -2,13 +2,19 @@
 
 ## 文档状态与范围
 
-本文件是第一章“从主角醒来到新手教程完成”的阶段规格和验收蓝图。它以当前基线 `master@832dd2b2377fdf213f8a94c0770e3c60fae087b1` 的场景、脚本和大纲为证据，描述现状与尚缺实现，不代表第一章已经完成。
+本文件是第一章“从主角醒来到新手教程完成”的阶段规格和验收蓝图。它以当前基线的场景、脚本和大纲为证据，描述现状与尚缺实现，不代表第一章的真实经营系统已经完成。
+
+### CH1-02 实现状态
+
+CH1-02 已将正式入口命名为“第一章：醒来与首单教程”，并为七阶段步骤写入独立阶段元数据。新档或缺少 `chapter_1_done` 的旧档会从第一章开始；`tutorial_done=true` 不再单独抑制第一章。正常完成和跳过都会写入 `chapter_1_done=true`，并清理教程镜头、输入锁定、暗幕、异步过场和临时客人。`--replay-tutorial` 仍会重播第一章，且第一章结束后停留在餐厅。
+
+验证证据：`scripts/tutorial_manager.gd::chapter_1_lesson()`、`scripts/save_manager.gd::is_chapter_1_done()`、`scripts/tutorial_guide.gd::_ready()` 与 `tools/tests/ch1_02_entry_suite.gd`。
 
 第一章边界止于教程收束和“迷宫那头有扇门……刚才透出了光”的下一章引子。进入迷宫、探索、战斗、获取真实掉落、角色培养、后续餐厅经营均不属于本章验收。
 
 ### 文本保护说明
 
-以下五句是用户已确认、待后续集成且由来源主任务保护的目标开场对白：
+以下五句是用户已确认并由 CH1-02 锁定顺序的开场对白：
 
 1. 芽芽：“……你终于醒了。”
 2. 芽芽：“你还记得我吗？”
@@ -16,20 +22,20 @@
 4. 芽芽：“……果然，你又想不起来了。”
 5. 芽芽：“没关系。我陪着你，总会想起来的。”
 
-本票不修改 `scripts/tutorial_manager.gd`。基线脚本仍是“……你醒了。”“……果然，你还是什么都想不起来。”等旧文案；规格中的五句目标文本不能被误读为基线已经集成。
+代码证据为 `scripts/tutorial_manager.gd::chapter_1_lesson()`；旧调用方仍可通过 `restaurant_lesson()` 兼容别名读取同一第一章步骤，但它不再是默认入口。
 
 ## 当前实现基线
 
 | 能力 | 当前证据与结论 |
 | --- | --- |
-| 教程启动 | `project.godot` 将 `TutorialManager` 作为 Autoload；`scenes/restaurant_map_2d.tscn` 实例化 `UIOverlay/TutorialGuide`；`scripts/tutorial_guide.gd::_ready()` 在未完成存档时调用 `TutorialManager.start()`。 |
-| 教程顺序 | `scripts/tutorial_manager.gd::restaurant_lesson()` 返回固定数组；`_run_step()` 只推进当前 `idx`，支持 `dialog`、`cutscene_guest`、`move_to`、`interact`、`notify`、`finish`。 |
+| 教程启动 | `project.godot` 将 `TutorialManager` 作为 Autoload；`scenes/restaurant_map_2d.tscn` 实例化 `UIOverlay/TutorialGuide`；`scripts/tutorial_guide.gd::_ready()` 按独立 `chapter_1_done` 状态调用正式第一章入口，重播参数例外。 |
+| 教程顺序 | `scripts/tutorial_manager.gd::chapter_1_lesson()` 返回带 `stage=1..7` 的固定数组；`_run_step()` 按七阶段顺序推进 `dialog`、`cutscene_guest`、`move_to`、`interact`、`notify`、`finish`。 |
 | 对话与操作 | `scripts/dialog_box.gd::start()`、`_advance()` 提供逐字显示和点击/空格/Enter/E/确认键推进；对话期间 `TutorialManager::_set_player_locked(true)` 停止主角物理处理。 |
 | 移动与交互 | `scenes/restaurant_map_2d.tscn` 的 `Player` 使用 `scripts/player_map.gd`；方向键/WASD 移动，E 发出 `interacted(target)`；交互点由 `scripts/interactable_point.gd` 注册到 `interactable` 组。 |
 | 目标设施 | 主场景的 `InteractPoints` 包含“前台”“仓库”“魔法汤锅”“吧台”“小餐车”“冰柜”；其名称和位置见 `scenes/restaurant_map_2d.tscn`。教程实际只引用前台、仓库、魔法汤锅。 |
 | 客人演出 | `TutorialManager::_play_guest_cutscene()` 加载 `res://scenes/guest_placeholder.tscn`；`scripts/guest_placeholder.gd` 是带“……”气泡的绘制占位，不是真实客人实体或订单。 |
 | 提示层 | `scripts/tutorial_guide.gd::show_toast()` 显示约 1.3 秒后淡出的 Label；`scripts/ui_layer.gd` 只负责交互按钮位置和文案映射。 |
-| 存档与恢复 | `scripts/save_manager.gd` 只有 `tutorial_done`；`TutorialManager::_finish()` 正常完成或跳过后写入该标记。没有阶段、订单、材料、料理、声望的持久化。`--replay-tutorial` 只让引导层重播，不构成中途断点恢复。 |
+| 存档与恢复 | `scripts/save_manager.gd` 保留 `tutorial_done` 兼容标记并新增独立 `chapter_1_done`；缺少该字段的旧存档按未完成处理。没有阶段断点、订单、材料、料理、声望的持久化。`--replay-tutorial` 只重播第一章，不构成中途断点恢复。 |
 
 ### Toast、真实经营状态的硬边界
 
@@ -51,13 +57,13 @@
 
 **错误、乱序、跳过/恢复**：在对话框可见时移动无效；非推进键无效；错误目标没有意义。右上角“跳过”调用 `skip_all()`，会直接结束全教程并写 `tutorial_done=true`，不是只跳过本阶段。中途关闭/重启没有断点，会从头启动；完成后可用 `--replay-tutorial` 重播。
 
-**当前代码证据**：`scripts/tutorial_manager.gd::restaurant_lesson()` 的第一个至第五个 `type="dialog"` 条目；`scripts/dialog_box.gd::_unhandled_input()`、`_gui_input()`、`_advance()`；`scripts/tutorial_manager.gd::_set_player_locked()`；`scenes/ui/tutorial_guide.tscn` 的 `DialogBox`。
+**当前代码证据**：`scripts/tutorial_manager.gd::chapter_1_lesson()` 的第一个至第五个 `type="dialog"` 条目；兼容别名 `restaurant_lesson()` 返回同一数组；`scripts/dialog_box.gd::_unhandled_input()`、`_gui_input()`、`_advance()`；`scripts/tutorial_manager.gd::_set_player_locked()`；`scenes/ui/tutorial_guide.tscn` 的 `DialogBox`。
 
-**正式第一章尚缺**：集成五句已确认文本；明确“醒来”是否需要片头/镜头/可复现启动状态；剧情状态与存档事件模型；跳过后的可恢复策略。
+**CH1-02 已完成**：五句文本、默认入口、独立完成态、七阶段展示和重播/跳过/重进清理已集成。**后续仍缺**：正式片头、剧情断点事件模型和真实经营状态。
 
 **可拆实施票与验收证据**：
 
-- CH1-02 开场文本集成：运行基线新档，逐句核对五句、说话人、头像、推进规则；代码证据为 `restaurant_lesson()` 与 `DialogBox` 事件。
+- CH1-02 开场文本集成：运行新档，逐句核对五句、说话人、头像、推进规则；代码证据为 `chapter_1_lesson()`/兼容别名与 `DialogBox` 事件；聚焦证据见 `tools/tests/ch1_02_entry_suite.gd` 与截图套件。
 - CH1-03 教程断点与跳过策略：中断、重启、跳过、`--replay-tutorial` 四条路径均有明确状态结果；证据为 SaveManager JSON 与 `tutorial_finished` 信号。
 
 ### 阶段 2：客人登场
@@ -68,15 +74,15 @@
 
 **玩家操作**：过场和对白期间不可移动；玩家只需推进对白。镜头返回主角后才恢复行动。
 
-**输入、状态变化、输出**：`Camera2D.paused=true` 并在对话结束后恢复；临时客人节点加入 `guest` 组；过场期间 `TutorialManager` 保留 `_parked_guest` 引用并让节点继续留在场景中。正常完成路径不会在这里清理该节点；跳过路径才会由 `_finish(true)` 请求移除。没有客人档案、位置状态、订单或饥饿数值。
+**输入、状态变化、输出**：`Camera2D.paused=true` 并在对话结束后恢复；临时客人节点加入 `guest` 组；过场期间 `TutorialManager` 保留 `_parked_guest` 引用并让节点继续留在场景中。CH1-02 的正常完成、跳过和退出重进清理均会移除该临时节点。没有客人档案、位置状态、订单或饥饿数值。
 
 **正常完成条件**：过场计时完成、客人对白和芽芽引导对白结束，进入“移动到前台”。
 
-**错误、乱序、跳过/恢复**：玩家不能在过场中操作；跳过全教程会通过 `_cleanup_cutscene(true)` 移除占位客人；正常流程结束时不会调用带 `remove_guest=true` 的清理分支，因此占位客人会留在场景中，而 `_parked_guest` 引用随后被置空，形成生命周期缺陷。ResourceLoader 找不到占位场景时仍会继续对白，不能算客人实体验收。无中途恢复点。
+**错误、乱序、跳过/恢复**：玩家不能在过场中操作；跳过全教程和正常完成都会通过统一清理移除占位客人；场景退出时旧 token 失效，重进不继承异步流程。ResourceLoader 找不到占位场景时仍会继续对白，不能算客人实体验收。无中途恢复点。
 
-**当前代码证据**：`TutorialManager::_play_guest_cutscene()`、`_unpark_camera()`、`_cleanup_cutscene()`；`scenes/guest_placeholder.tscn`；`scripts/guest_placeholder.gd`；对应 `restaurant_lesson()` 的 `cutscene_guest` 和三个 `dialog` 条目。
+**当前代码证据**：`TutorialManager::_play_guest_cutscene()`、`_unpark_camera()`、`_cleanup_cutscene()`；`scenes/guest_placeholder.tscn`；`scripts/guest_placeholder.gd`；对应 `chapter_1_lesson()` 的 `cutscene_guest` 和三个 `dialog` 条目。
 
-**正式第一章尚缺**：真实客人/NPC实体、身份与动画、到店/离店状态、订单生成契约、镜头与可跳过过场的正式验收；还需修复正常教程完成后的占位客人清理/生命周期，避免节点遗留且管理器丢失引用。可验证证据是分别走正常 `finish` 与 `skip_all()` 后检查场景树：正常路径当前不会触发 `_parked_guest.queue_free()`，跳过路径会触发。
+**后续仍缺**：真实客人/NPC实体、身份与动画、到店/离店状态、订单生成契约和镜头与可跳过过场的正式验收；CH1-02 已修复正常教程完成后的占位客人清理/生命周期。可验证证据是分别走正常 `finish` 与 `skip_all()` 后检查场景树，聚焦套件已覆盖两条路径。
 
 **可拆实施票与验收证据**：
 
@@ -184,15 +190,15 @@
 
 **玩家操作**：通知期间等待；推进最后一句对白。教程完成后恢复常规移动/交互 UI。
 
-**输入、状态变化、输出**：`TutorialManager::_finish()` 将 `active=false`，解除玩家锁定、清理教程引导，并调用 `SaveManager.mark_tutorial_done()` 与 `save()`；`tutorial_finished` 发出。正常 `finish` 使用默认 `remove_guest=false`，不会对 `_parked_guest` 调用 `queue_free()`，但 `_cleanup_cutscene()` 随后无条件将引用置空；只有跳过路径 `skip_all()` → `_finish(true)` 才会移除占位客人。门光只是 Toast，没有门节点、解锁标志或迷宫场景切换。
+**输入、状态变化、输出**：`TutorialManager::_finish()` 将 `active=false`，解除玩家锁定，统一清理教程引导、镜头、异步过场和临时客人，并为正式第一章调用 `SaveManager.mark_chapter_1_done()`、兼容写入 `tutorial_done` 后保存；`tutorial_finished` 与 `chapter_1_finished` 发出。门光只是 Toast，没有门节点、解锁标志或迷宫场景切换。
 
-**正常完成条件**：通知计时、最后对白和 `finish` 均完成；`save.json` 的 `tutorial_done` 为 true；教程层隐藏，主角可继续在餐厅移动。
+**正常完成条件**：通知计时、最后对白和 `finish` 均完成；`save.json` 的 `chapter_1_done` 与兼容字段 `tutorial_done` 均为 true；教程层隐藏，主角可继续在餐厅移动。
 
-**错误、乱序、跳过/恢复**：通知无法被玩家交互取消，只能等待；跳过会走 `_finish(true)`、清理占位客人并同样写完成标记；正常完成走默认 `_finish(false)`，不会清理占位客人，造成节点遗留/引用丢失缺陷；重复调用 `start()` 在 `active` 时被拒绝。完成后普通启动会因存档直接隐藏教程；`--replay-tutorial` 可重播但不会提供章节回档。
+**错误、乱序、跳过/恢复**：通知无法被玩家交互取消，只能等待；跳过与正常完成都清理占位客人并写独立完成标记；场景退出后旧异步 token 失效，重新进入可建立唯一新流程。重复调用同一活动流程被拒绝；完成后普通启动隐藏教程，`--replay-tutorial` 可重播第一章但不会提供章节回档。
 
-**当前代码证据**：`restaurant_lesson()` 的 `notify`、末尾 `dialog`、`finish`；`TutorialManager::_finish()`、`_cleanup_cutscene()`；`scripts/tutorial_guide.gd::_ready()` 对 `SaveManager.is_tutorial_done()` 的判断；`scripts/save_manager.gd::mark_tutorial_done()`。
+**当前代码证据**：`chapter_1_lesson()` 的 `notify`、末尾 `dialog`、`finish`；`TutorialManager::_finish()`、`_cleanup_cutscene()`；`scripts/tutorial_guide.gd::should_start_chapter_1()`；`scripts/save_manager.gd::mark_chapter_1_done()` 与 `mark_tutorial_done()`。
 
-**正式第一章尚缺**：章节完成事件与奖励清单、门光的可验证引子状态、从第一章到第二章的显式入口、完成/跳过的审计和回放策略。进入迷宫、探索、战斗仍应作为后续章节票据。
+**CH1-02 已完成**：章节完成事件、完成态保存、跳过/重播入口和清理边界已接入；门光仍只是引子 Toast，没有从第一章切换迷宫。**后续仍缺**：奖励清单、可查询门光状态、从第一章到第二章的显式入口。进入迷宫、探索、战斗仍应作为后续章节票据。
 
 **可拆实施票与验收证据**：
 
@@ -203,12 +209,12 @@
 
 | 当前缺陷/边界 | 后续 TODO | 验收证据 |
 | --- | --- | --- |
-| 开场脚本文案落后于用户已确认五句 | 集成受保护文本并锁定说话人/头像/顺序 | 新档对话录制 + 文案快照；不能只看文档 |
+| 开场脚本文案落后于用户已确认五句 | 已由 CH1-02 集成并锁定说话人/头像/顺序 | 新档对话录制 + 文案快照；不能只看文档 |
 | 五阶段经营动作全由 Toast 表示 | 建立订单、库存、配方、料理、结算、声望的真实数据模型 | 每个动作有前后状态快照、失败断言、存档结果 |
 | 前台节点同时承载接单和交付 | 增加订单上下文或拆分动作入口，保证幂等交付 | 接单→制作→交付状态机；重复 E 不重复奖励 |
 | 错误/乱序操作普遍静默忽略 | 为错误目标、材料不足、容量满、无匹配料理定义反馈与不变式 | UI 错误提示 + 数据不变断言 + 重载测试 |
 | 没有中途断点，只存 `tutorial_done` | 决定是否支持阶段检查点；定义跳过与重播权限 | 中断/重启/跳过/重播矩阵和 `save.json` diff |
-| 客人是绘制占位，且正常完成会遗留占位节点 | 接入真实 NPC、用餐区和下一章入口；同时修复正常 `finish` 的客人清理/生命周期，保持第一章不进迷宫 | 分别执行正常完成与跳过：检查场景树、`_parked_guest` 引用和 `queue_free()` 调用；再验收真实客人节点、动画/事件日志和门光状态，不发生场景切换 |
+| 客人是绘制占位 | 接入真实 NPC、用餐区和下一章入口；CH1-02 已修复正常 `finish` 与跳过路径的占位客人清理，保持第一章不进迷宫 | 分别执行正常完成与跳过：检查场景树、`_parked_guest` 引用和 `queue_free()` 调用；真实客人节点、动画/事件日志和门光状态仍待后续票据 |
 | `INT-UI-02` 仍在独立返修 | 等来源主任务最终验收后再把其行为纳入基线；本票不引用其未验收工作树 | 来源主任务验收记录；不能以本票分支代码证明 |
 
 ## 验收矩阵与边界检查
@@ -222,4 +228,4 @@
 5. 跳过与恢复：分别验证跳过、关闭重启、`--replay-tutorial`；确认不会伪造订单、库存、料理或声望。
 6. 边界回归：第一章完成后没有自动进入迷宫、战斗或探索；`INT-UI-02` 只作为“正在独立返修/未由来源主任务最终验收”登记，不把其工作树改动写成 master 现状。
 
-本票交付的是规格完成，不是整个第一章游戏实施完成。
+本票交付的是第一章入口、完成态和教程流程接缝；真实订单、库存、配方、奖励、声望和迷宫内容仍由后续票据交付。

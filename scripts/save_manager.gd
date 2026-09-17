@@ -1,10 +1,11 @@
 extends Node
 ## 存档管理器（Autoload: SaveManager）
-## 全量 JSON 存档，路径 user://save.json；当前只维护新手教学等核心标记
+## 全量 JSON 存档，路径 user://save.json；维护教程兼容标记与章节完成状态
 
 const SAVE_PATH := "user://save.json"
+const CHAPTER_1_DONE_KEY := "chapter_1_done"
 
-var data: Dictionary = { "tutorial_done": false }
+var data: Dictionary = _defaults()
 
 func _ready() -> void:
 	load_data()
@@ -12,6 +13,7 @@ func _ready() -> void:
 func _defaults() -> Dictionary:
 	return {
 		"tutorial_done": false,
+		CHAPTER_1_DONE_KEY: false,
 	}
 
 func load_data() -> void:
@@ -20,7 +22,11 @@ func load_data() -> void:
 		if f:
 			var parsed = JSON.parse_string(f.get_as_text())
 			if parsed is Dictionary:
-				data = parsed
+				# 旧存档可能只有 tutorial_done；合并默认值而不是丢弃未知字段，
+				# 这样旧存档能继续使用，同时缺少第一章标记时会进入第一章。
+				data = _defaults()
+				for key in parsed:
+					data[key] = parsed[key]
 				return
 	data = _defaults()
 
@@ -34,3 +40,9 @@ func is_tutorial_done() -> bool:
 
 func mark_tutorial_done() -> void:
 	data["tutorial_done"] = true
+
+func is_chapter_1_done() -> bool:
+	return bool(data.get(CHAPTER_1_DONE_KEY, false))
+
+func mark_chapter_1_done() -> void:
+	data[CHAPTER_1_DONE_KEY] = true

@@ -4,13 +4,27 @@ extends Node
 
 signal tutorial_started
 signal tutorial_finished
+signal chapter_1_started
+signal chapter_1_finished
+signal chapter_1_stage_changed(stage: int, title: String)
 signal step_changed(index: int, total: int)
+
+const CHAPTER_1_STAGE_NAMES := {
+	1: "苏醒与失忆",
+	2: "客人登场",
+	3: "前台接单",
+	4: "仓库取料",
+	5: "料理制作",
+	6: "前台交付与结算",
+	7: "章节收束",
+}
 
 var active := false
 var guide = null
 var steps: Array = []
 var idx := 0
 var player = null
+var current_stage := 0
 
 ## 过场镜头驻留状态：停在前台直到后续对话播完
 var _camera_parked := false
@@ -24,6 +38,7 @@ var _replay_requested := false
 var _player_lock_owned := false
 var _player_input_locked_before := false
 var _player_physics_before := true
+var _chapter_1_run := false
 
 func _ready() -> void:
 	process_mode = PROCESS_MODE_ALWAYS
@@ -41,12 +56,18 @@ func _has_replay_argument() -> bool:
 func is_replay_requested() -> bool:
 	return _replay_requested
 
-## 启动教程。custom_steps 为空时使用默认的"第一节：餐厅首单教学"
+## 启动教程。custom_steps 为空时使用正式的“第一章：醒来与首单教程”。
+## 非空 custom_steps 仅作为兼容测试/内部脚本入口，不改变章节完成状态。
 func start(custom_steps: Array = []) -> void:
+	var next_guide = get_tree().get_first_node_in_group("tutorial_guide")
 	if active:
-		return
-	guide = get_tree().get_first_node_in_group("tutorial_guide")
-	if guide == null or not guide.has_method("setup"):
+		# Autoload 会跨场景保留；旧场景退出后，必须取消旧异步链，
+		# 才能让新餐厅场景重新建立一条唯一教程流程。
+		if is_instance_valid(guide) and guide == next_guide and is_instance_valid(player):
+			return
+		_cancel_current_run()
+	guide = next_guide
+	if not is_instance_valid(guide) or not guide.has_method("setup"):
 		push_warning("TutorialManager: 找不到 tutorial_guide 引导层")
 		return
 	if not guide.dialog_done.is_connected(_on_dialog_done):
@@ -55,20 +76,25 @@ func start(custom_steps: Array = []) -> void:
 	if guide.has_method("prepare_for_start"):
 		guide.prepare_for_start()
 	active = true
-	steps = custom_steps if not custom_steps.is_empty() else restaurant_lesson()
+	_chapter_1_run = custom_steps.is_empty()
+	steps = custom_steps if not custom_steps.is_empty() else chapter_1_lesson()
 	idx = 0
+	current_stage = 0
 	_player_lock_owned = false
 	player = get_tree().get_first_node_in_group("player") as Node2D
 	if player and player.has_signal("interacted") and not player.interacted.is_connected(_on_player_interact):
 		player.interacted.connect(_on_player_interact)
-		tutorial_started.emit()
+	tutorial_started.emit()
+	if _chapter_1_run:
+		chapter_1_started.emit()
 	_run_step(_run_token)
 
-## 第一节：餐厅首单教学（脚本化演示，后续接真实经营系统）
+## 第一章：醒来与首单教程（脚本化演示，后续接真实经营系统）
 ## 叙事：片头视频（占位）→ 芽芽唤醒失忆的主角 → 饥肠辘辘的客人(？？？)来临 → 芽芽引导做菜
-func restaurant_lesson() -> Array:
+func chapter_1_lesson() -> Array:
 	return [
 		{
+			"stage": 1,
 			"type": "dialog", "speaker": "芽芽",
 			"portrait": "res://assets/characters/yaya_portrait.png",
 			"lines": [
@@ -76,6 +102,7 @@ func restaurant_lesson() -> Array:
 			],
 		},
 		{
+			"stage": 1,
 			"type": "dialog", "speaker": "芽芽",
 			"portrait": "res://assets/characters/yaya_portrait.png",
 			"lines": [
@@ -83,6 +110,7 @@ func restaurant_lesson() -> Array:
 			],
 		},
 		{
+			"stage": 1,
 			"type": "dialog", "speaker": "你",
 			"portrait": "res://assets/characters/player_portrait.png",
 			"lines": [
@@ -90,6 +118,7 @@ func restaurant_lesson() -> Array:
 			],
 		},
 		{
+			"stage": 1,
 			"type": "dialog", "speaker": "芽芽",
 			"portrait": "res://assets/characters/yaya_portrait.png",
 			"lines": [
@@ -97,6 +126,7 @@ func restaurant_lesson() -> Array:
 			],
 		},
 		{
+			"stage": 1,
 			"type": "dialog", "speaker": "芽芽",
 			"portrait": "res://assets/characters/yaya_portrait.png",
 			"lines": [
@@ -104,6 +134,7 @@ func restaurant_lesson() -> Array:
 			],
 		},
 		{
+			"stage": 2,
 			"type": "cutscene_guest",
 			"camera_pos": Vector2(1000, 320),
 			"camera_zoom": Vector2(1.35, 1.35),
@@ -111,12 +142,14 @@ func restaurant_lesson() -> Array:
 			"delay": 0.9,
 		},
 		{
+			"stage": 2,
 			"type": "dialog", "speaker": "？？？",
 			"lines": [
 				"哪……哪里……有吃的吗？我……快不行了……",
 			],
 		},
 		{
+			"stage": 2,
 			"type": "dialog", "speaker": "芽芽",
 			"portrait": "res://assets/characters/yaya_portrait.png",
 			"lines": [
@@ -125,48 +158,58 @@ func restaurant_lesson() -> Array:
 			],
 		},
 		{
+			"stage": 3,
 			"type": "move_to", "target": "前台", "radius": 120.0,
 			"hint": "用 方向键/WASD 走到前台，接下他的订单",
 		},
 		{
+			"stage": 3,
 			"type": "interact", "target": "前台",
 			"hint": "靠近前台后，按 E 接下订单",
 			"toast": "已接单：魔物烤肉 ×1",
 		},
 		{
+			"stage": 4,
 			"type": "move_to", "target": "仓库", "radius": 150.0,
 			"hint": "去仓库拿肉和盐",
 		},
 		{
+			"stage": 4,
 			"type": "interact", "target": "仓库",
 			"hint": "靠近仓库，按 E 领取食材",
 			"toast": "获得：魔物肉 ×1、岩盐 ×1",
 		},
 		{
+			"stage": 5,
 			"type": "move_to", "target": "魔法汤锅", "radius": 140.0,
 			"hint": "放上料理台，煮熟它",
 		},
 		{
+			"stage": 5,
 			"type": "interact", "target": "魔法汤锅",
 			"hint": "靠近料理台，按 E 制作料理",
 			"toast": "【魔物烤肉】 做好了！",
 		},
 		{
+			"stage": 6,
 			"type": "move_to", "target": "前台", "radius": 120.0,
 			"hint": "端过去给他，小心别洒了",
 		},
 		{
+			"stage": 6,
 			"type": "interact", "target": "前台",
 			"hint": "靠近前台，按 E 交单上菜",
 			"toast": "顾客吃得很满足！ 餐厅声望 +20",
 		},
 		{
+			"stage": 6,
 			"type": "dialog", "speaker": "？？？",
 			"lines": [
 				"呜……好吃！这味道，跟我年轻时在边境吃到的一模一样！你这店，我天天光顾！",
 			],
 		},
 		{
+			"stage": 6,
 			"type": "dialog", "speaker": "芽芽",
 			"portrait": "res://assets/characters/yaya_portrait.png",
 			"lines": [
@@ -174,19 +217,28 @@ func restaurant_lesson() -> Array:
 			],
 		},
 		{
+			"stage": 7,
 			"type": "notify",
 			"toast": "迷宫那头有扇门……刚才透出了光。",
 			"delay": 1.8,
 		},
 		{
+			"stage": 7,
 			"type": "dialog", "speaker": "芽芽",
 			"portrait": "res://assets/characters/yaya_portrait.png",
 			"lines": [
 				"等你准备好了，我们再一起去看看。",
 			],
 		},
-		{"type": "finish"},
+		{"stage": 7, "type": "finish"},
 	]
+
+## 旧调用方兼容别名；默认入口已改为 chapter_1_lesson()。
+func restaurant_lesson() -> Array:
+	return chapter_1_lesson()
+
+func chapter_1_stage_names() -> Dictionary:
+	return CHAPTER_1_STAGE_NAMES.duplicate()
 
 ## 根据名称/display_name/Node2D 解析目标节点
 func resolve_target(target) -> Node2D:
@@ -208,7 +260,7 @@ func skip_all() -> void:
 	_finish(true)
 
 func _run_is_valid(token: int) -> bool:
-	return active and token == _run_token
+	return active and token == _run_token and is_instance_valid(guide)
 
 func _run_step(token: int) -> void:
 	if not _run_is_valid(token):
@@ -218,6 +270,10 @@ func _run_step(token: int) -> void:
 		return
 	var step: Dictionary = steps[idx]
 	var st_type := str(step.get("type", ""))
+	var stage := int(step.get("stage", 0))
+	if _chapter_1_run and stage > 0 and stage != current_stage:
+		current_stage = stage
+		chapter_1_stage_changed.emit(stage, str(CHAPTER_1_STAGE_NAMES.get(stage, "")))
 	# 过场镜头驻留：一旦进入非对话步骤（该回到主角行动），回收镜头
 	if _camera_parked and st_type != "dialog" and st_type != "cutscene_guest":
 		await _unpark_camera(token)
@@ -225,6 +281,8 @@ func _run_step(token: int) -> void:
 			return
 	step_changed.emit(idx, steps.size())
 	guide.setup(step)
+	if _chapter_1_run and guide.has_method("set_chapter_stage"):
+		guide.set_chapter_stage(current_stage, str(CHAPTER_1_STAGE_NAMES.get(current_stage, "")))
 	match st_type:
 		"dialog":
 			_set_player_locked(true)
@@ -251,9 +309,9 @@ func _run_step(token: int) -> void:
 			pass
 
 func _get_camera() -> Camera2D:
-	if player:
+	if is_instance_valid(player):
 		var c := player.get_node_or_null("../Camera") as Camera2D
-		if c:
+		if is_instance_valid(c):
 			return c
 	return get_viewport().get_camera_2d()
 
@@ -261,7 +319,7 @@ func _get_camera() -> Camera2D:
 ## 结束后镜头保持驻留（camera_parked），直到后续对话播完才回收
 func _play_guest_cutscene(step: Dictionary, token: int) -> void:
 	var cam := _get_camera()
-	if cam:
+	if is_instance_valid(cam):
 		_kill_camera_tween()
 		cam.paused = true
 		_base_zoom = cam.zoom
@@ -275,11 +333,11 @@ func _play_guest_cutscene(step: Dictionary, token: int) -> void:
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		await _camera_tween.finished
 		_camera_tween = null
-		if not _run_is_valid(token):
+		if not _run_is_valid(token) or not is_instance_valid(cam):
 			return
 		cam.paused = true
 		_camera_parked = true
-	if guide and guide.has_method("set_dim"):
+	if is_instance_valid(guide) and guide.has_method("set_dim"):
 		guide.set_dim(0.12)
 	var guest_scene := "res://scenes/guest_placeholder.tscn"
 	if ResourceLoader.exists(guest_scene):
@@ -288,7 +346,7 @@ func _play_guest_cutscene(step: Dictionary, token: int) -> void:
 		if root:
 			root.add_child(_parked_guest)
 			_parked_guest.position = step.get("guest_pos", Vector2(1000, 300))
-	if guide and guide.has_method("set_dim"):
+	if is_instance_valid(guide) and guide.has_method("set_dim"):
 		guide.set_dim(0.5)
 	# 短暂展示气泡后进入"？？？"对话；角色与镜头继续驻留
 	await get_tree().create_timer(float(step.get("delay", 0.9))).timeout
@@ -298,17 +356,17 @@ func _unpark_camera(token: int) -> void:
 	if not _camera_parked and not _camera_cutscene_active:
 		return
 	var cam := _get_camera()
-	if cam:
+	if is_instance_valid(cam):
 		_kill_camera_tween()
 		_camera_tween = create_tween()
 		_camera_tween.set_parallel(true)
-		if player:
+		if is_instance_valid(player):
 			_camera_tween.tween_property(cam, "global_position", player.global_position, 0.8)\
 				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 		_camera_tween.tween_property(cam, "zoom", _base_zoom, 0.8)
 		await _camera_tween.finished
 		_camera_tween = null
-		if not _run_is_valid(token):
+		if not _run_is_valid(token) or not is_instance_valid(cam):
 			return
 		cam.paused = false
 	_camera_parked = false
@@ -320,6 +378,22 @@ func _complete_step(token: int) -> void:
 	idx += 1
 	_run_step(token)
 
+func _cancel_current_run() -> void:
+	if not active:
+		return
+	active = false
+	_run_token += 1
+	_set_player_locked(false)
+	_cleanup_cutscene(true)
+	if is_instance_valid(guide) and guide.has_method("finish_all"):
+		guide.finish_all()
+	guide = null
+	player = null
+	steps = []
+	idx = 0
+	current_stage = 0
+	_chapter_1_run = false
+
 func _on_dialog_done() -> void:
 	if not active:
 		return
@@ -327,7 +401,7 @@ func _on_dialog_done() -> void:
 	_complete_step(_run_token)
 
 func _on_player_interact(node: Node2D) -> void:
-	if not active or idx < 0 or idx >= steps.size():
+	if not active or not is_instance_valid(guide) or idx < 0 or idx >= steps.size():
 		return
 	var step: Dictionary = steps[idx]
 	if step.get("type", "") != "interact":
@@ -341,7 +415,7 @@ func _on_player_interact(node: Node2D) -> void:
 	_complete_step(_run_token)
 
 func _process(_delta: float) -> void:
-	if not active or player == null or idx < 0 or idx >= steps.size():
+	if not active or not is_instance_valid(player) or idx < 0 or idx >= steps.size():
 		return
 	var step: Dictionary = steps[idx]
 	if step.get("type", "") != "move_to":
@@ -353,7 +427,8 @@ func _process(_delta: float) -> void:
 		_complete_step(_run_token)
 
 func _set_player_locked(locked: bool) -> void:
-	if player == null:
+	if not is_instance_valid(player):
+		_player_lock_owned = false
 		return
 	if locked:
 		if not _player_lock_owned:
@@ -382,31 +457,43 @@ func _kill_camera_tween() -> void:
 func _finish(remove_guest := false) -> void:
 	if not active:
 		return
+	var was_chapter_1_run := _chapter_1_run
 	active = false
 	_run_token += 1
 	_set_player_locked(false)
-	_cleanup_cutscene(remove_guest)
-	if guide and guide.has_method("finish_all"):
+	# 正常完成与跳过都必须清理临时客人；remove_guest 参数保留给旧调用方兼容。
+	_cleanup_cutscene(true)
+	if is_instance_valid(guide) and guide.has_method("finish_all"):
 		guide.finish_all()
 	var sm := get_node_or_null("/root/SaveManager")
-	if sm and not sm.is_tutorial_done():
-		sm.mark_tutorial_done()
-		sm.save()
+	if was_chapter_1_run and sm:
+		var should_save := false
+		if sm.has_method("is_chapter_1_done") and not sm.is_chapter_1_done():
+			sm.mark_chapter_1_done()
+			should_save = true
+		if not sm.is_tutorial_done():
+			sm.mark_tutorial_done()
+			should_save = true
+		if should_save:
+			sm.save()
+	if was_chapter_1_run:
+		chapter_1_finished.emit()
 	tutorial_finished.emit()
+	_chapter_1_run = false
 
 ## 无论正常结束还是跳过：解除镜头驻留；跳过时同时移除未完成的占位演出
 func _cleanup_cutscene(remove_guest := false) -> void:
 	_kill_camera_tween()
 	var cam := _get_camera()
-	if cam:
+	if is_instance_valid(cam):
 		cam.paused = false
 		if _base_zoom_captured:
 			cam.zoom = _base_zoom
-		if player and (_camera_cutscene_active or _camera_parked):
+		if is_instance_valid(player) and (_camera_cutscene_active or _camera_parked):
 			cam.global_position = player.global_position
 	_camera_parked = false
 	_camera_cutscene_active = false
 	_base_zoom_captured = false
-	if remove_guest and is_instance_valid(_parked_guest):
+	if is_instance_valid(_parked_guest):
 		_parked_guest.queue_free()
 	_parked_guest = null

@@ -11,6 +11,8 @@ signal dialog_done
 @onready var skip_button: Button = %SkipButton
 @onready var dialog = %DialogBox
 @onready var toast: Label = %Toast
+@onready var chapter_title: Label = %ChapterTitle
+@onready var chapter_stage: Label = %ChapterStage
 
 var _target_world := Vector2.ZERO
 var _target_node: Node2D = null
@@ -21,18 +23,34 @@ var _visual_token := 0
 
 func _ready() -> void:
 	add_to_group("tutorial_guide")
-	# 已完成教学：直接隐藏整个引导层，不干扰正常游戏；开发重播参数例外
-	var replay := TutorialManager.has_method("is_replay_requested") and TutorialManager.is_replay_requested()
-	if SaveManager.is_tutorial_done() and not replay:
-		visible = false
-		return
-	prepare_for_start()
 	if not skip_button.pressed.is_connected(_on_skip):
 		skip_button.pressed.connect(_on_skip)
 	if not dialog.finished.is_connected(_on_dialog_finished):
 		dialog.finished.connect(_on_dialog_finished)
+	# 只有正式餐厅入口负责自动启动。测试或其他场景临时实例化地图时，
+	# 不抢占 TutorialManager，避免产生第二条异步教程流程。
+	if get_tree().current_scene != _scene_root():
+		visible = false
+		return
+	# 已完成第一章：直接隐藏整个引导层，不干扰正常游戏；开发重播参数例外
+	if not should_start_chapter_1():
+		visible = false
+		return
+	prepare_for_start()
 	# 首次进入游戏自动开始新手教学
 	TutorialManager.start()
+
+func _scene_root() -> Node:
+	var node: Node = self
+	while node.get_parent() != null and node.get_parent() != get_tree().root:
+		node = node.get_parent()
+	return node
+
+func should_start_chapter_1() -> bool:
+	var replay := TutorialManager.has_method("is_replay_requested") and TutorialManager.is_replay_requested()
+	if replay:
+		return true
+	return not SaveManager.has_method("is_chapter_1_done") or not SaveManager.is_chapter_1_done()
 
 func prepare_for_start() -> void:
 	_visual_token += 1
@@ -49,6 +67,10 @@ func prepare_for_start() -> void:
 	hint_panel.visible = false
 	toast.visible = false
 	skip_button.visible = true
+	chapter_title.text = "第一章：醒来与首单教程"
+	chapter_title.visible = true
+	chapter_stage.visible = true
+	chapter_stage.text = "阶段 1/7 · 苏醒与失忆"
 	dialog.hide_box()
 
 func _on_skip() -> void:
@@ -80,6 +102,11 @@ func setup(step: Dictionary) -> void:
 			_has_target = true
 	marker.visible = _has_target
 
+func set_chapter_stage(stage: int, title: String) -> void:
+	if stage <= 0:
+		return
+	chapter_stage.text = "阶段 %d/7 · %s" % [stage, title]
+
 func _process(_delta: float) -> void:
 	if not marker.visible or not _has_target:
 		return
@@ -107,7 +134,7 @@ func show_toast(text: String) -> void:
 	toast.modulate.a = 1.0
 	toast.text = text
 	toast.visible = true
-	if _toast_tween:
+	if _toast_tween != null and _toast_tween.is_valid():
 		_toast_tween.kill()
 	_toast_tween = create_tween()
 	_toast_tween.tween_interval(1.3)
@@ -126,6 +153,8 @@ func finish_all() -> void:
 	dialog.hide_box()
 	toast.visible = false
 	skip_button.visible = false
+	chapter_title.visible = false
+	chapter_stage.visible = false
 	_finish_tween = create_tween()
 	_finish_tween.tween_property(dim, "color:a", 0.0, 0.5)
 	await _finish_tween.finished
