@@ -257,7 +257,7 @@ func test_multi_target() -> void:
 					overlap_visible += 1
 			if overlap_visible > 1 or overlap_nearest == null or overlap_visible != 1:
 				overlap_failures += 1
-		check(overlap_failures == 0, "all_overlap_points_single_button", {"points": overlap_checks, "failures": overlap_failures})
+	check(overlap_failures == 0, "all_overlap_points_single_button", {"points": overlap_checks, "failures": overlap_failures})
 	var separating := {}
 	var first: Node2D = null
 	var second: Node2D = null
