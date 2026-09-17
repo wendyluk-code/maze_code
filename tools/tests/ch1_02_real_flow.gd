@@ -108,13 +108,13 @@ func _load_restaurant() -> void:
 		max_guard_frames += 1
 		await physics_frame
 		if zone.polygons.size() > 0:
-			spawn_point = zone.get_spawn_point()
+			spawn_point = zone.get_spawn_point(player.collision_radius_world())
 		if player.spawn_ready and spawn_point != Vector2.ZERO \
 			and player.global_position.distance_to(spawn_point) <= 0.1:
 			break
 	if not physics_before_spawn and player.is_physics_processing() and player.input_locked:
 		player.set_physics_process(false)
-	var spawn_safe := zone.has_method("is_circle_inside") \
+	var spawn_safe: bool = zone.has_method("is_circle_inside") \
 		and zone.is_circle_inside(player.global_position, player.collision_radius_world())
 	_record("scene_loaded", scene != null and player != null and guide != null and spawn_safe, {
 		"scene": scene.name if scene else "none", "save_path": ProjectSettings.globalize_path("user://save.json"),
