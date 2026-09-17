@@ -14,6 +14,8 @@
 [ext_resource type="Script" uid="uid://bram1gv7aihmr" path="res://scripts/walk_zone.gd" id="5_walk"]
 ; 引用交互点脚本 interactable_point.gd（注册到 interactable 组并带 display_name）
 [ext_resource type="Script" path="res://scripts/interactable_point.gd" id="6_interact"]
+; 引用道具前景采样脚本（按脚底相对道具前缘动态遮挡）
+[ext_resource type="Script" path="res://scripts/prop_foreground.gd" id="9_foreground"]
 ; 引用 UI 覆盖层场景 ui_overlay.tscn（靠近交互点时的悬浮操作按钮）
 [ext_resource type="PackedScene" path="res://scenes/ui_overlay.tscn" id="7_ui"]
 ; 引用新手教学引导层（暗幕/高亮/提示/对话框）
@@ -95,6 +97,10 @@ ui_offset = Vector2(35, -40)
 script = ExtResource("5_walk")
 ; 可走掩码图路径：绿色像素 = 角色可走区域
 mask_path = "res://assets/maps/walkable_mask.png"
+
+; 扁平底图上的动态道具前景采样层
+[node name="PropForeground" type="Node2D" parent="."]
+script = ExtResource("9_foreground")
 
 ; 主角节点：CharacterBody2D（带碰撞体、可移动）
 [node name="Player" type="CharacterBody2D" parent="." unique_id=1162146397]
