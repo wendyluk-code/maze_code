@@ -49,6 +49,12 @@ func run_suite() -> void:
 	check(is_equal_approx(player.collision_radius_world(), 20.0), "collision_radius_20")
 	check(is_equal_approx(ui.interaction_distance, player.INTERACT_RANGE), "ui_e_threshold_95")
 	var store := scene.get_node("InteractPoints/Store")
+	var cauldron := scene.get_node("InteractPoints/Cauldron")
+	var spawn_candidate: Vector2 = zone.get_spawn_point(player.collision_radius_world())
+	check(zone.has_method("is_circle_inside") and spawn_candidate != Vector2.ZERO
+		and zone.is_circle_inside(spawn_candidate, player.collision_radius_world()),
+		"spawn_circle_inside", {"point": xy(spawn_candidate), "radius": player.collision_radius_world()})
+	test_footprint_clearance(cauldron, Vector2(773, 460))
 	for point in [Vector2(1400, 615), Vector2(1400, 620), Vector2(1400, 630), Vector2(1300, 560)]:
 		report["samples"].append(await sample(store, point, "regression"))
 	check(report["samples"][2]["walk"] and report["samples"][2]["visible"]
@@ -73,7 +79,8 @@ func run_suite() -> void:
 			report["routes"].append(result)
 			var near_is_selected: bool = result["near"]["nearest"] == target.display_name
 			var return_is_selected: bool = result["return"]["nearest"] == target.display_name
-			check(result["moved"] and not result["far_visible"] and result["near_visible"] == near_is_selected
+			check(result["moved"] and not result["footprint_violation"] and not result["far_visible"]
+				and result["near_visible"] == near_is_selected
 				and result["returned"] and result["return_visible"] == return_is_selected,
 				"route_" + target.name + "_" + side, result)
 	await test_threshold(store)
@@ -94,6 +101,19 @@ func run_suite() -> void:
 			failures += 1
 	print("INT_UI_02 checks=", report["checks"].size(), " routes=", report["routes"].size(), " failures=", failures)
 	get_tree().quit(0 if failures == 0 else 1)
+
+func test_footprint_clearance(target: Node2D, point: Vector2) -> void:
+	var radius: float = player.collision_radius_world()
+	var center_clearance: float = target.interaction_distance_from(point)
+	var has_buffered_api := zone.has_method("is_circle_inside")
+	var footprint_inside := false
+	if has_buffered_api:
+		footprint_inside = zone.call("is_circle_inside", point, radius)
+	report["footprint_probe"] = {"target": target.display_name, "point": xy(point), "center_inside": zone.is_point_inside(point),
+		"center_clearance_to_target": center_clearance, "radius": radius,
+		"buffered_api": has_buffered_api, "footprint_inside": footprint_inside}
+	check(has_buffered_api and zone.is_point_inside(point) and center_clearance < radius
+		and not footprint_inside, "footprint_rejects_center_only_edge", report["footprint_probe"])
 
 func sample(target: Node2D, point: Vector2, label: String) -> Dictionary:
 	player.global_position = point
@@ -135,7 +155,74 @@ func find_route(target: Node2D, side: String) -> Dictionary:
 						return route
 					if fallback.is_empty():
 						fallback = route
-	return fallback
+	if not fallback.is_empty():
+		return fallback
+	return find_buffered_route(target, side, lo, hi)
+
+func find_buffered_route(target: Node2D, side: String, lo: Vector2, hi: Vector2) -> Dictionary:
+	var min_x := maxi(0, int(floor(lo.x - 520.0)))
+	var max_x := mini(1448, int(ceil(hi.x + 520.0)))
+	var min_y := maxi(0, int(floor(lo.y - 520.0)))
+	var max_y := mini(1086, int(ceil(hi.y + 520.0)))
+	var goals: Array[Vector2i] = []
+	for y in range(min_y, max_y + 1, 8):
+		for x in range(min_x, max_x + 1, 8):
+			var point := Vector2(x, y)
+			if not footprint_walkable(point) or nearest_target_at(point) != target:
+				continue
+			var effective: float = maxf(0.0, target.interaction_distance_from(point)
+				- player.collision_radius_world())
+			if effective > 88.0 or not point_on_side(point, side, lo, hi):
+				continue
+			goals.append(Vector2i(x, y))
+	if goals.is_empty():
+		return {}
+	var queue: Array[Vector2i] = []
+	var parents: Dictionary = {}
+	for goal in goals:
+		queue.append(goal)
+		parents[goal] = goal
+	var head := 0
+	var found := Vector2i.ZERO
+	while head < queue.size() and head < 100000:
+		var cell := queue[head]
+		head += 1
+		var point := Vector2(cell)
+		var effective: float = maxf(0.0, target.interaction_distance_from(point)
+			- player.collision_radius_world())
+		if effective > 97.0 and point_on_side(point, side, lo, hi):
+			found = cell
+			break
+		for direction in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var next: Vector2i = cell + direction * 8
+			if parents.has(next) or next.x < min_x or next.x > max_x or next.y < min_y or next.y > max_y:
+				continue
+			var next_point := Vector2(next)
+			if footprint_walkable(next_point) and line_walkable(point, next_point):
+				parents[next] = cell
+				queue.append(next)
+	if not parents.has(found):
+		return {}
+	var path: Array[Vector2] = []
+	var cursor := found
+	while true:
+		path.push_front(Vector2(cursor))
+		if cursor == parents[cursor]:
+			break
+		cursor = parents[cursor]
+	path.reverse()
+	return {"far": Vector2(found), "near": path.back(), "waypoints": path.slice(1),
+		"far_distance": maxf(0.0, target.interaction_distance_from(Vector2(found))
+			- player.collision_radius_world()),
+		"near_distance": maxf(0.0, target.interaction_distance_from(path.back())
+			- player.collision_radius_world()), "buffered_path": true}
+
+func point_on_side(point: Vector2, side: String, lo: Vector2, hi: Vector2) -> bool:
+	match side:
+		"top": return point.y < lo.y
+		"bottom": return point.y > hi.y
+		"left": return point.x < lo.x
+		_: return point.x > hi.x
 
 func nearest_target_at(point: Vector2) -> Node2D:
 	var best: Node2D = null
@@ -152,36 +239,72 @@ func walk_route(target: Node2D, side: String, route: Dictionary) -> Dictionary:
 	var far: Vector2 = route["far"]
 	var near: Vector2 = route["near"]
 	var before: Dictionary = await sample(target, far, "route_far")
-	var action: String = {"top": "ui_down", "bottom": "ui_up", "left": "ui_right", "right": "ui_left"}[side]
-	Input.action_press(action)
+	var waypoints: Array = route.get("waypoints", [near])
 	var steps := 0
-	while player.global_position.distance_to(near) > 5.0 and steps < 100:
-		await get_tree().physics_frame
-		steps += 1
-	Input.action_release(action)
+	var footprint_violation := false
+	var active_action := ""
+	for destination in waypoints:
+		while player.global_position.distance_to(destination) > 5.0 and steps < 300:
+			var offset: Vector2 = destination - player.global_position
+			var next_action := direction_action(offset)
+			if next_action != active_action:
+				if not active_action.is_empty():
+					Input.action_release(active_action)
+				Input.action_press(next_action)
+				active_action = next_action
+			await get_tree().physics_frame
+			steps += 1
+			if not footprint_walkable(player.global_position):
+				footprint_violation = true
+		if steps >= 300:
+			break
+	if not active_action.is_empty():
+		Input.action_release(active_action)
 	await get_tree().process_frame
 	var after: Dictionary = await sample(target, player.global_position, "route_near")
-	var return_action: String = {"ui_up": "ui_down", "ui_down": "ui_up",
-		"ui_left": "ui_right", "ui_right": "ui_left"}[action]
-	Input.action_press(return_action)
 	var return_steps := 0
 	var reached_far := false
-	while return_steps < 100:
-		await get_tree().physics_frame
-		return_steps += 1
-		reached_far = reached_far or player.global_position.distance_to(far) < 7.0
+	active_action = ""
+	var return_waypoints: Array = [far]
+	if route.has("buffered_path"):
+		return_waypoints = waypoints.duplicate()
+		return_waypoints.reverse()
+		return_waypoints.append(far)
+	for destination in return_waypoints:
+		while player.global_position.distance_to(destination) > 7.0 and return_steps < 300:
+			var offset: Vector2 = destination - player.global_position
+			var next_action := direction_action(offset)
+			if next_action != active_action:
+				if not active_action.is_empty():
+					Input.action_release(active_action)
+				Input.action_press(next_action)
+				active_action = next_action
+			await get_tree().physics_frame
+			return_steps += 1
+			if not footprint_walkable(player.global_position):
+				footprint_violation = true
+			reached_far = reached_far or player.global_position.distance_to(far) < 7.0
+			if reached_far and player.interaction_distance_to(target) > 97.0:
+				break
 		if reached_far and player.interaction_distance_to(target) > 97.0:
 			break
-	Input.action_release(return_action)
+	if not active_action.is_empty():
+		Input.action_release(active_action)
 	await get_tree().process_frame
 	var returned: Dictionary = await sample(target, player.global_position, "route_return")
 	return {"node": target.name, "side": side, "status": "moved", "far": before,
 		"near": after, "return": returned, "steps": steps, "return_steps": return_steps,
-		"moved": steps < 100 and Vector2(after["point"][0], after["point"][1]).distance_to(near) < 7.0,
-		"returned": reached_far and return_steps < 100,
+		"moved": steps < 300 and Vector2(after["point"][0], after["point"][1]).distance_to(near) < 7.0,
+		"returned": reached_far and return_steps < 300,
+		"footprint_violation": footprint_violation,
 		"far_visible": before["visible"], "near_visible": after["visible"],
 		"return_visible": returned["visible"],
 		"target_e_at_near": after["interacted"] == target.display_name}
+
+func direction_action(offset: Vector2) -> String:
+	if absf(offset.x) >= absf(offset.y):
+		return "ui_right" if offset.x > 0.0 else "ui_left"
+	return "ui_down" if offset.y > 0.0 else "ui_up"
 
 func test_threshold(store: Node2D) -> void:
 	for delta in [-0.25, 0.0, 0.25]:
@@ -448,9 +571,14 @@ func find_tutorial_crossing(target: Node2D, radius: float) -> Dictionary:
 func line_walkable(a: Vector2, b: Vector2) -> bool:
 	var steps := ceili(a.distance_to(b) / 6.0)
 	for i in range(steps + 1):
-		if not zone.is_point_inside(a.lerp(b, float(i) / float(steps))):
+		if not footprint_walkable(a.lerp(b, float(i) / float(steps))):
 			return false
 	return true
+
+func footprint_walkable(point: Vector2) -> bool:
+	if zone.has_method("is_circle_inside"):
+		return zone.is_circle_inside(point, player.collision_radius_world())
+	return zone.is_point_inside(point)
 
 func polygon_bounds(points: PackedVector2Array) -> Array[Vector2]:
 	var lo := Vector2(INF, INF)

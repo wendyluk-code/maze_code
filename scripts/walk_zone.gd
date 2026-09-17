@@ -6,6 +6,8 @@ extends Node2D
 @export var green_tolerance := 60.0
 @export var debug_draw := false
 
+const FOOTPRINT_EPSILON := 0.5
+
 var polygons: Array = []
 var obstacle_polys: Array = []
 var img_w := 0
@@ -114,7 +116,36 @@ func is_point_inside(p: Vector2) -> bool:
 			return false
 	return true
 
-func get_spawn_point() -> Vector2:
+func is_circle_inside(center: Vector2, radius: float, epsilon: float = FOOTPRINT_EPSILON) -> bool:
+	# The player is represented by a circle at its collision center. A center-only
+	# test lets that circle cross either the walkable outline or an obstacle island.
+	if radius < 0.0:
+		return false
+	var outer_clearance := -INF
+	for poly in polygons:
+		if Geometry2D.is_point_in_polygon(center, poly):
+			outer_clearance = maxf(outer_clearance, distance_to_polygon_boundary(center, poly))
+	if outer_clearance < radius - epsilon:
+		return false
+	for op in obstacle_polys:
+		if Geometry2D.is_point_in_polygon(center, op):
+			return false
+		if distance_to_polygon_boundary(center, op) < radius - epsilon:
+			return false
+	return true
+
+func distance_to_polygon_boundary(point: Vector2, poly: PackedVector2Array) -> float:
+	if poly.size() < 2:
+		return INF
+	var best := INF
+	for i in poly.size():
+		var closest := Geometry2D.get_closest_point_to_segment(
+			point, poly[i], poly[(i + 1) % poly.size()]
+		)
+		best = minf(best, point.distance_to(closest))
+	return best
+
+func get_spawn_point(radius: float = 0.0) -> Vector2:
 	# 优先用最大可走多边形的质心；若落在道具岛上，从质心向外扩展搜索可走点
 	var best: PackedVector2Array = PackedVector2Array()
 	var best_area := 0.0
@@ -127,14 +158,15 @@ func get_spawn_point() -> Vector2:
 		return Vector2.ZERO
 	var cross_sum := polygon_cross_sum(best)
 	if absf(cross_sum) < 0.001:
-		return Vector2(700, 620)
+		var fallback := Vector2(700, 620)
+		return fallback if is_circle_inside(fallback, radius) else Vector2.ZERO
 	var c := Vector2.ZERO
 	for i in best.size():
 		var p := best[i]
 		var q := best[(i + 1) % best.size()]
 		c += (p + q) * p.cross(q)
 	c /= 3.0 * cross_sum
-	if is_point_inside(c):
+	if is_circle_inside(c, radius):
 		return c
 	# 从质心向外扩展矩形搜索
 	var step: int = 32
@@ -151,12 +183,12 @@ func get_spawn_point() -> Vector2:
 			var gx: int = x0
 			while gx < x1:
 				var cand := Vector2(gx, gy)
-				if is_point_inside(cand):
+				if is_circle_inside(cand, radius):
 					return cand
 				gx += step
 			gy += step
 		grow += step
-	return Vector2(700, 620)
+	return Vector2.ZERO
 
 func polygon_cross_sum(poly: PackedVector2Array) -> float:
 	var s := 0.0

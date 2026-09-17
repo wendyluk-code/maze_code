@@ -17,7 +17,7 @@ var capture_enabled := true
 var max_guard_frames := 0
 
 const ROUTE_GRID := 8.0
-const ROUTE_CLEARANCE := 12.0
+const ROUTE_CLEARANCE := 24.0
 const ROUTE_START_ESCAPE := 160.0
 const ROUTE_NEAREST_MARGIN := 12.0
 const WAYPOINT_TOLERANCE := 5.0
@@ -114,10 +114,13 @@ func _load_restaurant() -> void:
 			break
 	if not physics_before_spawn and player.is_physics_processing() and player.input_locked:
 		player.set_physics_process(false)
-	_record("scene_loaded", scene != null and player != null and guide != null, {
+	var spawn_safe := zone.has_method("is_circle_inside") \
+		and zone.is_circle_inside(player.global_position, player.collision_radius_world())
+	_record("scene_loaded", scene != null and player != null and guide != null and spawn_safe, {
 		"scene": scene.name if scene else "none", "save_path": ProjectSettings.globalize_path("user://save.json"),
 		"spawn_ready": player.spawn_ready, "spawn": [player.global_position.x, player.global_position.y],
-		"spawn_expected": [spawn_point.x, spawn_point.y], "physics_processing": player.is_physics_processing()})
+		"spawn_expected": [spawn_point.x, spawn_point.y], "spawn_safe": spawn_safe,
+		"physics_processing": player.is_physics_processing()})
 
 func _check_auto_entry(label: String) -> bool:
 	var ok: bool = tm.active and tm.idx == 0 and tm.current_stage == 1 and guide.visible \
@@ -332,7 +335,11 @@ func _find_route(target: Node2D, radius: float) -> Array:
 	return route
 
 func _route_point_is_safe(point: Vector2, allow_start: bool = false) -> bool:
-	if not zone.is_point_inside(point):
+	var body_radius: float = player.collision_radius_world()
+	if zone.has_method("is_circle_inside"):
+		if not allow_start and not zone.is_circle_inside(point, body_radius):
+			return false
+	elif not zone.is_point_inside(point):
 		return false
 	if allow_start:
 		return true

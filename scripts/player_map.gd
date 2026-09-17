@@ -33,7 +33,7 @@ func _physics_process(delta: float) -> void:
 	if walk_zone == null:
 		walk_zone = get_tree().get_first_node_in_group("walk_zone")
 	if walk_zone and not spawn_ready and walk_zone.polygons.size() > 0:
-		var sp: Vector2 = walk_zone.get_spawn_point()
+		var sp: Vector2 = walk_zone.get_spawn_point(collision_radius_world())
 		if sp != Vector2.ZERO:
 			global_position = sp
 		spawn_ready = true
@@ -44,11 +44,11 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 	if walk_zone and walk_zone.polygons.size() > 0:
-		if walk_zone.is_point_inside(global_position):
+		if is_walkable_footprint(global_position):
 			last_valid = global_position
 		else:
-			var ok_x: bool = walk_zone.is_point_inside(Vector2(global_position.x, last_valid.y))
-			var ok_y: bool = walk_zone.is_point_inside(Vector2(last_valid.x, global_position.y))
+			var ok_x: bool = is_walkable_footprint(Vector2(global_position.x, last_valid.y))
+			var ok_y: bool = is_walkable_footprint(Vector2(last_valid.x, global_position.y))
 			if ok_x:
 				position = Vector2(global_position.x, last_valid.y)
 				last_valid = position
@@ -74,6 +74,13 @@ func _physics_process(delta: float) -> void:
 	else:
 		anim_t = 0.0
 		body.position.y = 0.0
+
+func is_walkable_footprint(point: Vector2) -> bool:
+	if not is_instance_valid(walk_zone):
+		return true
+	if walk_zone.has_method("is_circle_inside"):
+		return walk_zone.is_circle_inside(point, collision_radius_world())
+	return walk_zone.is_point_inside(point)
 
 func _process(_delta: float) -> void:
 	_update_hint()
