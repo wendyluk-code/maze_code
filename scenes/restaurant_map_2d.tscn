@@ -81,7 +81,8 @@ script = ExtResource("6_interact")
 display_name = "吧台"
 interaction_polygon = PackedVector2Array(-235, -17, -186, -29, 310, -74, 352, -56, 352, 60, 314, 83, -201, 142, -227, 116)
 foreground_polygon = PackedVector2Array(-230, 2, -186, -5, 310, -50, 352, -35, 352, 60, 314, 83, -201, 142, -227, 116)
-occlusion_polygon = PackedVector2Array(-232, -92, 305, -104, 352, -60, 352, -10, 300, 50, -180, 96, -230, 60)
+; 前缘沿吧台实体下沿校准；下方通行带不再进入遮挡区。
+occlusion_polygon = PackedVector2Array(-232, -92, 305, -104, 352, -60, 352, -10, 300, 35, -180, 70, -230, 45)
 
 ; 交互点⑤：前台（收银台），位于 (1000, 210)
 [node name="Register" type="Node2D" parent="InteractPoints"]
@@ -90,7 +91,8 @@ script = ExtResource("6_interact")
 display_name = "前台"
 interaction_polygon = PackedVector2Array(-215, 43, 83, -19, 95, 1, 94, 90, -200, 138, -216, 124)
 foreground_polygon = PackedVector2Array(-200, 42, 80, -18, 93, 5, 92, 70, -190, 120)
-occlusion_polygon = PackedVector2Array(-188, -88, 80, -72, 98, -28, 94, 42, 70, 105, -165, 128, -190, 72)
+; 右侧/中段前缘收至台面实体下沿；左侧斜面保留较深后侧，避免误切真实后方。
+occlusion_polygon = PackedVector2Array(-188, -88, 80, -72, 98, -28, 94, 42, 70, 70, 20, 56, -20, 56, -42, 122, -60, 122, -165, 128, -190, 72)
 ; 按钮显示位置：左移 20、下移 30 像素（触发点仍为 position，坐标为地图像素）
 ui_offset = Vector2(-20, 30)
 
@@ -101,7 +103,8 @@ script = ExtResource("6_interact")
 display_name = "仓库"
 interaction_polygon = PackedVector2Array(-64, 24, -21, -45, -21, -124, 11, -155, 111, -128, 194, 25, 194, 390, 136, 390, 126, 251, 98, 268, 14, 199, -26, 152, -70, 71)
 foreground_polygon = PackedVector2Array(-65, 30, -20, 0, 10, -30, 105, -5, 190, 80, 190, 230, 140, 240, 130, 180, 100, 195, 20, 150, -30, 100, -70, 70)
-occlusion_polygon = PackedVector2Array(-82, -172, 18, -185, 108, -158, 188, 25, 184, 70, 128, 90, 76, 75, 5, 88, -48, 80, -84, 55)
+; 仓库右下外沿是可走地面，前缘在货架侧壁收口，避免右下通行带误入遮挡区。
+occlusion_polygon = PackedVector2Array(-82, -172, 18, -185, 108, -158, 188, 25, 184, 52, 128, 90, 76, 75, 5, 88, -48, 80, -84, 55)
 ; 按钮显示位置：右移 35、上移累计 40 像素（触发点仍为 position，坐标为地图像素）
 ui_offset = Vector2(35, -40)
 

@@ -4,7 +4,8 @@ extends Node2D
 ## 自己校准的 occlusion_polygon 内时，才重绘 foreground_polygon。
 
 @export var foreground_z_index := 50
-@export var front_epsilon := 0.1
+## 边界带视为前方，避免脚底落在手绘前缘上时整块前景误盖角色。
+@export var front_epsilon := 1.0
 
 var _player: Node2D = null
 var _layers: Array[Dictionary] = []
@@ -50,15 +51,16 @@ func _process(_delta: float) -> void:
 		layer.visible = _point_is_behind(_player.global_position, entry["occlusion"])
 
 func _point_is_behind(point: Vector2, occlusion: PackedVector2Array) -> bool:
-	if Geometry2D.is_point_in_polygon(point, occlusion):
-		return true
-	# 交界线采用小容差，避免脚底在手绘前缘上闪烁。
+	if not Geometry2D.is_point_in_polygon(point, occlusion):
+		return false
+	# 交界线采用前方容差：边界附近宁可不盖住角色，避免连续移动时
+	# 在前缘线上出现“后一帧又盖回去”的闪烁。
 	for i in occlusion.size():
 		var closest := Geometry2D.get_closest_point_to_segment(
 			point, occlusion[i], occlusion[(i + 1) % occlusion.size()])
 		if point.distance_to(closest) <= front_epsilon:
-			return true
-	return false
+			return false
+	return true
 
 func is_target_occluding(target: Node2D) -> bool:
 	for entry in _layers:
