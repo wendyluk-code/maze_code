@@ -1,8 +1,10 @@
 extends Node2D
-## 从扁平餐厅底图采样道具前景；只覆盖玩家脚底位于道具前缘后侧的帧。
+## 从扁平餐厅底图采样道具前景。
+## 交互轮廓、视觉前景和脚底深度区域彼此独立：只有脚底落在道具
+## 自己校准的 occlusion_polygon 内时，才重绘 foreground_polygon。
 
 @export var foreground_z_index := 50
-@export var front_epsilon := 0.5
+@export var front_epsilon := 0.1
 
 var _player: Node2D = null
 var _layers: Array[Dictionary] = []
@@ -17,23 +19,23 @@ func _build_layers() -> void:
 		return
 	for node in get_tree().get_nodes_in_group("interactable"):
 		var target := node as Node2D
-		if target == null or not target.has_method("world_interaction_polygon"):
+		if target == null or not target.has_method("world_foreground_polygon") \
+			or not target.has_method("world_occlusion_polygon"):
 			continue
-		var polygon: PackedVector2Array = target.world_interaction_polygon()
-		if polygon.size() < 3:
+		var foreground: PackedVector2Array = target.world_foreground_polygon()
+		var occlusion: PackedVector2Array = target.world_occlusion_polygon()
+		if foreground.size() < 3 or occlusion.size() < 3:
+			push_warning("PropForeground: missing authored depth data for %s" % target.name)
 			continue
 		var layer := Polygon2D.new()
 		layer.name = target.name + "Foreground"
-		layer.polygon = polygon
-		layer.uv = polygon
+		layer.polygon = foreground
+		layer.uv = foreground
 		layer.texture = bg.texture
 		layer.z_index = foreground_z_index
 		layer.visible = false
 		add_child(layer)
-		var front_y := -INF
-		for point in polygon:
-			front_y = maxf(front_y, point.y)
-		_layers.append({"target": target, "layer": layer, "front_y": front_y})
+		_layers.append({"target": target, "layer": layer, "occlusion": occlusion})
 
 func _process(_delta: float) -> void:
 	if not is_instance_valid(_player):
@@ -45,9 +47,18 @@ func _process(_delta: float) -> void:
 		var layer: Polygon2D = entry["layer"]
 		if not is_instance_valid(target) or not is_instance_valid(layer):
 			continue
-		# Y is the authored isometric depth axis: above the prop's bottom/front
-		# edge means behind it, while crossing that edge puts the player in front.
-		layer.visible = _player.global_position.y <= float(entry["front_y"]) + front_epsilon
+		layer.visible = _point_is_behind(_player.global_position, entry["occlusion"])
+
+func _point_is_behind(point: Vector2, occlusion: PackedVector2Array) -> bool:
+	if Geometry2D.is_point_in_polygon(point, occlusion):
+		return true
+	# 交界线采用小容差，避免脚底在手绘前缘上闪烁。
+	for i in occlusion.size():
+		var closest := Geometry2D.get_closest_point_to_segment(
+			point, occlusion[i], occlusion[(i + 1) % occlusion.size()])
+		if point.distance_to(closest) <= front_epsilon:
+			return true
+	return false
 
 func is_target_occluding(target: Node2D) -> bool:
 	for entry in _layers:

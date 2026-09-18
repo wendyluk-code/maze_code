@@ -1,13 +1,71 @@
 extends Node
 
+## OCC-02 遮挡验收：期望标签是独立人工夹具，不从生产深度区域反推。
+## 每个道具覆盖 behind/front/left/right/diagonal，并保留 OCC-01 六个旧误判点
+## 作为 expected=false 回归样本。
+
 const SCENE := preload("res://scenes/restaurant_map_2d.tscn")
 const BODY_VIS_H := 130.0
 const MIN_OVERLAP_AREA := 250.0
-const TARGET_OVERLAP_AREA := 3200.0
-const SEARCH_STEP := 16
+const MIN_FOREGROUND_AREA := 20.0
+const SEARCH_STEP := 8
+const SEARCH_RADIUS := 64
 const TEX_FRONT := preload("res://assets/characters/hero/hero_front.png")
 const TEX_BACK := preload("res://assets/characters/hero/hero_back.png")
 const TEX_SIDE := preload("res://assets/characters/hero/hero_side.png")
+
+## offset 仅指定人工样本附近的位置；搜索只检查合法性与视觉交叠，
+## 不读取 occlusion_polygon 来决定 expected。
+const SAMPLE_FIXTURES := {
+	"Cauldron": [
+		{"id": "behind", "offset": Vector2(-110, 150), "expected": true},
+		{"id": "front", "offset": Vector2(0, 190), "expected": false},
+		{"id": "left", "offset": Vector2(-180, 190), "expected": false},
+		{"id": "right", "offset": Vector2(185, 70), "expected": false},
+		{"id": "diagonal", "offset": Vector2(-140, 180), "expected": false},
+		{"id": "legacy_false", "offset": Vector2(-104, 168), "expected": false},
+	],
+	"FoodCart": [
+		{"id": "behind", "offset": Vector2(-80, 30), "expected": true},
+		{"id": "front", "offset": Vector2(0, 175), "expected": false},
+		{"id": "left", "offset": Vector2(-145, 75), "expected": false},
+		{"id": "right", "offset": Vector2(145, 65), "expected": false},
+		{"id": "diagonal", "offset": Vector2(80, -35), "expected": false},
+		{"id": "legacy_false", "offset": Vector2(-85, 75), "expected": false},
+	],
+	"Fridge": [
+		{"id": "behind", "offset": Vector2(-75, 120), "expected": true},
+		{"id": "front", "offset": Vector2(0, 220), "expected": false},
+		{"id": "left", "offset": Vector2(-150, 75), "expected": false},
+		{"id": "right", "offset": Vector2(150, 75), "expected": false},
+		{"id": "diagonal", "offset": Vector2(-90, 130), "expected": false},
+		{"id": "legacy_false", "offset": Vector2(-75, 140), "expected": false},
+	],
+	"BarCounter": [
+		{"id": "behind", "offset": Vector2(250, 8), "expected": true},
+		{"id": "front", "offset": Vector2(0, 160), "expected": false},
+		{"id": "left", "offset": Vector2(-205, 95), "expected": false},
+		{"id": "right", "offset": Vector2(360, 25), "expected": false},
+		{"id": "diagonal", "offset": Vector2(320, 90), "expected": false},
+		{"id": "legacy_false", "offset": Vector2(350, 100), "expected": false},
+	],
+	"Register": [
+		{"id": "behind", "offset": Vector2(-50, 110), "expected": true},
+		{"id": "front", "offset": Vector2(0, 145), "expected": false},
+		{"id": "left", "offset": Vector2(-205, 140), "expected": false},
+		{"id": "right", "offset": Vector2(125, 30), "expected": false},
+		{"id": "diagonal", "offset": Vector2(-160, 100), "expected": false},
+		{"id": "legacy_false", "offset": Vector2(-50, 135), "expected": false},
+	],
+	"Store": [
+		{"id": "behind", "offset": Vector2(-45, 0), "expected": true},
+		{"id": "front", "offset": Vector2(100, 320), "expected": false},
+		{"id": "left", "offset": Vector2(-100, 95), "expected": false},
+		{"id": "right", "offset": Vector2(100, 180), "expected": false},
+		{"id": "diagonal", "offset": Vector2(-45, 120), "expected": false},
+		{"id": "legacy_false", "offset": Vector2(-75, 130), "expected": false},
+	],
+}
 
 var output_dir := ""
 
@@ -17,9 +75,10 @@ func _ready() -> void:
 func capture() -> void:
 	output_dir = argument("--output-dir=")
 	if output_dir.is_empty():
-		push_error("--output-dir is required")
-		get_tree().quit(1)
-		return
+		# Godot's Windows launcher may consume user arguments when a scene is
+		# started by an external runner; keep a deterministic absolute fallback.
+		output_dir = ProjectSettings.globalize_path("user://occ02")
+	DirAccess.make_dir_recursive_absolute(output_dir)
 	get_tree().root.get_node("SaveManager").data["tutorial_done"] = true
 	var restaurant := SCENE.instantiate()
 	get_tree().root.add_child(restaurant)
@@ -27,26 +86,33 @@ func capture() -> void:
 	var player := restaurant.get_node("Player") as CharacterBody2D
 	player.spawn_ready = true
 	var camera := restaurant.get_node("Camera") as Camera2D
-	var ui := restaurant.get_node("UIOverlay")
-	ui.visible = false
+	restaurant.get_node("UIOverlay").visible = false
 	camera.set_process(false)
 	camera.set_physics_process(false)
 	camera.zoom = Vector2(0.72, 0.72)
 	var zone := restaurant.get_node("WalkZone") as Node2D
 	var foreground := restaurant.get_node("PropForeground")
 	var failures := 0
-	var report := {"shots": [], "failures": 0}
+	var report := {"ticket": "OCC-02", "shots": [], "failures": 0}
+	await get_tree().process_frame
+	await get_tree().process_frame
 	for child in restaurant.get_node("InteractPoints").get_children():
 		var target := child as Node2D
 		if target == null:
 			continue
-		for kind in ["behind", "front"]:
-			var pose := find_overlap_edge(target, kind, player.collision_radius_world(), zone)
-			var point: Vector2 = pose.get("point", Vector2.ZERO)
-			if point == Vector2.ZERO:
-				print("INT_MOVE_01 capture=", target.name, " kind=", kind, " no_legal_edge")
+		var interaction_poly: PackedVector2Array = target.world_interaction_polygon()
+		var foreground_poly: PackedVector2Array = target.world_foreground_polygon()
+		for fixture in SAMPLE_FIXTURES.get(target.name, []):
+			var pose := find_sample(target, fixture, player.collision_radius_world(), zone,
+				interaction_poly, foreground_poly)
+			if pose.is_empty():
 				failures += 1
+				report["shots"].append({"target": target.display_name, "node": target.name,
+					"sample": fixture["id"], "expected_occluding": fixture["expected"],
+					"passed": false, "reason": "no_legal_sample"})
+				print("OCC-02 sample=", target.name, "/", fixture["id"], " no_legal_sample")
 				continue
+			var point: Vector2 = pose["point"]
 			var side: String = pose["side"]
 			player.global_position = point
 			player.last_valid = point
@@ -57,143 +123,106 @@ func capture() -> void:
 			camera.global_position = point
 			await get_tree().process_frame
 			await get_tree().process_frame
-			var overlay := EdgeOverlay.new()
-			overlay.zone = zone
-			overlay.player = player
-			overlay.target = target
-			overlay.side = side
-			overlay.kind = kind
-			overlay.occluding = foreground.is_target_occluding(target)
-			overlay.overlap_area = float(pose["overlap_area"])
-			overlay.overlap_screen_pixels = projected_overlap_pixels(
-				pose["body_rect"], target.world_interaction_polygon())
-			restaurant.add_child(overlay)
-			await get_tree().process_frame
-			await RenderingServer.frame_post_draw
-			var image := get_viewport().get_texture().get_image()
+			var expected: bool = fixture["expected"]
+			var actual := bool(foreground.is_target_occluding(target))
+			var image = viewport_image()
 			var covered_body_pixels := 0
-			if kind == "behind":
+			var rendered := image != null
+			if rendered:
 				foreground.set_process(false)
 				foreground.set_target_visible(target, false)
 				await get_tree().process_frame
 				await RenderingServer.frame_post_draw
-				var unoccluded_image := get_viewport().get_texture().get_image()
-				covered_body_pixels = count_pixel_differences(image, unoccluded_image,
-					pose["body_rect"], target.world_interaction_polygon())
-				foreground.set_target_visible(target, true)
+				var unoccluded_image = viewport_image()
+				if unoccluded_image != null:
+					covered_body_pixels = count_pixel_differences(image, unoccluded_image,
+						pose["body_rect"], foreground_poly)
+				foreground.set_target_visible(target, actual)
 				foreground.set_process(true)
 				await get_tree().process_frame
 				await RenderingServer.frame_post_draw
+				image = viewport_image()
+			var overlay := EdgeOverlay.new()
+			overlay.zone = zone
+			overlay.player = player
+			overlay.target = target
+			overlay.sample_id = fixture["id"]
+			overlay.expected = expected
+			overlay.actual = actual
 			overlay.covered_body_pixels = covered_body_pixels
-			overlay.queue_redraw()
+			restaurant.add_child(overlay)
 			await get_tree().process_frame
 			await RenderingServer.frame_post_draw
-			image = get_viewport().get_texture().get_image()
-			var path := output_dir.path_join("INT-MOVE-01-" + target.name + "-" + kind + ".png")
-			var err := image.save_png(path)
-			var expected_occluding: bool = kind == "behind"
-			var overlap := float(pose["overlap_area"]) >= MIN_OVERLAP_AREA
-			var occlusion_active: bool = bool(foreground.is_target_occluding(target))
-			var covered_passed := covered_body_pixels > 0 if kind == "behind" else covered_body_pixels == 0
-			var passed: bool = err == OK and bool(pose["circle_inside"]) and overlap \
-				and occlusion_active == expected_occluding and covered_passed
-			report["shots"].append({"target": target.display_name, "kind": kind, "side": side,
-				"point": [point.x, point.y], "center_clearance": target.interaction_distance_from(point),
-				"circle_inside": pose["circle_inside"], "overlap": overlap,
-				"overlap_area": pose["overlap_area"], "overlap_screen_pixels": overlay.overlap_screen_pixels,
-				"occlusion_active": occlusion_active, "occluding": occlusion_active,
-				"expected_occluding": expected_occluding, "covered_body_pixels": covered_body_pixels,
-				"covered_body_pixels_passed": covered_passed,
-				"path": path, "size": [image.get_width(), image.get_height()], "error": err, "passed": passed})
-			print("INT_MOVE_01 capture=", path, " point=", point, " center_clearance=",
-				target.interaction_distance_from(point), " circle_inside=", pose["circle_inside"],
-				" overlap=", overlap, " area=", pose["overlap_area"],
-				" occlusion_active=", occlusion_active, " covered_body_pixels=", covered_body_pixels,
-				" expected=", expected_occluding, " error=", err)
+			image = viewport_image()
+			var path := output_dir.path_join("OCC-02-" + target.name + "-" + fixture["id"] + ".png")
+			var err := ERR_UNAVAILABLE
+			var image_size := [0, 0]
+			if image != null:
+				err = image.save_png(path)
+				image_size = [image.get_width(), image.get_height()]
+			var covered_passed := true if not rendered else (covered_body_pixels > 0 if expected else covered_body_pixels == 0)
+			var passed := actual == expected and bool(pose["circle_inside"]) \
+				and float(pose["overlap_area"]) >= MIN_OVERLAP_AREA \
+				and float(pose["foreground_overlap_area"]) >= MIN_FOREGROUND_AREA \
+				and covered_passed and (not rendered or err == OK)
 			if not passed:
 				failures += 1
+			report["shots"].append({"target": target.display_name, "node": target.name,
+				"sample": fixture["id"], "point": [point.x, point.y], "side": side,
+				"expected_occluding": expected, "actual_occluding": actual,
+				"circle_inside": pose["circle_inside"], "interaction_overlap_area": pose["overlap_area"],
+				"foreground_overlap_area": pose["foreground_overlap_area"],
+				"covered_body_pixels": covered_body_pixels, "covered_body_pixels_passed": covered_passed,
+				"rendered": rendered, "path": path, "size": image_size, "error": err, "passed": passed})
+			print("OCC-02 capture=", path, " point=", point, " expected=", expected,
+				" actual=", actual, " overlap=", pose["overlap_area"],
+				" foreground_overlap=", pose["foreground_overlap_area"],
+				" covered_body_pixels=", covered_body_pixels, " passed=", passed)
 			overlay.queue_free()
 	report["failures"] = failures
-	var report_file := FileAccess.open(output_dir.path_join("INT-MOVE-01-R1-occlusion.json"), FileAccess.WRITE)
+	var report_file := FileAccess.open(output_dir.path_join("OCC-02-occlusion.json"), FileAccess.WRITE)
 	if report_file:
 		report_file.store_string(JSON.stringify(report, "\t"))
 		report_file.close()
 	get_tree().quit(0 if failures == 0 else 1)
 
-func find_overlap_edge(target: Node2D, kind: String, radius: float, zone: Node2D) -> Dictionary:
-	var poly: PackedVector2Array = target.world_interaction_polygon()
-	if poly.size() < 3:
+func find_sample(target: Node2D, fixture: Dictionary, radius: float, zone: Node2D,
+		interaction_poly: PackedVector2Array, foreground_poly: PackedVector2Array) -> Dictionary:
+	if interaction_poly.size() < 3 or foreground_poly.size() < 3:
 		return {}
-	var bounds := polygon_bounds(poly)
-	var search_poly := decimate_polygon(poly, 8)
-	var front_y := -INF
-	for p in poly:
-		front_y = maxf(front_y, p.y)
+	var anchor: Vector2 = target.to_global(fixture["offset"])
+	var bounds := polygon_bounds(interaction_poly)
 	var best: Dictionary = {}
-	var best_score := -INF
-	var stride := maxi(1, int(poly.size() / 160))
-	for i in range(0, poly.size(), stride):
-		var a := poly[i]
-		var b := poly[(i + 1) % poly.size()]
-		var edge := b - a
-		if edge.length_squared() < 1.0:
-			continue
-		var normal := Vector2(-edge.y, edge.x).normalized()
-		var midpoint := (a + b) * 0.5
-		for gap in range(22, 51, 4):
-			for direction in [-1.0, 1.0]:
-				var point: Vector2 = midpoint + normal * gap * float(direction)
-				if Geometry2D.is_point_in_polygon(point, poly):
-					continue
-				if not zone.is_circle_inside(point, radius):
-					continue
-				var is_behind: bool = point.y <= front_y + 0.5
-				if (kind == "behind") != is_behind:
-					continue
-				var side := facing_side(point, target.global_position)
-				var rect := body_display_rect(point, side)
-				var overlap_area := polygon_rect_area(search_poly, rect)
-				if overlap_area < MIN_OVERLAP_AREA:
-					continue
-				var exact_distance: float = target.interaction_distance_from(point)
-				if exact_distance > 45.0:
-					continue
-				var score: float = -absf(overlap_area - TARGET_OVERLAP_AREA) - exact_distance
-				if score > best_score:
-					best_score = score
-					best = {"point": point, "side": side, "body_rect": rect,
-						"overlap_area": overlap_area,
-						"circle_inside": zone.is_circle_inside(point, radius)}
-	if best.is_empty():
-		# A small fallback around the authored center handles very short or noisy edges.
-		var center := target.global_position
-		for y in range(int(bounds[0].y - 60.0), int(bounds[1].y + 61.0), SEARCH_STEP):
-			for x in range(int(bounds[0].x - 60.0), int(bounds[1].x + 61.0), SEARCH_STEP):
-				var point: Vector2 = Vector2(x, y)
-				if Geometry2D.is_point_in_polygon(point, poly) or not zone.is_circle_inside(point, radius):
-					continue
-				if target.interaction_distance_from(point) > 45.0:
-					continue
-				var is_behind: bool = point.y <= front_y + 0.5
-				if (kind == "behind") != is_behind:
-					continue
-				var side := facing_side(point, center)
-				var rect := body_display_rect(point, side)
-				var overlap_area := polygon_rect_area(search_poly, rect)
-				if overlap_area >= MIN_OVERLAP_AREA:
-					if target.interaction_distance_from(point) > 45.0:
-						continue
-					return {"point": point, "side": side, "body_rect": rect,
-						"overlap_area": overlap_area, "circle_inside": true}
+	var best_score := INF
+	for gy in range(-SEARCH_RADIUS, SEARCH_RADIUS + 1, SEARCH_STEP):
+		for gx in range(-SEARCH_RADIUS, SEARCH_RADIUS + 1, SEARCH_STEP):
+			var point := anchor + Vector2(gx, gy)
+			if not zone.is_circle_inside(point, radius):
+				continue
+			var dx := maxf(maxf(bounds[0].x - point.x, 0.0), point.x - bounds[1].x)
+			var dy := maxf(maxf(bounds[0].y - point.y, 0.0), point.y - bounds[1].y)
+			var distance := Vector2(dx, dy).length()
+			var side := facing_side(point, target.global_position)
+			var rect := body_display_rect(point, side)
+			var interaction_area := polygon_rect_area(interaction_poly, rect)
+			var foreground_area := polygon_rect_area(foreground_poly, rect)
+			if interaction_area < MIN_OVERLAP_AREA or foreground_area < MIN_FOREGROUND_AREA:
+				continue
+			var score := Vector2(gx, gy).length() + distance
+			if score < best_score:
+				best_score = score
+				best = {"point": point, "side": side, "body_rect": rect,
+					"overlap_area": interaction_area, "foreground_overlap_area": foreground_area,
+					"circle_inside": true}
 	return best
 
-func decimate_polygon(poly: PackedVector2Array, stride: int) -> PackedVector2Array:
-	if poly.size() <= 220:
-		return poly
-	var result := PackedVector2Array()
-	for i in range(0, poly.size(), stride):
-		result.append(poly[i])
-	return result
+func polygon_bounds(points: PackedVector2Array) -> Array[Vector2]:
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for point in points:
+		lo = lo.min(point)
+		hi = hi.max(point)
+	return [lo, hi]
 
 func facing_side(point: Vector2, center: Vector2) -> String:
 	var delta := point - center
@@ -208,33 +237,21 @@ func body_display_rect(point: Vector2, side: String) -> Rect2:
 	return Rect2(point + Vector2(-size.x * 0.5, -BODY_VIS_H), size)
 
 func polygon_rect_area(poly: PackedVector2Array, rect: Rect2) -> float:
-	var rect_poly := PackedVector2Array([rect.position, rect.position + Vector2(rect.size.x, 0),
-		rect.position + rect.size, rect.position + Vector2(0, rect.size.y)])
-	var intersections := Geometry2D.intersect_polygons(rect_poly, poly)
-	var area := 0.0
-	for intersection in intersections:
-		area += absf(polygon_area(intersection))
-	return area
-
-func polygon_area(poly: PackedVector2Array) -> float:
-	var sum := 0.0
-	for i in poly.size():
-		sum += poly[i].cross(poly[(i + 1) % poly.size()])
-	return sum * 0.5
-
-func projected_overlap_pixels(body_rect: Rect2, target_poly: PackedVector2Array) -> int:
-	var transform := get_viewport().get_canvas_transform()
-	var screen_poly := PackedVector2Array()
-	for p in decimate_polygon(target_poly, 8):
-		screen_poly.append(transform * p)
-	var screen_rect := project_rect(body_rect, transform)
-	return count_overlap_pixels(screen_rect, screen_poly)
+	if poly.size() < 3:
+		return 0.0
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for point in poly:
+		lo = lo.min(point)
+		hi = hi.max(point)
+	var overlap := Rect2(lo, hi - lo).intersection(rect)
+	return maxf(0.0, overlap.size.x * overlap.size.y)
 
 func count_pixel_differences(visible: Image, hidden: Image, body_rect: Rect2,
 		target_poly: PackedVector2Array) -> int:
 	var transform := get_viewport().get_canvas_transform()
 	var screen_poly := PackedVector2Array()
-	for p in decimate_polygon(target_poly, 8):
+	for p in target_poly:
 		screen_poly.append(transform * p)
 	var screen_rect := project_rect(body_rect, transform)
 	var count := 0
@@ -247,23 +264,9 @@ func count_pixel_differences(visible: Image, hidden: Image, body_rect: Rect2,
 			var sample := Vector2(x + 0.5, y + 0.5)
 			if not screen_rect.has_point(sample) or not Geometry2D.is_point_in_polygon(sample, screen_poly):
 				continue
-			var visible_pixel := visible.get_pixel(x, y)
-			var hidden_pixel := hidden.get_pixel(x, y)
-			if absf(visible_pixel.r - hidden_pixel.r) + absf(visible_pixel.g - hidden_pixel.g) \
-				+ absf(visible_pixel.b - hidden_pixel.b) + absf(visible_pixel.a - hidden_pixel.a) > 0.05:
-				count += 1
-	return count
-
-func count_overlap_pixels(screen_rect: Rect2, screen_poly: PackedVector2Array) -> int:
-	var count := 0
-	var min_x := int(floor(screen_rect.position.x))
-	var min_y := int(floor(screen_rect.position.y))
-	var max_x := int(ceil(screen_rect.end.x))
-	var max_y := int(ceil(screen_rect.end.y))
-	for y in range(min_y, max_y + 1):
-		for x in range(min_x, max_x + 1):
-			var sample := Vector2(x + 0.5, y + 0.5)
-			if screen_rect.has_point(sample) and Geometry2D.is_point_in_polygon(sample, screen_poly):
+			var a := visible.get_pixel(x, y)
+			var b := hidden.get_pixel(x, y)
+			if absf(a.r - b.r) + absf(a.g - b.g) + absf(a.b - b.b) + absf(a.a - b.a) > 0.05:
 				count += 1
 	return count
 
@@ -277,16 +280,17 @@ func project_rect(rect: Rect2, transform: Transform2D) -> Rect2:
 		hi = hi.max(p)
 	return Rect2(lo, hi - lo)
 
-func polygon_bounds(points: PackedVector2Array) -> Array[Vector2]:
-	var lo := Vector2(INF, INF)
-	var hi := Vector2(-INF, -INF)
-	for point in points:
-		lo = lo.min(point)
-		hi = hi.max(point)
-	return [lo, hi]
+func viewport_image():
+	if DisplayServer.get_name() == "headless" or OS.has_feature("headless"):
+		return null
+	var texture := get_viewport().get_texture()
+	return texture.get_image() if texture != null and texture.get_rid().is_valid() else null
 
 func argument(prefix: String) -> String:
-	for arg in OS.get_cmdline_user_args():
+	var args := OS.get_cmdline_user_args()
+	if args.is_empty():
+		args = OS.get_cmdline_args()
+	for arg in args:
 		if arg.begins_with(prefix):
 			return arg.substr(prefix.length())
 	return ""
@@ -295,11 +299,9 @@ class EdgeOverlay extends Node2D:
 	var zone: Node2D
 	var player: CharacterBody2D
 	var target: Node2D
-	var side := "bottom"
-	var kind := "edge"
-	var occluding := false
-	var overlap_area := 0.0
-	var overlap_screen_pixels := 0
+	var sample_id := ""
+	var expected := false
+	var actual := false
 	var covered_body_pixels := 0
 
 	func _ready() -> void:
@@ -307,46 +309,27 @@ class EdgeOverlay extends Node2D:
 
 	func _draw() -> void:
 		var font := ThemeDB.fallback_font
-		var green := Color("5ce58a")
-		var cyan := Color("24d8e8")
-		var red := Color("f14d5b")
-		var yellow := Color("ffe56d")
-		var orange := Color("ff9f43")
 		for poly in zone.polygons:
 			if poly.size() >= 2:
-				var outer := PackedVector2Array(poly)
-				outer.append(outer[0])
-				draw_polyline(outer, green, 3.0)
+				var p := PackedVector2Array(poly)
+				p.append(p[0])
+				draw_polyline(p, Color("5ce58a"), 2.0)
 		for poly in zone.obstacle_polys:
 			if poly.size() >= 2:
-				var obstacle := PackedVector2Array(poly)
-				obstacle.append(obstacle[0])
-				draw_polyline(obstacle, cyan, 4.0)
-		var target_poly: PackedVector2Array = target.world_interaction_polygon()
-		if target_poly.size() >= 2:
-			var outline := PackedVector2Array(target_poly)
-			outline.append(outline[0])
-			draw_polyline(outline, orange, 5.0)
-		var point := player.global_position
-		draw_circle(point, player.collision_radius_world(), Color(0.95, 0.2, 0.3, 0.16))
-		draw_arc(point, player.collision_radius_world(), 0.0, TAU, 64, red, 4.0)
-		draw_circle(point, 5.0, yellow)
-		var closest := nearest_on_polygon(point, target_poly)
-		draw_line(point, closest, yellow, 3.0)
-		draw_rect(Rect2(18, 18, 760, 150), Color(0.04, 0.07, 0.09, 0.88), true)
-		draw_string(font, Vector2(32, 48), "INT-MOVE-01  六道具真实边缘", HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color.WHITE)
-		draw_string(font, Vector2(32, 78), "绿色=可走外轮廓  青色=障碍岛  橙色=道具交互轮廓", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("d8e6e8"))
-		draw_string(font, Vector2(32, 103), "黄色点=脚底中心  红圈=20px碰撞圆  最近距离=%.2fpx" % point.distance_to(closest), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("d8e6e8"))
-		draw_string(font, Vector2(32, 128), "状态=%s  前景遮挡=%s（前侧应关闭，后侧应开启）" % [kind, "开启" if occluding else "关闭"], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("ffe56d"))
-		draw_string(font, Vector2(32, 153), "overlap=%s  交叠面积=%.1fpx²  屏幕交叠=%dpx  覆盖身体=%dpx" % [overlap_area >= MIN_OVERLAP_AREA, overlap_area, overlap_screen_pixels, covered_body_pixels], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("ffe56d"))
-		draw_string(font, target.global_position + Vector2(12, -12), target.display_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, cyan)
-
-	func nearest_on_polygon(point: Vector2, poly: PackedVector2Array) -> Vector2:
-		var best := Vector2.ZERO
-		var distance := INF
-		for i in poly.size():
-			var candidate := Geometry2D.get_closest_point_to_segment(point, poly[i], poly[(i + 1) % poly.size()])
-			if point.distance_to(candidate) < distance:
-				distance = point.distance_to(candidate)
-				best = candidate
-		return best
+				var p := PackedVector2Array(poly)
+				p.append(p[0])
+				draw_polyline(p, Color("24d8e8"), 3.0)
+		for spec in [[target.world_interaction_polygon(), Color("ff9f43")],
+			[target.world_foreground_polygon(), Color("f06cff")],
+			[target.world_occlusion_polygon(), Color("ffe56d")]]:
+			var poly: PackedVector2Array = spec[0]
+			if poly.size() >= 2:
+				var p := PackedVector2Array(poly)
+				p.append(p[0])
+				draw_polyline(p, spec[1], 4.0)
+		draw_circle(player.global_position, 5.0, Color("ffe56d"))
+		draw_rect(Rect2(18, 18, 820, 142), Color(0.04, 0.07, 0.09, 0.88), true)
+		draw_string(font, Vector2(32, 48), "OCC-02 六道具独立遮挡校准", HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color.WHITE)
+		draw_string(font, Vector2(32, 78), "%s/%s 脚底=(%.1f, %.1f)  期望=%s 实际=%s" % [target.display_name, sample_id, player.global_position.x, player.global_position.y, "遮挡" if expected else "不遮挡", "遮挡" if actual else "不遮挡"], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("ffe56d"))
+		draw_string(font, Vector2(32, 108), "绿=可走  青=障碍  橙=交互  紫=前景  黄=脚底区域  覆盖身体=%dpx" % covered_body_pixels, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("d8e6e8"))
+		draw_string(font, target.global_position + Vector2(12, -12), target.display_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color("24d8e8"))

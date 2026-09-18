@@ -54,18 +54,25 @@ script = ExtResource("6_interact")
 display_name = "魔法汤锅"
 ; 按钮显示位置：右移 95、上移 25 像素（触发点仍为 position，坐标为地图像素）
 ui_offset = Vector2(95, -25)
+; 只重绘圆环前侧，脚底深度区域避开前方地砖和侧向接近
+foreground_polygon = PackedVector2Array(-188, 45, -145, 135, -75, 180, 0, 190, 75, 180, 145, 135, 188, 45, 135, 165, 70, 205, 0, 216, -70, 205, -135, 165)
+occlusion_polygon = PackedVector2Array(-175, -105, 175, -105, 188, 38, 120, 145, 0, 164, -108, 168, -150, 150, -188, 38)
 
 ; 交互点②：小餐车，位于 (1159, 543)
 [node name="FoodCart" type="Node2D" parent="InteractPoints" unique_id=277123665]
 position = Vector2(1159, 543)
 script = ExtResource("6_interact")
 display_name = "小餐车"
+foreground_polygon = PackedVector2Array(-125, 35, 120, 20, 130, 70, 105, 150, -90, 170, -125, 120)
+occlusion_polygon = PackedVector2Array(-105, -120, 78, -135, 105, -25, 72, 48, -30, 68, -105, 72)
 
 ; 交互点③：冰柜，位于 (403, 762)
 [node name="Fridge" type="Node2D" parent="InteractPoints" unique_id=697127634]
 position = Vector2(403, 762)
 script = ExtResource("6_interact")
 display_name = "冰柜"
+foreground_polygon = PackedVector2Array(-135, 95, 100, 80, 145, 175, 110, 230, -75, 235, -140, 180)
+occlusion_polygon = PackedVector2Array(-120, -180, 100, -180, 135, 42, 92, 120, -50, 145, -120, 100)
 
 ; 交互点④：吧台，位于 (390, 338)
 [node name="BarCounter" type="Node2D" parent="InteractPoints"]
@@ -73,6 +80,8 @@ position = Vector2(390, 338)
 script = ExtResource("6_interact")
 display_name = "吧台"
 interaction_polygon = PackedVector2Array(-235, -17, -186, -29, 310, -74, 352, -56, 352, 60, 314, 83, -201, 142, -227, 116)
+foreground_polygon = PackedVector2Array(-230, 2, -186, -5, 310, -50, 352, -35, 352, 60, 314, 83, -201, 142, -227, 116)
+occlusion_polygon = PackedVector2Array(-232, -92, 305, -104, 352, -60, 352, -10, 300, 50, -180, 96, -230, 60)
 
 ; 交互点⑤：前台（收银台），位于 (1000, 210)
 [node name="Register" type="Node2D" parent="InteractPoints"]
@@ -80,6 +89,8 @@ position = Vector2(1000, 210)
 script = ExtResource("6_interact")
 display_name = "前台"
 interaction_polygon = PackedVector2Array(-215, 43, 83, -19, 95, 1, 94, 90, -200, 138, -216, 124)
+foreground_polygon = PackedVector2Array(-200, 42, 80, -18, 93, 5, 92, 70, -190, 120)
+occlusion_polygon = PackedVector2Array(-188, -88, 80, -72, 98, -28, 94, 42, 70, 105, -165, 128, -190, 72)
 ; 按钮显示位置：左移 20、下移 30 像素（触发点仍为 position，坐标为地图像素）
 ui_offset = Vector2(-20, 30)
 
@@ -89,6 +100,8 @@ position = Vector2(1254, 230)
 script = ExtResource("6_interact")
 display_name = "仓库"
 interaction_polygon = PackedVector2Array(-64, 24, -21, -45, -21, -124, 11, -155, 111, -128, 194, 25, 194, 390, 136, 390, 126, 251, 98, 268, 14, 199, -26, 152, -70, 71)
+foreground_polygon = PackedVector2Array(-65, 30, -20, 0, 10, -30, 105, -5, 190, 80, 190, 230, 140, 240, 130, 180, 100, 195, 20, 150, -30, 100, -70, 70)
+occlusion_polygon = PackedVector2Array(-82, -172, 18, -185, 108, -158, 188, 25, 184, 70, 128, 90, 76, 75, 5, 88, -48, 80, -84, 55)
 ; 按钮显示位置：右移 35、上移累计 40 像素（触发点仍为 position，坐标为地图像素）
 ui_offset = Vector2(35, -40)
 

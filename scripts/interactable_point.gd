@@ -5,6 +5,11 @@
 @export var ui_offset := Vector2.ZERO
 ## 道具贴近地图外缘时使用手工边界；封闭道具从 WalkZone 提取掩码岛。
 @export var interaction_polygon: PackedVector2Array = PackedVector2Array()
+## 视觉前景区域，与交互/碰撞轮廓分离。仅包含需要在角色身前重绘的表面。
+@export var foreground_polygon: PackedVector2Array = PackedVector2Array()
+## 脚底深度区域：脚底落在其中时，显示 foreground_polygon。
+## 这是每个道具独立校准的局部区域，而不是交互轮廓的水平线。
+@export var occlusion_polygon: PackedVector2Array = PackedVector2Array()
 
 func _ready() -> void:
 	add_to_group("interactable")
@@ -33,6 +38,18 @@ func world_interaction_polygon() -> PackedVector2Array:
 			for point in local_polygon:
 				world_polygon.append(zone.to_global(point))
 			return world_polygon
+	var world_polygon := PackedVector2Array()
+	for point in local_polygon:
+		world_polygon.append(to_global(point))
+	return world_polygon
+
+func world_foreground_polygon() -> PackedVector2Array:
+	return _world_polygon_from_local(foreground_polygon)
+
+func world_occlusion_polygon() -> PackedVector2Array:
+	return _world_polygon_from_local(occlusion_polygon)
+
+func _world_polygon_from_local(local_polygon: PackedVector2Array) -> PackedVector2Array:
 	var world_polygon := PackedVector2Array()
 	for point in local_polygon:
 		world_polygon.append(to_global(point))
