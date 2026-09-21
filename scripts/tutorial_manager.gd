@@ -138,7 +138,7 @@ func chapter_1_lesson() -> Array:
 			"type": "cutscene_guest",
 			"camera_pos": Vector2(1000, 320),
 			"camera_zoom": Vector2(1.35, 1.35),
-			"guest_pos": Vector2(1000, 300),
+			"guest_pos": Vector2(1035, 415),
 			"delay": 0.9,
 		},
 		{
@@ -344,8 +344,10 @@ func _play_guest_cutscene(step: Dictionary, token: int) -> void:
 		_parked_guest = (load(guest_scene) as PackedScene).instantiate()
 		var root := get_tree().current_scene
 		if root:
-			root.add_child(_parked_guest)
+			# 先设脚底锚点再入树，让 Guest._ready() 记录正确的晃动基线；
+			# 否则下一帧会把角色从前台拉回实例默认的 y=0。
 			_parked_guest.position = step.get("guest_pos", Vector2(1000, 300))
+			root.add_child(_parked_guest)
 	if is_instance_valid(guide) and guide.has_method("set_dim"):
 		guide.set_dim(0.5)
 	# 短暂展示气泡后进入"？？？"对话；角色与镜头继续驻留

@@ -1,6 +1,14 @@
-[gd_scene load_steps=2 format=3 uid="uid://guestplaceholder0001"]
+[gd_scene load_steps=3 format=3 uid="uid://guestplaceholder0001"]
 
 [ext_resource type="Script" path="res://scripts/guest_placeholder.gd" id="1_guest"]
+[ext_resource type="Texture2D" path="res://assets/characters/tieshan/tieshan_original.png" id="2_tieshan"]
 
-[node name="GuestPlaceholder" type="Node2D"]
+[node name="TieshanGuest" type="Node2D"]
+z_index = 10
 script = ExtResource("1_guest")
+
+[node name="Portrait" type="Sprite2D" parent="."]
+position = Vector2(-176.64, -213.21)
+scale = Vector2(0.23, 0.23)
+texture = ExtResource("2_tieshan")
+centered = false
