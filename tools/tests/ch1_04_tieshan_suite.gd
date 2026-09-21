@@ -15,6 +15,12 @@ func _ready() -> void:
 	call_deferred("run_suite")
 
 func run_suite() -> void:
+	if not _verify_isolation():
+		var isolation_report := _build_report()
+		_write_report(isolation_report)
+		print("CH1_04 tieshan refused: isolation precondition failed report=", JSON.stringify(isolation_report))
+		get_tree().quit(2)
+		return
 	tm = get_tree().root.get_node("TutorialManager")
 	sm = get_tree().root.get_node("SaveManager")
 	_record("replay_argument_detected", tm.is_replay_requested(), {
@@ -65,22 +71,55 @@ func run_suite() -> void:
 	_record("exit_reentry_final_cleanup", not tm.active
 		and get_tree().get_nodes_in_group("guest").is_empty())
 
-	var report := {
+	var report := _build_report()
+	_write_report(report)
+	print("CH1_04 tieshan report=", JSON.stringify(report))
+	get_tree().quit(0 if failures.is_empty() else 1)
+
+func _verify_isolation() -> bool:
+	var declared_root := _normalize_path(_argument("--isolation-root="))
+	var declared_appdata := _normalize_path(_argument("--isolation-appdata="))
+	var actual_user_dir := _normalize_path(ProjectSettings.globalize_path("user://"))
+	var actual_appdata := _normalize_path(OS.get_environment("APPDATA"))
+	var marker_ok := OS.get_environment("MAZE_CH1_04_ISOLATED") == "1"
+	var root_ok := not declared_root.is_empty() \
+		and actual_user_dir.begins_with(declared_root + "/")
+	var appdata_ok := not declared_appdata.is_empty() \
+		and actual_appdata == declared_appdata \
+		and actual_appdata.begins_with(declared_root + "/")
+	_record("isolated_user_data_directory", marker_ok and root_ok and appdata_ok, {
+		"marker": marker_ok,
+		"declared_root": declared_root,
+		"declared_appdata": declared_appdata,
+		"actual_appdata": actual_appdata,
+		"actual_user_dir": actual_user_dir,
+	})
+	return marker_ok and root_ok and appdata_ok
+
+func _normalize_path(value: String) -> String:
+	return value.replace("\\", "/").trim_suffix("/").to_lower()
+
+func _build_report() -> Dictionary:
+	return {
 		"checks": checks,
 		"failures": failures,
 		"guest_position": [EXPECTED_GUEST_POSITION.x, EXPECTED_GUEST_POSITION.y],
 		"texture": TIESHAN_TEXTURE,
 		"capture": _argument("--output="),
+		"isolation_root": _argument("--isolation-root="),
+		"isolation_appdata": _argument("--isolation-appdata="),
+		"user_data_dir": ProjectSettings.globalize_path("user://"),
 	}
+
+func _write_report(report: Dictionary) -> void:
 	var report_path := _argument("--report=")
-	if not report_path.is_empty():
-		var file := FileAccess.open(report_path, FileAccess.WRITE)
-		if file:
-			file.store_string(JSON.stringify(report, "\t"))
-		else:
-			failures.append("write_report")
-	print("CH1_04 tieshan report=", JSON.stringify(report))
-	get_tree().quit(0 if failures.is_empty() else 1)
+	if report_path.is_empty():
+		return
+	var file := FileAccess.open(report_path, FileAccess.WRITE)
+	if file:
+		file.store_string(JSON.stringify(report, "\t"))
+	else:
+		failures.append("write_report")
 
 func _start_scene() -> void:
 	scene = RESTAURANT_SCENE.instantiate()
@@ -217,6 +256,9 @@ func _capture_if_requested() -> void:
 		_record("visible_capture", false, {"reason": "no_viewport_texture"})
 		return
 	var image := viewport_texture.get_image()
+	if image == null:
+		_record("visible_capture", false, {"reason": "no_viewport_image"})
+		return
 	var err := image.save_png(output)
 	_record("visible_capture", err == OK, {
 		"path": output,
