@@ -164,6 +164,14 @@ func _initialize() -> void:
 				cancel_button = modal_button as Button
 			"×":
 				close_button = modal_button as Button
+	if modal._confirm_button.icon != null or modal._cancel_button.icon != null:
+		_failures.append("弹窗确认/取消按钮不应显示图标")
+	if modal._confirm_button.focus_mode != Control.FOCUS_ALL or modal._cancel_button.focus_mode != Control.FOCUS_ALL:
+		_failures.append("弹窗确认/取消按钮应保持键盘焦点")
+	if not modal._confirm_button.get_theme_stylebox("focus") is StyleBoxEmpty or not modal._cancel_button.get_theme_stylebox("focus") is StyleBoxEmpty:
+		_failures.append("弹窗确认/取消按钮不应绘制额外焦点框")
+	if not button.get_theme_stylebox("focus") is StyleBoxFlat or button.icon == null:
+		_failures.append("普通 SproutButton 的图标/焦点样式发生回归")
 	modal.show_modal("测试", "内容")
 	if not modal.visible:
 		_failures.append("SproutModal 未打开")

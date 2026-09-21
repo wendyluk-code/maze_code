@@ -13,6 +13,8 @@ func _ready() -> void:
 	theme = SproutTheme.make_theme()
 	_build_preview()
 	var args := OS.get_cmdline_user_args()
+	if args.has("--ui00-open-modal"):
+		_show_demo_modal()
 	var capture_index := args.find("--ui00-capture")
 	if capture_index >= 0 and capture_index + 1 < args.size():
 		_capture_path = args[capture_index + 1]

@@ -46,6 +46,8 @@ modal.show_modal("标题", "内容", "确认")
 
 `show_modal` 打开局部遮罩并把焦点给确认按钮；确认、取消、右上角关闭和 `Esc` 都会关闭，关闭时发出 `closed`。它不调用暂停、不广播全局事件。关闭后遮罩隐藏，焦点由调用方决定。
 
+弹窗底部的取消/确认操作按钮使用 `SproutButton.set_icon_visible(false)` 与 `set_focus_visual(false)`：文字保持居中，不显示业务图标，也不额外绘制绿色焦点框；按钮仍保留 `FOCUS_ALL`，因此 Enter/Space、Tab 和鼠标行为不变。普通 `SproutButton` 默认仍显示图标和主题焦点框。
+
 ### `SproutItemSlot`
 
 文件：`scripts/ui/components/sprout_item_slot.gd`
