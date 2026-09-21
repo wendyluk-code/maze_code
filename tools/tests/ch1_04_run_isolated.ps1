@@ -5,7 +5,8 @@ param(
     [string]$GodotPath = 'F:\SteamLibrary\steamapps\common\Godot Engine\godot.windows.opt.tools.64.exe',
     [string]$OutputDir = '',
     [switch]$NoCapture,
-    [switch]$Headless
+    [switch]$Headless,
+    [switch]$FixtureRealSaveChange
 )
 
 $ErrorActionPreference = 'Stop'
@@ -45,6 +46,10 @@ function Get-SaveMetadata([string]$Path) {
 
 function Normalize-Path([string]$Path) {
     return $Path.Replace('\', '/').TrimEnd('/').ToLowerInvariant()
+}
+
+function Test-SaveMetadataEqual([object]$Left, [object]$Right) {
+    return ($Left | ConvertTo-Json -Compress) -eq ($Right | ConvertTo-Json -Compress)
 }
 
 $realBefore = Get-SaveMetadata $realSavePath
@@ -102,42 +107,128 @@ finally {
 }
 
 $isolatedSavePath = Join-Path $isolatedAppData 'Godot\app_userdata\maze_code\save.json'
-$realAfter = Get-SaveMetadata $realSavePath
+$realAfterActual = Get-SaveMetadata $realSavePath
 $isolatedAfter = Get-SaveMetadata $isolatedSavePath
-$realUnchanged = ($realBefore | ConvertTo-Json -Compress) -eq ($realAfter | ConvertTo-Json -Compress)
+$realAfterChecked = $realAfterActual
+if ($FixtureRealSaveChange) {
+    # 仅改变门禁比较使用的内存 fixture，绝不写入真实 save.json。
+    $realAfterChecked = [ordered]@{
+        exists = $realAfterActual.exists
+        length = [int64]$realAfterActual.length + 1
+        sha256 = 'fixture-real-save-change'
+    }
+}
+$realUnchanged = Test-SaveMetadataEqual $realBefore $realAfterChecked
 $isolatedUserDir = Join-Path $isolatedAppData 'Godot\app_userdata\maze_code'
 $isolationPathValid = (Normalize-Path $isolatedUserDir).StartsWith((Normalize-Path $runRoot) + '/')
+
+$reportExists = Test-Path -LiteralPath $reportPath -PathType Leaf
+$reportValid = $false
+$reportFailuresClear = $false
+$reportError = ''
+$report = $null
+if ($reportExists) {
+    try {
+        $report = Get-Content -Raw -LiteralPath $reportPath | ConvertFrom-Json
+        $reportValid = $null -ne $report
+        if ($reportValid -and $report.PSObject.Properties.Name -contains 'failures') {
+            $failureValue = $report.failures
+            if ($null -eq $failureValue) {
+                $reportFailuresClear = $true
+            } elseif ($failureValue -is [System.Array]) {
+                $reportFailuresClear = @($failureValue).Count -eq 0
+            } else {
+                $reportFailuresClear = [int]$failureValue -eq 0
+            }
+        }
+    } catch {
+        $reportError = 'parse_failed'
+    }
+} else {
+    $reportError = 'missing'
+}
+
+$screenshotRequired = $Test -eq 'ch1_04' -and -not $NoCapture
+$screenshotPath = if ($Test -eq 'ch1_04') {
+    Join-Path $OutputDir 'CH1-04-tieshan-dialog.png'
+} else {
+    ''
+}
+$screenshotExists = -not $screenshotRequired
+if ($screenshotRequired) {
+    $screenshotExists = (Test-Path -LiteralPath $screenshotPath -PathType Leaf) `
+        -and ((Get-Item -LiteralPath $screenshotPath).Length -gt 0)
+}
+$visibleCapturePassed = -not $screenshotRequired
+if ($screenshotRequired -and $reportValid) {
+    $visibleCaptureChecks = @($report.checks | Where-Object { $_.name -eq 'visible_capture' })
+    $visibleCapturePassed = ($visibleCaptureChecks.Count -eq 1) `
+        -and [bool]$visibleCaptureChecks[0].passed
+}
+$processExitCode = if ($null -ne $process) { [int]$process.ExitCode } else { 1 }
+$runnerPassed = (
+    ($processExitCode -eq 0) `
+        -and $realUnchanged `
+        -and $isolationPathValid `
+        -and $reportExists `
+        -and $reportValid `
+        -and $reportFailuresClear `
+        -and $screenshotExists `
+        -and $visibleCapturePassed
+)
+$runnerExitCode = if ($runnerPassed) { 0 } else { 1 }
 
 $summary = [ordered]@{
     test = $Test
     godot_version = $godotVersion
     workspace = $workspace
     command = ($GodotPath + ' ' + ($godotArgs -join ' '))
-    exit_code = $process.ExitCode
+    exit_code = $processExitCode
+    runner_exit_code = $runnerExitCode
+    runner_passed = $runnerPassed
+    fixture_real_save_change = [bool]$FixtureRealSaveChange
     isolation_root = $runRoot
     isolated_appdata = $isolatedAppData
     isolated_user_dir = $isolatedUserDir
     isolation_path_valid = $isolationPathValid
     real_save_path = $realSavePath
     real_save_before = $realBefore
-    real_save_after = $realAfter
+    real_save_after = $realAfterActual
+    real_save_after_checked = $realAfterChecked
     real_save_unchanged = $realUnchanged
     isolated_save_path = $isolatedSavePath
     isolated_save_after = $isolatedAfter
     stdout = $outputStdout
     stderr = $outputStderr
     report = $reportPath
+    report_exists = $reportExists
+    report_valid = $reportValid
+    report_failures_clear = $reportFailuresClear
+    report_error = $reportError
+    screenshot_required = $screenshotRequired
+    screenshot = $screenshotPath
+    screenshot_exists = $screenshotExists
+    visible_capture_passed = $visibleCapturePassed
 }
 $summaryPath = Join-Path $OutputDir ($Test + '-runner-summary.json')
 $summary | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $summaryPath -Encoding UTF8
 Write-Output ('RUNNER summary=' + $summaryPath)
-Write-Output ('RUNNER exit_code=' + $process.ExitCode)
+Write-Output ('RUNNER godot_exit_code=' + $processExitCode)
+Write-Output ('RUNNER runner_exit_code=' + $runnerExitCode)
+Write-Output ('RUNNER runner_passed=' + $runnerPassed)
+Write-Output ('RUNNER fixture_real_save_change=' + [bool]$FixtureRealSaveChange)
 Write-Output ('RUNNER real_save_unchanged=' + $realUnchanged)
 Write-Output ('RUNNER isolation_path_valid=' + $isolationPathValid)
+Write-Output ('RUNNER report_exists=' + $reportExists)
+Write-Output ('RUNNER report_valid=' + $reportValid)
+Write-Output ('RUNNER report_failures_clear=' + $reportFailuresClear)
+Write-Output ('RUNNER screenshot_required=' + $screenshotRequired)
+Write-Output ('RUNNER screenshot_exists=' + $screenshotExists)
+Write-Output ('RUNNER visible_capture_passed=' + $visibleCapturePassed)
 Write-Output ('RUNNER stdout=' + $outputStdout)
 Write-Output ('RUNNER stderr=' + $outputStderr)
 Write-Output ('RUNNER report=' + $reportPath)
-if ($Test -eq 'ch1_04' -and -not $NoCapture) {
-    Write-Output ('RUNNER screenshot=' + (Join-Path $OutputDir 'CH1-04-tieshan-dialog.png'))
+if ($Test -eq 'ch1_04') {
+    Write-Output ('RUNNER screenshot=' + $screenshotPath)
 }
-exit $process.ExitCode
+exit $runnerExitCode
