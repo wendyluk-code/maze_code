@@ -67,6 +67,9 @@ func capture_path(target_name: String, spec: Dictionary) -> void:
 	player.facing = Vector2.UP
 	camera.set_process(false)
 	camera.set_physics_process(false)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var start_directional := directional_visibility(player, target, foreground, true)
 	var states: Array[bool] = []
 	var trail := PackedVector2Array()
 	var prompt_end := false
@@ -87,8 +90,10 @@ func capture_path(target_name: String, spec: Dictionary) -> void:
 	var switches := count_state_switches(states)
 	var end_local := target.to_local(player.global_position)
 	var body_visible_ratio := estimate_body_visible_ratio(player, target, foreground)
-	var passed := bool(states[0]) and not bool(states[states.size() - 1]) \
-		and switches <= 1 and prompt_end and body_visible_ratio >= 0.35
+	var end_directional := directional_visibility(player, target, foreground, false)
+	var passed: bool = bool(states[0]) and not bool(states[states.size() - 1]) \
+		and switches <= 1 and prompt_end and body_visible_ratio >= 0.35 \
+		and start_directional["passed"] and end_directional["passed"]
 	var image_path := ""
 	var overlay := EvidenceOverlay.new()
 	overlay.target = target
@@ -115,6 +120,8 @@ func capture_path(target_name: String, spec: Dictionary) -> void:
 		"nearest_end": nearest_end,
 		"e_prompt_end": prompt_end,
 		"body_visible_ratio": body_visible_ratio,
+		"start_directional_visibility": start_directional,
+		"end_directional_visibility": end_directional,
 		"screenshot": image_path,
 		"passed": passed,
 	})
@@ -138,6 +145,47 @@ func estimate_body_visible_ratio(player: CharacterBody2D, target: Node2D, foregr
 	for clipped in Geometry2D.intersect_polygons(body, layer.polygon):
 		overlap += absf(polygon_area(clipped))
 	return clampf(1.0 - overlap / body_area, 0.0, 1.0)
+
+func directional_visibility(player: CharacterBody2D, target: Node2D, foreground: Node,
+		expected_behind: bool) -> Dictionary:
+	var head := PackedVector2Array([
+		player.global_position + Vector2(-28.0, -130.0),
+		player.global_position + Vector2(28.0, -130.0),
+		player.global_position + Vector2(28.0, -78.0),
+		player.global_position + Vector2(-28.0, -78.0),
+	])
+	var lower := PackedVector2Array([
+		player.global_position + Vector2(-28.0, -48.0),
+		player.global_position + Vector2(28.0, -48.0),
+		player.global_position + Vector2(28.0, 0.0),
+		player.global_position + Vector2(-28.0, 0.0),
+	])
+	var head_ratio := overlap_ratio(head, target, foreground)
+	var lower_ratio := overlap_ratio(lower, target, foreground)
+	var head_visible := head_ratio <= 0.05
+	var lower_occluded := lower_ratio >= 0.50
+	var passed := (head_visible and lower_occluded) if expected_behind \
+		else (head_visible and lower_ratio <= 0.05)
+	return {
+		"expected_behind": expected_behind,
+		"head_occlusion_ratio": head_ratio,
+		"lower_occlusion_ratio": lower_ratio,
+		"head_visible": head_visible,
+		"lower_occluded": lower_occluded,
+		"passed": passed,
+	}
+
+func overlap_ratio(sample: PackedVector2Array, target: Node2D, foreground: Node) -> float:
+	var sample_area := absf(polygon_area(sample))
+	if sample_area <= 0.0:
+		return 0.0
+	var layer := foreground.get_node_or_null(target.name + "Foreground") as Polygon2D
+	if layer == null or not layer.visible or layer.polygon.size() < 3:
+		return 0.0
+	var overlap := 0.0
+	for clipped in Geometry2D.intersect_polygons(sample, layer.polygon):
+		overlap += absf(polygon_area(clipped))
+	return clampf(overlap / sample_area, 0.0, 1.0)
 
 func polygon_area(poly: PackedVector2Array) -> float:
 	var area := 0.0

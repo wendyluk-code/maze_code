@@ -107,6 +107,8 @@ func capture_sample(target: Node2D, fixture: Dictionary, player: CharacterBody2D
 	var e_prompt_visible := false
 	var nearest_name := ""
 	var body_visible_ratio := 0.0
+	var directional := {"head_occlusion_ratio": 0.0, "lower_occlusion_ratio": 0.0,
+		"head_visible": true, "lower_occluded": false, "passed": false}
 	if not point.is_empty():
 		apply_player_state(player, camera, point["world"], fixture["facing"])
 		await get_tree().process_frame
@@ -117,6 +119,7 @@ func capture_sample(target: Node2D, fixture: Dictionary, player: CharacterBody2D
 		nearest_name = "" if nearest == null else nearest.name
 		e_prompt_visible = prompt_visible(target, ui_layer())
 		body_visible_ratio = estimate_body_visible_ratio(player, target, foreground)
+		directional = directional_visibility(player, target, foreground, expected)
 		if is_screenshot_fixture(fixture["id"]):
 			var overlay := EvidenceOverlay.new()
 			overlay.target = target
@@ -132,9 +135,10 @@ func capture_sample(target: Node2D, fixture: Dictionary, player: CharacterBody2D
 				rendered = image.save_png(image_path) == OK
 			overlay.queue_free()
 	var passed := not point.is_empty() and actual == expected
+	passed = passed and directional["passed"]
 	if is_screenshot_fixture(fixture["id"]):
 		passed = passed and e_prompt_visible and nearest_name == target.name \
-			and body_visible_ratio >= 0.35
+			and body_visible_ratio >= 0.35 and directional["passed"]
 	if fixture["id"] == "screenshot_regression":
 		passed = passed and baseline_actual != expected
 	report["samples"].append({
@@ -148,6 +152,7 @@ func capture_sample(target: Node2D, fixture: Dictionary, player: CharacterBody2D
 		"e_prompt_expected": fixture["prompt"],
 		"e_prompt_visible": e_prompt_visible,
 		"body_visible_ratio": body_visible_ratio,
+		"directional_visibility": directional,
 		"nearest_interactable": nearest_name,
 		"expected_occluding": expected,
 		"actual_occluding": actual,
@@ -301,6 +306,50 @@ func estimate_body_visible_ratio(player: CharacterBody2D, target: Node2D, foregr
 	for clipped in Geometry2D.intersect_polygons(body, layer.polygon):
 		overlap += absf(polygon_area(clipped))
 	return clampf(1.0 - overlap / body_area, 0.0, 1.0)
+
+func directional_visibility(player: CharacterBody2D, target: Node2D, foreground: Node,
+		expected_behind: bool) -> Dictionary:
+	var head := PackedVector2Array([
+		player.global_position + Vector2(-28.0, -130.0),
+		player.global_position + Vector2(28.0, -130.0),
+		player.global_position + Vector2(28.0, -78.0),
+		player.global_position + Vector2(-28.0, -78.0),
+	])
+	var lower := PackedVector2Array([
+		player.global_position + Vector2(-28.0, -48.0),
+		player.global_position + Vector2(28.0, -48.0),
+		player.global_position + Vector2(28.0, 0.0),
+		player.global_position + Vector2(-28.0, 0.0),
+	])
+	var head_ratio := overlap_ratio(head, target, foreground)
+	var lower_ratio := overlap_ratio(lower, target, foreground)
+	var head_visible := head_ratio <= 0.05
+	var lower_occluded := lower_ratio >= 0.50
+	var passed := false
+	if expected_behind:
+		passed = head_visible and lower_occluded
+	else:
+		passed = head_visible and lower_ratio <= 0.05
+	return {
+		"expected_behind": expected_behind,
+		"head_occlusion_ratio": head_ratio,
+		"lower_occlusion_ratio": lower_ratio,
+		"head_visible": head_visible,
+		"lower_occluded": lower_occluded,
+		"passed": passed,
+	}
+
+func overlap_ratio(sample: PackedVector2Array, target: Node2D, foreground: Node) -> float:
+	var sample_area := absf(polygon_area(sample))
+	if sample_area <= 0.0:
+		return 0.0
+	var layer := foreground.get_node_or_null(target.name + "Foreground") as Polygon2D
+	if layer == null or not layer.visible or layer.polygon.size() < 3:
+		return 0.0
+	var overlap := 0.0
+	for clipped in Geometry2D.intersect_polygons(sample, layer.polygon):
+		overlap += absf(polygon_area(clipped))
+	return clampf(overlap / sample_area, 0.0, 1.0)
 
 func polygon_area(poly: PackedVector2Array) -> float:
 	var area := 0.0

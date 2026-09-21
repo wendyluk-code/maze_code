@@ -92,7 +92,10 @@ func _update_body_clip(entry: Dictionary) -> void:
 		Vector2(bounds.end.x + 1.0, bounds.end.y + 1.0),
 		Vector2(bounds.position.x - 1.0, bounds.end.y + 1.0),
 	])
-	var clipped := Geometry2D.clip_polygons(source, clip)
+	# The clip rectangle is the lower body band. Use intersection so this band
+	# remains in front of the character; clip_polygons would keep the difference
+	# (the upper half) and invert the intended depth ordering.
+	var clipped := Geometry2D.intersect_polygons(source, clip)
 	if clipped.is_empty():
 		layer.polygon = PackedVector2Array()
 		layer.uv = PackedVector2Array()
