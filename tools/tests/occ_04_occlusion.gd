@@ -15,13 +15,14 @@ const SCAN_GRID := {
 ## 前缘链按道具局部坐标从右向左给出；闭合侧边不计入前缘单调性检查。
 const FRONT_CHAIN_INDICES := {
 	"Register": [5, 6, 7, 8, 9, 10],
-	"BarCounter": [4, 5, 6, 7],
+	"BarCounter": [4, 5, 6],
 }
 const TARGETS := {
 	"Register": {
 		"samples": [
 			{"id": "screenshot_regression", "local": Vector2(-40, 113), "expected": false, "facing": Vector2.DOWN, "prompt": true},
 			{"id": "screenshot_user_exact", "local": Vector2(-50, 120), "expected": false, "facing": Vector2.DOWN, "prompt": true},
+			{"id": "screenshot_behind_probe", "local": Vector2(-50, 110), "expected": true, "facing": Vector2.UP, "prompt": true},
 			{"id": "behind", "local": Vector2(-50, 110), "expected": true, "facing": Vector2.UP, "prompt": true},
 			{"id": "front", "local": Vector2(0, 100), "expected": false, "facing": Vector2.DOWN, "prompt": true},
 			{"id": "left_boundary", "local": Vector2(-205, 140), "expected": false, "facing": Vector2.RIGHT, "prompt": true},
@@ -33,6 +34,7 @@ const TARGETS := {
 		"samples": [
 			{"id": "screenshot_regression", "local": Vector2(300, 30), "expected": false, "facing": Vector2.LEFT, "prompt": true},
 			{"id": "screenshot_user_exact", "local": Vector2(290, 30), "expected": false, "facing": Vector2.LEFT, "prompt": true},
+			{"id": "screenshot_behind_probe", "local": Vector2(266, 32), "expected": true, "facing": Vector2.UP, "prompt": true},
 			{"id": "behind", "local": Vector2(266, 32), "expected": true, "facing": Vector2.UP, "prompt": true},
 			{"id": "front", "local": Vector2(0, 90), "expected": false, "facing": Vector2.DOWN, "prompt": true},
 			{"id": "left_boundary", "local": Vector2(-205, 95), "expected": false, "facing": Vector2.RIGHT, "prompt": true},
@@ -104,6 +106,7 @@ func capture_sample(target: Node2D, fixture: Dictionary, player: CharacterBody2D
 	var image_path := ""
 	var e_prompt_visible := false
 	var nearest_name := ""
+	var body_visible_ratio := 0.0
 	if not point.is_empty():
 		apply_player_state(player, camera, point["world"], fixture["facing"])
 		await get_tree().process_frame
@@ -113,6 +116,7 @@ func capture_sample(target: Node2D, fixture: Dictionary, player: CharacterBody2D
 		var nearest: Node2D = player.nearest_interactable()
 		nearest_name = "" if nearest == null else nearest.name
 		e_prompt_visible = prompt_visible(target, ui_layer())
+		body_visible_ratio = estimate_body_visible_ratio(player, target, foreground)
 		if is_screenshot_fixture(fixture["id"]):
 			var overlay := EvidenceOverlay.new()
 			overlay.target = target
@@ -129,7 +133,8 @@ func capture_sample(target: Node2D, fixture: Dictionary, player: CharacterBody2D
 			overlay.queue_free()
 	var passed := not point.is_empty() and actual == expected
 	if is_screenshot_fixture(fixture["id"]):
-		passed = passed and e_prompt_visible and nearest_name == target.name
+		passed = passed and e_prompt_visible and nearest_name == target.name \
+			and body_visible_ratio >= 0.35
 	if fixture["id"] == "screenshot_regression":
 		passed = passed and baseline_actual != expected
 	report["samples"].append({
@@ -142,6 +147,7 @@ func capture_sample(target: Node2D, fixture: Dictionary, player: CharacterBody2D
 		"facing": facing_name(fixture["facing"]),
 		"e_prompt_expected": fixture["prompt"],
 		"e_prompt_visible": e_prompt_visible,
+		"body_visible_ratio": body_visible_ratio,
 		"nearest_interactable": nearest_name,
 		"expected_occluding": expected,
 		"actual_occluding": actual,
@@ -184,6 +190,7 @@ func capture_scan(restaurant: Node, player: CharacterBody2D, camera: Camera2D,
 			var section_samples: Array = []
 			var actual_states: Array[bool] = []
 			var manual_states: Array[bool] = []
+			var section_mismatches := 0
 			for y in range(int(grid["y_min"]), int(grid["y_max"]) + 1, step):
 				var local := Vector2(x, y)
 				var world := target.to_global(local)
@@ -211,6 +218,7 @@ func capture_scan(restaurant: Node, player: CharacterBody2D, camera: Camera2D,
 						target_report["actual_behind_points"] += 1
 					if actual != manual_behind:
 						target_report["manual_mismatch_points"] += 1
+						section_mismatches += 1
 				section_samples.append({
 					"local_foot": [local.x, local.y],
 					"world_foot": [world.x, world.y],
@@ -230,6 +238,8 @@ func capture_scan(restaurant: Node, player: CharacterBody2D, camera: Camera2D,
 			var actual_switches := count_state_switches(actual_states)
 			var manual_switches := count_state_switches(manual_states)
 			var section_passed := actual_switches <= 1
+			if section_mismatches > 0:
+				section_passed = false
 			target_report["max_actual_state_switch_count"] = max(
 				int(target_report["max_actual_state_switch_count"]), actual_switches)
 			if not section_passed:
@@ -240,6 +250,7 @@ func capture_scan(restaurant: Node, player: CharacterBody2D, camera: Camera2D,
 				"walkable_sample_count": actual_states.size(),
 				"actual_state_switch_count": actual_switches,
 				"manual_expected_state_switch_count": manual_switches,
+				"manual_mismatch_points": section_mismatches,
 				"continuous_state_switch_count": actual_switches,
 				"passed": section_passed,
 			})
@@ -254,11 +265,11 @@ func manual_expected_polygon(target_name: String) -> PackedVector2Array:
 	match target_name:
 		"Register":
 			return PackedVector2Array([
-				Vector2(-118, 104), Vector2(-42, 104), Vector2(-42, 130), Vector2(-118, 132),
+				Vector2(-110, 104), Vector2(-42, 104), Vector2(-42, 119), Vector2(-110, 119),
 			])
 		"BarCounter":
 			return PackedVector2Array([
-				Vector2(228, 22), Vector2(276, 22), Vector2(276, 52), Vector2(228, 52),
+				Vector2(240, 22), Vector2(300, 20), Vector2(266, 40), Vector2(240, 40),
 			])
 	return PackedVector2Array()
 
@@ -272,6 +283,30 @@ func count_state_switches(states: Array) -> int:
 func target_layer_visible(foreground: Node, target: Node2D) -> bool:
 	var layer := foreground.get_node_or_null(target.name + "Foreground") as CanvasItem
 	return layer != null and layer.visible
+
+func estimate_body_visible_ratio(player: CharacterBody2D, target: Node2D, foreground: Node) -> float:
+	var body := PackedVector2Array([
+		player.global_position + Vector2(-32.0, -130.0),
+		player.global_position + Vector2(32.0, -130.0),
+		player.global_position + Vector2(32.0, 0.0),
+		player.global_position + Vector2(-32.0, 0.0),
+	])
+	var body_area := absf(polygon_area(body))
+	if body_area <= 0.0:
+		return 0.0
+	var layer := foreground.get_node_or_null(target.name + "Foreground") as Polygon2D
+	if layer == null or not layer.visible or layer.polygon.size() < 3:
+		return 1.0
+	var overlap := 0.0
+	for clipped in Geometry2D.intersect_polygons(body, layer.polygon):
+		overlap += absf(polygon_area(clipped))
+	return clampf(1.0 - overlap / body_area, 0.0, 1.0)
+
+func polygon_area(poly: PackedVector2Array) -> float:
+	var area := 0.0
+	for i in poly.size():
+		area += poly[i].cross(poly[(i + 1) % poly.size()])
+	return area * 0.5
 
 func capture_geometry_checks(restaurant: Node) -> void:
 	for target_name in FRONT_CHAIN_INDICES.keys():
