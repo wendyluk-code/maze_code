@@ -43,6 +43,8 @@ func _scene_root() -> Node:
 	return node
 
 func should_start_chapter_1() -> bool:
+	if SaveManager.is_ready_to_depart():
+		return false
 	var replay := TutorialManager.has_method("is_replay_requested") and TutorialManager.is_replay_requested()
 	if replay:
 		return true

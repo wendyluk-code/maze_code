@@ -16,7 +16,7 @@ const CHAPTER_1_STAGE_NAMES := {
 	4: "仓库取料",
 	5: "料理制作",
 	6: "前台交付与结算",
-	7: "章节收束",
+	7: "准备同行",
 }
 
 var active := false
@@ -60,6 +60,9 @@ func is_replay_requested() -> bool:
 ## 启动教程。custom_steps 为空时使用正式的“第一章：醒来与首单教程”。
 ## 非空 custom_steps 仅作为兼容测试/内部脚本入口，不改变章节完成状态。
 func start(custom_steps: Array = []) -> void:
+	if custom_steps.is_empty() and SaveManager.is_ready_to_depart():
+		_cancel_current_run()
+		return
 	var next_guide = get_tree().get_first_node_in_group("tutorial_guide")
 	if active:
 		# Autoload 会跨场景保留；旧场景退出后，必须取消旧异步链，
@@ -109,7 +112,7 @@ func _resume_saved_cooking() -> void:
 	if settled and str(progress.get("next_step", "")) == "chapter_wrap_up":
 		next_stage = 7
 	for i in steps.size():
-		if int(steps[i].get("stage", 0)) == next_stage:
+		if int(steps[i].get("stage", 0)) == next_stage and (next_stage != 7 or steps[i].get("wrapup_id", "") == sm.departure_state().step):
 			idx = i
 			break
 	# 正式入口可能仍在 _ready 中，等场景完成入树后恢复客人。
@@ -236,38 +239,51 @@ func chapter_1_lesson() -> Array:
 			"hint": "靠近前台，按 E 交单上菜",
 			"toast": "顾客吃得很满足！ 餐厅声望 +20",
 		},
-		{
-			"stage": 7,
-			"type": "dialog", "speaker": "？？？",
-			"portrait": "res://assets/characters/tieshan/tieshan_portrait.png",
-			"lines": [
-				"呜……好吃！这味道，跟我年轻时在边境吃到的一模一样！你这店，我天天光顾！",
-			],
-		},
-		{
-			"stage": 7,
-			"type": "dialog", "speaker": "芽芽",
-			"portrait": "res://assets/characters/yaya_portrait.png",
-			"lines": [
-				"哼……你做得，跟从前一样好。",
-			],
-		},
-		{
-			"stage": 7,
-			"type": "notify",
-			"toast": "迷宫那头有扇门……刚才透出了光。",
-			"delay": 1.8,
-		},
-		{
-			"stage": 7,
-			"type": "dialog", "speaker": "芽芽",
-			"portrait": "res://assets/characters/yaya_portrait.png",
-			"lines": [
-				"等你准备好了，我们再一起去看看。",
-			],
-		},
-		{"stage": 7, "type": "finish"},
+	] + departure_lesson()
+
+## 阶段7逐句检查点：自报姓名确认后，后续说话人改为铁山。
+func departure_lesson() -> Array:
+	var rows := [
+		["relief", "？？？", "……缓过来了。"],
+		["meat", "？？？", "这是岩鬃兽的肉？那东西又硬又腥，你居然能做成这样。"],
+		["yaya_past", "芽芽", "他以前做得更好。"],
+		["hero_past", "主角", "以前？"],
+		["yaya_yes", "芽芽", "……嗯。"],
+		["second_serving", "？？？", "还能再来一份吗？"],
+		["check_store", "芽芽", "再去仓库看看吧。"],
+		["warehouse_move", "move_to", "仓库"],
+		["warehouse_inspect", "interact", "仓库"],
+		["salt_pool", "？？？", "迷宫浅层，旧盐池附近，我就是从那边回来的。"],
+		["map_review", "departure_map", ""],
+		["introduction", "？？？", "我叫铁山，是个冒险者。"],
+		["offer", "铁山", "你如果要去，我可以带路。"],
+		["no", "芽芽", "……不行。"],
+		["memory", "芽芽", "你才刚醒，连自己是谁都不记得。"],
+		["cooking", "主角", "可我还记得怎么做饭，我想继续做下去。"],
+		["ingredients", "主角", "没有食材，就做不了下一顿。"],
+		["yaya_join", "芽芽", "……那我也去。"],
+		["stay_shallow", "芽芽", "谁都不许往深处走。"],
+		["agreement", "铁山", "说定了。拿够食材就回来。"],
+		["ready_to_depart", "ready_to_depart", ""],
 	]
+	var result: Array = []
+	for row in rows:
+		var step := {"stage": 7, "wrapup_id": row[0]}
+		if row[1] in ["move_to", "interact"]:
+			step.merge({"type": row[1], "target": row[2], "radius": 95.0,
+				"hint": "去仓库查看剩余食物" if row[1] == "move_to" else "靠近仓库，按 E 查看剩余食物"})
+		elif row[1] in ["departure_map", "ready_to_depart"]:
+			step["type"] = row[1]
+		else:
+			step.merge({"type": "dialog", "speaker": row[1], "lines": [row[2]]})
+			if row[1] in ["？？？", "铁山"]:
+				step["portrait"] = "res://assets/characters/tieshan/tieshan_portrait.png"
+			elif row[1] == "芽芽":
+				step["portrait"] = "res://assets/characters/yaya_portrait.png"
+			if row[0] == "relief":
+				step["hint"] = "他放下了盘子。"
+		result.append(step)
+	return result
 
 ## 旧调用方兼容别名；默认入口已改为 chapter_1_lesson()。
 func restaurant_lesson() -> Array:
@@ -344,8 +360,22 @@ func _run_step(token: int) -> void:
 			_complete_step(token)
 		"finish":
 			_finish()
+		"departure_map":
+			_set_player_locked(true)
+			_open_departure_map.call_deferred(token)
+		"ready_to_depart":
+			_cancel_current_run()
 		_:
 			pass
+
+func _open_departure_map(token: int) -> void:
+	if not _run_is_valid(token):
+		return
+	var panel := get_tree().get_first_node_in_group("departure_panel")
+	if is_instance_valid(panel):
+		if not panel.map_closed.is_connected(_on_departure_map_closed):
+			panel.map_closed.connect(_on_departure_map_closed)
+		panel.open_map()
 
 func _get_camera() -> Camera2D:
 	if is_instance_valid(player):
@@ -436,6 +466,12 @@ func _unpark_camera(token: int) -> void:
 func _complete_step(token: int) -> void:
 	if not _run_is_valid(token):
 		return
+	if _chapter_1_run and idx < steps.size() and steps[idx].has("wrapup_id"):
+		var result := SaveManager.advance_departure(str(steps[idx].wrapup_id))
+		if not result.success:
+			guide.show_toast("准备进度未保存，请重试。")
+			_run_step(token)
+			return
 	idx += 1
 	_run_step(token)
 
@@ -444,6 +480,7 @@ func _cancel_current_run() -> void:
 		return
 	active = false
 	_run_token += 1
+	_close_departure_modals()
 	_set_player_locked(false)
 	_cleanup_cutscene(true)
 	if is_instance_valid(guide) and guide.has_method("finish_all"):
@@ -489,6 +526,15 @@ func _on_player_interact(node: Node2D) -> void:
 		if is_instance_valid(tracker) and tracker.has_method("show_order_receipt"):
 			tracker.show_order_receipt(result.get("order", {}))
 		_complete_step(_run_token)
+		return
+	if _chapter_1_run and step.get("wrapup_id", "") == "warehouse_inspect":
+		var modal := get_tree().get_first_node_in_group("warehouse_modal")
+		if not is_instance_valid(modal) or modal._open or not SaveManager.can_start_departure():
+			return
+		if not modal.inspected.is_connected(_on_empty_warehouse_inspected):
+			modal.inspected.connect(_on_empty_warehouse_inspected)
+		_set_player_locked(true)
+		modal.open_empty_stock()
 		return
 	var is_warehouse_step := _chapter_1_run \
 			and int(step.get("stage", 0)) == 4 \
@@ -555,6 +601,18 @@ func _on_player_interact(node: Node2D) -> void:
 		guide.show_toast(toast)
 	_complete_step(_run_token)
 
+func _on_empty_warehouse_inspected() -> void:
+	if not active or idx >= steps.size() or steps[idx].get("wrapup_id", "") != "warehouse_inspect":
+		return
+	_set_player_locked(false)
+	_complete_step(_run_token)
+
+func _on_departure_map_closed() -> void:
+	if not active or idx >= steps.size() or steps[idx].get("type", "") != "departure_map":
+		return
+	_set_player_locked(false)
+	_complete_step(_run_token)
+
 func _on_warehouse_claimed(result: Dictionary) -> void:
 	if not active or idx < 0 or idx >= steps.size():
 		return
@@ -619,29 +677,27 @@ func _kill_guest_fade_tween() -> void:
 func _finish(remove_guest := false) -> void:
 	if not active:
 		return
-	var was_chapter_1_run := _chapter_1_run
 	active = false
 	_run_token += 1
+	_close_departure_modals()
 	_set_player_locked(false)
 	# 正常完成与跳过都必须清理临时客人；remove_guest 参数保留给旧调用方兼容。
 	_cleanup_cutscene(true)
 	if is_instance_valid(guide) and guide.has_method("finish_all"):
 		guide.finish_all()
-	var sm := get_node_or_null("/root/SaveManager")
-	if was_chapter_1_run and sm:
-		var should_save := false
-		if sm.has_method("is_chapter_1_done") and not sm.is_chapter_1_done():
-			sm.mark_chapter_1_done()
-			should_save = true
-		if not sm.is_tutorial_done():
-			sm.mark_tutorial_done()
-			should_save = true
-		if should_save:
-			sm.save()
-	if was_chapter_1_run:
-		chapter_1_finished.emit()
+	# 卡牌与最终生命周期票据未完成，不写完成标记，不发章节完成信号。
+	# 跳过仅结束本次引导，已保存检查点供重进恢复。
 	tutorial_finished.emit()
 	_chapter_1_run = false
+
+## 仅回收本票据新增模态状态；先恢复模态快照，再释放教程拥有的玩家锁。
+func _close_departure_modals() -> void:
+	var warehouse := get_tree().get_first_node_in_group("warehouse_modal")
+	if is_instance_valid(warehouse) and warehouse._empty_stock and warehouse._open:
+		warehouse.close_modal()
+	var panel := get_tree().get_first_node_in_group("departure_panel")
+	if is_instance_valid(panel) and panel._open:
+		panel.close_map()
 
 ## 无论正常结束还是跳过：解除镜头驻留；跳过时同时移除未完成的占位演出
 func _cleanup_cutscene(remove_guest := false) -> void:

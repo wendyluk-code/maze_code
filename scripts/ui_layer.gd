@@ -18,6 +18,10 @@ var player: Node2D = null
 
 func _ready() -> void:
 	add_to_group("ui_layer")
+	var departure_panel := Control.new()
+	departure_panel.name = "DeparturePanel"
+	departure_panel.set_script(load("res://scripts/ui/departure_panel.gd"))
+	add_child(departure_panel)
 	player = get_tree().get_first_node_in_group("player") as Node2D
 	call_deferred("_rebuild_buttons")
 
@@ -65,7 +69,8 @@ func _process(_delta: float) -> void:
 	var vp := get_viewport().get_visible_rect().size
 	var selected: Node2D = player.nearest_interactable() if is_instance_valid(player) else null
 	var warehouse_modal := get_tree().get_first_node_in_group("warehouse_modal")
-	if is_instance_valid(warehouse_modal) and warehouse_modal.visible:
+	var departure_panel := get_tree().get_first_node_in_group("departure_panel")
+	if (is_instance_valid(warehouse_modal) and warehouse_modal.visible) or (is_instance_valid(departure_panel) and departure_panel._open):
 		_hiding = true
 		for b in _buttons.values():
 			if is_instance_valid(b):
@@ -127,6 +132,10 @@ func action_for(display_name: String) -> String:
 				return "交单上菜"
 			return "点单"
 		"仓库":
+			if SaveManager.has_first_order_settlement():
+				return "查看库存"
 			return "取货"
+		"迷宫入口":
+			return "查看出发准备"
 		_:
 			return display_name

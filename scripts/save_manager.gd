@@ -19,6 +19,13 @@ const INVENTORY_KEY := "inventory"
 const FIRST_ORDER_PROGRESS_KEY := "first_order_progress"
 const ROCKMAN_MEAT_ID := "rockmane_meat"
 const ROCK_SALT_ID := "rock_salt"
+const WRAPUP_KEY := "chapter_1_departure"
+const DEPARTURE_OBJECTIVE := "与芽芽、铁山一同进入迷宫浅层"
+## 顺序是存档契约；已确认的对白逐句提交，重进从尚未确认的一句继续。
+const WRAPUP_STEPS := ["relief", "meat", "yaya_past", "hero_past", "yaya_yes",
+	"second_serving", "check_store", "warehouse_move", "warehouse_inspect", "salt_pool",
+	"map_review", "introduction", "offer", "no", "memory", "cooking", "ingredients",
+	"yaya_join", "stay_shallow", "agreement", "ready_to_depart"]
 
 var data: Dictionary = _defaults()
 ## 只记录读取时补齐的字段，不在迁移时推断或补发奖励。
@@ -36,6 +43,7 @@ func _defaults() -> Dictionary:
 		FIRST_ORDER_PROGRESS_KEY: {"ingredients_claimed": false, "next_step": "accept_order"},
 		FIRST_ORDER_SETTLEMENT_KEY: {},
 		REPUTATION_KEY: 0,
+		WRAPUP_KEY: _empty_departure(),
 	}
 
 func _empty_order() -> Dictionary:
@@ -46,6 +54,64 @@ func _empty_order() -> Dictionary:
 		"quantity": 0,
 		"status": ORDER_STATUS_NONE,
 	}
+
+func _empty_departure() -> Dictionary:
+	return {"step": "relief", "empty_warehouse_checked": false, "tieshan_name_revealed": false,
+		"map": {"unlocked_floors": [], "visible_regions": [], "other_regions": "fog"},
+		"party": [], "objective": "", "entrance_lit": false,
+		"cards": {"status": "pending_content", "unlocked": false, "card_ids": []}}
+
+func departure_state() -> Dictionary:
+	var state := _empty_departure()
+	var saved = data.get(WRAPUP_KEY, {})
+	if saved is Dictionary:
+		for key in state:
+			if saved.has(key):
+				state[key] = saved[key]
+	# JSON 将数字读为浮点；查询契约固定使用整数楼层，跨进程比较保持一致。
+	state = state.duplicate(true)
+	if state.map is Dictionary and state.map.get("unlocked_floors") is Array:
+		var floors: Array = []
+		for floor_number in state.map.unlocked_floors:
+			floors.append(int(floor_number))
+		state.map.unlocked_floors = floors
+	return state.duplicate(true)
+
+func is_ready_to_depart() -> bool:
+	return departure_state().step == "ready_to_depart"
+
+func can_start_departure() -> bool:
+	return has_first_order_settlement() and current_order().get("status") == ORDER_STATUS_COMPLETED \
+		and first_order_progress().next_step == "chapter_wrap_up" \
+		and inventory_quantity(ROCKMAN_MEAT_ID) == 0 and inventory_quantity(ROCK_SALT_ID) == 0 \
+		and inventory_quantity(FIRST_ORDER_ITEM_ID) == 0
+
+## 完成一个阶段7步骤时原子提交下一检查点及对应解锁；失败时完整回滚。
+func advance_departure(expected_step: String) -> Dictionary:
+	if not can_start_departure():
+		return {"success": false, "reason": "not_settled_or_not_empty"}
+	var state := departure_state()
+	var index := WRAPUP_STEPS.find(expected_step)
+	if index < 0 or index >= WRAPUP_STEPS.size() - 1 or state.step != expected_step:
+		return {"success": false, "reason": "wrong_step"}
+	var previous := data.duplicate(true)
+	state.step = WRAPUP_STEPS[index + 1]
+	match expected_step:
+		"warehouse_inspect":
+			state.empty_warehouse_checked = true
+		"salt_pool":
+			state.map = {"unlocked_floors": [1], "visible_regions": ["old_salt_pool"], "other_regions": "fog"}
+		"introduction":
+			state.tieshan_name_revealed = true
+		"agreement":
+			state.party = ["yaya", "tieshan"]
+			state.objective = DEPARTURE_OBJECTIVE
+			state.entrance_lit = true
+	data[WRAPUP_KEY] = state
+	if not save():
+		data = previous
+		return {"success": false, "reason": "save_failed"}
+	return {"success": true, "state": departure_state()}
 
 func _normalize_order(value) -> Dictionary:
 	if not value is Dictionary:

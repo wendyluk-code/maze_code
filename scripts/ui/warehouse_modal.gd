@@ -3,6 +3,7 @@ extends Control
 
 signal claimed(result: Dictionary)
 signal cancelled
+signal inspected
 
 var _overlay: ColorRect
 var _panel: PanelContainer
@@ -14,6 +15,10 @@ var _cancel_button: SproutButton
 var _claim_button: SproutButton
 var _selected := {}
 var _open := false
+var _empty_stock := false
+var _stock_title: Label
+var _order_title: Label
+var _requirements: Label
 
 func _ready() -> void:
 	add_to_group("warehouse_modal")
@@ -53,6 +58,7 @@ func _build() -> void:
 	stock.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(stock)
 	var stock_title := Label.new()
+	_stock_title = stock_title
 	stock_title.text = "库存材料（请选择本单需要的材料）"
 	stock_title.add_theme_font_size_override("font_size", 18)
 	stock.add_child(stock_title)
@@ -76,10 +82,12 @@ func _build() -> void:
 	order_box.add_theme_constant_override("separation", 8)
 	body.add_child(order_box)
 	var order_title := Label.new()
+	_order_title = order_title
 	order_title.text = "订单需求"
 	order_title.add_theme_font_size_override("font_size", 20)
 	order_box.add_child(order_title)
 	var requirements := Label.new()
+	_requirements = requirements
 	requirements.text = "盐烤岩鬃肉 ×1\n所需：\n  岩鬃肉 ×1\n  岩盐 ×1"
 	requirements.add_theme_color_override("font_color", SproutTheme.INK_MUTED)
 	requirements.add_theme_font_size_override("font_size", 18)
@@ -117,11 +125,39 @@ func _build() -> void:
 	actions.add_child(_claim_button)
 
 func open_for_order() -> void:
+	_empty_stock = false
+	_meat_slot.configure("rockmane_meat", "岩鬃肉", 1, 0, false)
+	_salt_slot.configure("rock_salt", "岩盐", 1, 1, false)
+	_stock_title.text = "库存材料（请选择本单需要的材料）"
+	_order_title.text = "订单需求"
+	_requirements.text = "盐烤岩鬃肉 ×1\n所需：\n  岩鬃肉 ×1\n  岩盐 ×1"
+	_cancel_button.configure("取消")
+	_claim_button.visible = true
 	_selected.clear()
 	_open = true
 	visible = true
 	_message.text = "请选齐两种材料后领取"
 	_update_selection()
+	_set_tutorial_suppressed(true)
+
+func open_empty_stock() -> void:
+	_empty_stock = true
+	_selected.clear()
+	_open = true
+	visible = true
+	var stock := SaveManager.inventory_snapshot()
+	_meat_slot.configure("rockmane_meat", "岩鬃肉", int(stock.rockmane_meat), 0, true)
+	_salt_slot.configure("rock_salt", "岩盐", int(stock.rock_salt), 1, true)
+	_meat_slot.set_selected(false)
+	_salt_slot.set_selected(false)
+	_stock_title.text = "仓库现存食材"
+	_order_title.text = "剩余食物"
+	_requirements.text = "岩鬃肉 = %d\n岩盐 = %d\n盐烤岩鬃肉 = %d" % [stock.rockmane_meat, stock.rock_salt, stock.salt_grilled_rockmane]
+	_selection_label.text = "库存已耗尽" if SaveManager.can_start_departure() else "请核对库存"
+	_message.text = "没有任何食物" if SaveManager.can_start_departure() else "仓库仍有食物"
+	_cancel_button.configure("确认")
+	_claim_button.disabled = true
+	_claim_button.visible = false
 	_set_tutorial_suppressed(true)
 
 func close_modal() -> void:
@@ -130,7 +166,7 @@ func close_modal() -> void:
 	_set_tutorial_suppressed(false)
 
 func _on_slot_selected(item_id: String) -> void:
-	if not _open:
+	if not _open or _empty_stock:
 		return
 	_selected[item_id] = not bool(_selected.get(item_id, false))
 	_update_selection()
@@ -149,9 +185,14 @@ func _on_cancel_pressed() -> void:
 	if not _open:
 		return
 	close_modal()
-	cancelled.emit()
+	if _empty_stock:
+		inspected.emit()
+	else:
+		cancelled.emit()
 
 func _on_claim_pressed() -> void:
+	if _empty_stock:
+		return
 	if not _open or _claim_button.disabled:
 		_message.text = "请先选择岩鬃肉和岩盐"
 		return
