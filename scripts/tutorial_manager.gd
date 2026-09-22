@@ -33,6 +33,7 @@ var _parked_guest: Node2D = null
 var _base_zoom := Vector2(0.85, 0.85)
 var _base_zoom_captured := false
 var _camera_tween: Tween = null
+var _guest_fade_tween: Tween = null
 var _run_token := 0
 var _replay_requested := false
 var _player_lock_owned := false
@@ -138,12 +139,14 @@ func chapter_1_lesson() -> Array:
 			"type": "cutscene_guest",
 			"camera_pos": Vector2(1000, 320),
 			"camera_zoom": Vector2(1.35, 1.35),
-			"guest_pos": Vector2(1035, 415),
-			"delay": 0.9,
+			"guest_pos": Vector2(910, 198),
+			"fade_duration": 0.45,
+			"delay": 0.2,
 		},
 		{
 			"stage": 2,
 			"type": "dialog", "speaker": "？？？",
+			"portrait": "res://assets/characters/tieshan/tieshan_portrait.png",
 			"lines": [
 				"哪……哪里……有吃的吗？我……快不行了……",
 			],
@@ -204,6 +207,7 @@ func chapter_1_lesson() -> Array:
 		{
 			"stage": 6,
 			"type": "dialog", "speaker": "？？？",
+			"portrait": "res://assets/characters/tieshan/tieshan_portrait.png",
 			"lines": [
 				"呜……好吃！这味道，跟我年轻时在边境吃到的一模一样！你这店，我天天光顾！",
 			],
@@ -347,11 +351,31 @@ func _play_guest_cutscene(step: Dictionary, token: int) -> void:
 			# 先设脚底锚点再入树，让 Guest._ready() 记录正确的晃动基线；
 			# 否则下一帧会把角色从前台拉回实例默认的 y=0。
 			_parked_guest.position = step.get("guest_pos", Vector2(1000, 300))
+			if _parked_guest.has_method("prepare_fade_in"):
+				_parked_guest.prepare_fade_in()
+			else:
+				_parked_guest.modulate.a = 0.0
 			root.add_child(_parked_guest)
+			if _parked_guest.has_method("mark_fade_started"):
+				_parked_guest.mark_fade_started()
+			var fade_duration := float(step.get("fade_duration", 0.45))
+			_guest_fade_tween = create_tween()
+			_guest_fade_tween.tween_property(_parked_guest, "modulate:a", 1.0, fade_duration)\
+				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			while _run_is_valid(token) and is_instance_valid(_parked_guest) \
+					and _parked_guest.modulate.a < 0.999:
+				await get_tree().process_frame
+			if not _run_is_valid(token) or not is_instance_valid(_parked_guest):
+				return
+			_guest_fade_tween = null
+			if _parked_guest.has_method("mark_fade_completed"):
+				_parked_guest.mark_fade_completed()
+			else:
+				_parked_guest.modulate.a = 1.0
 	if is_instance_valid(guide) and guide.has_method("set_dim"):
 		guide.set_dim(0.5)
-	# 短暂展示气泡后进入"？？？"对话；角色与镜头继续驻留
-	await get_tree().create_timer(float(step.get("delay", 0.9))).timeout
+	# 淡入完成后才允许短暂停留并进入“？？？”对白；角色与镜头继续驻留。
+	await get_tree().create_timer(float(step.get("delay", 0.2))).timeout
 
 ## 过场结束：镜头回到主角、恢复原倍率；铁山角色继续留在前台（教程结束时统一回收）
 func _unpark_camera(token: int) -> void:
@@ -515,6 +539,11 @@ func _kill_camera_tween() -> void:
 		_camera_tween.kill()
 	_camera_tween = null
 
+func _kill_guest_fade_tween() -> void:
+	if _guest_fade_tween != null and _guest_fade_tween.is_valid():
+		_guest_fade_tween.kill()
+	_guest_fade_tween = null
+
 func _finish(remove_guest := false) -> void:
 	if not active:
 		return
@@ -545,6 +574,7 @@ func _finish(remove_guest := false) -> void:
 ## 无论正常结束还是跳过：解除镜头驻留；跳过时同时移除未完成的占位演出
 func _cleanup_cutscene(remove_guest := false) -> void:
 	_kill_camera_tween()
+	_kill_guest_fade_tween()
 	var cam := _get_camera()
 	if is_instance_valid(cam):
 		cam.paused = false

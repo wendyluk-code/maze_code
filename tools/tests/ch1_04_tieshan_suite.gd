@@ -2,7 +2,8 @@ extends Node
 
 const RESTAURANT_SCENE := preload("res://scenes/restaurant_map_2d.tscn")
 const TIESHAN_TEXTURE := "res://assets/characters/tieshan/tieshan_original.png"
-const EXPECTED_GUEST_POSITION := Vector2(1035, 415)
+const TIESHAN_PORTRAIT := "res://assets/characters/tieshan/tieshan_portrait.png"
+const EXPECTED_GUEST_POSITION := Vector2(910, 198)
 
 var checks: Array = []
 var failures: Array[String] = []
@@ -10,6 +11,7 @@ var scene: Node2D = null
 var guide: Control = null
 var tm = null
 var sm = null
+var unknown_portrait_stages: Array[int] = []
 
 func _ready() -> void:
 	call_deferred("run_suite")
@@ -26,15 +28,21 @@ func run_suite() -> void:
 	_record("replay_argument_detected", tm.is_replay_requested(), {
 		"args": OS.get_cmdline_user_args(),
 	})
+	_verify_lesson_portrait_contract()
 
 	# 路径一：阶段 2 可见、对白驻留，并在正常完成时清理。
 	sm.data = {"tutorial_done": false, "chapter_1_done": false}
 	await _start_scene()
 	tm.start()
-	var normal_guest := await _reach_guest_dialog()
+	var normal_guest := await _reach_guest_spawn()
+	await _wait_for_guest_dialog(normal_guest, true)
 	_verify_guest_visual(normal_guest)
+	_verify_unknown_portrait(2)
 	await _capture_if_requested()
 	await _complete_default_lesson()
+	_record("both_unknown_dialogs_use_tieshan_portrait", unknown_portrait_stages == [2, 6], {
+		"stages": unknown_portrait_stages,
+	})
 	await get_tree().create_timer(0.8).timeout
 	_record("normal_completion_cleans_guest", not tm.active
 		and not is_instance_valid(tm._parked_guest)
@@ -45,19 +53,28 @@ func run_suite() -> void:
 	sm.data = {"tutorial_done": false, "chapter_1_done": false}
 	await _start_scene()
 	tm.start()
-	var skipped_guest := await _reach_guest_dialog()
-	_record("skip_precondition_has_guest", is_instance_valid(skipped_guest))
+	var skipped_guest := await _reach_guest_spawn()
+	_record("skip_precondition_is_mid_fade", is_instance_valid(skipped_guest)
+		and skipped_guest.fade_started and not skipped_guest.fade_completed
+		and skipped_guest.modulate.a < 1.0, {
+			"alpha": skipped_guest.modulate.a if is_instance_valid(skipped_guest) else -1.0,
+		})
 	tm.skip_all()
 	await get_tree().create_timer(1.2).timeout
 	_record("skip_cleans_guest_and_stale_async", not tm.active
 		and not is_instance_valid(tm._parked_guest)
+		and tm._guest_fade_tween == null
 		and get_tree().get_nodes_in_group("guest").is_empty())
 
 	# 路径三：客人驻留时退出再进入，旧场景链失效且新流程从阶段 1 唯一启动。
 	sm.data = {"tutorial_done": false, "chapter_1_done": false}
 	tm.start()
-	var exited_guest := await _reach_guest_dialog()
-	_record("exit_precondition_has_guest", is_instance_valid(exited_guest))
+	var exited_guest := await _reach_guest_spawn()
+	_record("exit_precondition_is_mid_fade", is_instance_valid(exited_guest)
+		and exited_guest.fade_started and not exited_guest.fade_completed
+		and exited_guest.modulate.a < 1.0, {
+			"alpha": exited_guest.modulate.a if is_instance_valid(exited_guest) else -1.0,
+		})
 	await _dispose_scene()
 	await _start_scene()
 	tm.start()
@@ -139,7 +156,24 @@ func _dispose_scene() -> void:
 	scene = null
 	guide = null
 
-func _reach_guest_dialog() -> Node2D:
+func _verify_lesson_portrait_contract() -> void:
+	var unknown_steps: Array = []
+	for step in tm.chapter_1_lesson():
+		if str(step.get("speaker", "")) == "？？？":
+			unknown_steps.append(step)
+	var stages: Array[int] = []
+	var portraits: Array[String] = []
+	for step in unknown_steps:
+		stages.append(int(step.get("stage", 0)))
+		portraits.append(str(step.get("portrait", "")))
+	_record("lesson_keeps_two_unknown_tieshan_dialogs", unknown_steps.size() == 2
+		and stages == [2, 6]
+		and portraits == [TIESHAN_PORTRAIT, TIESHAN_PORTRAIT], {
+			"stages": stages,
+			"portraits": portraits,
+		})
+
+func _reach_guest_spawn() -> Node2D:
 	for i in 5:
 		if not tm.active or tm.idx != i or not guide.dialog.visible:
 			_record("opening_dialog_%d_ready" % (i + 1), false, {"idx": tm.idx})
@@ -159,19 +193,53 @@ func _reach_guest_dialog() -> Node2D:
 		"elapsed_ms": Time.get_ticks_msec() - wait_started,
 		"idx": tm.idx,
 	})
-	frames = 0
-	wait_started = Time.get_ticks_msec()
-	while tm.active and tm.idx == 5 and Time.get_ticks_msec() - wait_started < 5000:
+	return guest
+
+func _wait_for_guest_dialog(guest: Node2D, verify_fade: bool) -> void:
+	var first_observed_alpha := guest.modulate.a if is_instance_valid(guest) else -1.0
+	var saw_intermediate_alpha := false
+	var dialog_appeared_before_fade := false
+	if verify_fade:
+		_record("guest_is_created_transparent", is_instance_valid(guest)
+			and is_equal_approx(guest.fade_initial_alpha, 0.0)
+			and first_observed_alpha <= 0.01
+			and guest.fade_started, {
+				"recorded_initial_alpha": guest.fade_initial_alpha if is_instance_valid(guest) else -1.0,
+				"first_observed_alpha": first_observed_alpha,
+			})
+	var frames := 0
+	var wait_started := Time.get_ticks_msec()
+	while tm.active and Time.get_ticks_msec() - wait_started < 5000:
+		if is_instance_valid(guest):
+			var alpha := guest.modulate.a
+			saw_intermediate_alpha = saw_intermediate_alpha or (alpha > 0.01 and alpha < 0.99)
+			var unknown_visible: bool = guide.dialog.visible \
+				and guide.dialog.speaker_name.text == "？？？"
+			if unknown_visible:
+				dialog_appeared_before_fade = alpha < 0.999 or not guest.fade_completed
+				break
 		frames += 1
 		await get_tree().process_frame
+	if verify_fade:
+		_record("guest_fade_has_intermediate_frame", saw_intermediate_alpha, {
+			"first_observed_alpha": first_observed_alpha,
+			"frames": frames,
+		})
 	_record("unknown_dialog_visible", tm.idx == 6 and guide.dialog.visible
 		and guide.dialog.speaker_name.text == "？？？", {
 			"idx": tm.idx,
 			"speaker": guide.dialog.speaker_name.text,
 		})
+	if verify_fade:
+		_record("unknown_dialog_waits_for_completed_fade", not dialog_appeared_before_fade
+			and is_instance_valid(guest) and guest.fade_completed
+			and is_equal_approx(guest.modulate.a, 1.0), {
+				"dialog_appeared_before_fade": dialog_appeared_before_fade,
+				"fade_completed": guest.fade_completed if is_instance_valid(guest) else false,
+				"final_alpha": guest.modulate.a if is_instance_valid(guest) else -1.0,
+			})
 	_record("guest_stays_for_unknown_dialog", is_instance_valid(guest)
 		and guest == tm._parked_guest and guest.is_in_group("guest"))
-	return guest
 
 func _verify_guest_visual(guest: Node2D) -> void:
 	if not is_instance_valid(guest):
@@ -194,8 +262,8 @@ func _verify_guest_visual(guest: Node2D) -> void:
 		"size": [image.get_width(), image.get_height()] if image else [],
 	})
 	var register := scene.get_node("InteractPoints/Register") as Node2D
-	_record("guest_is_outside_register", guest.position.y > register.position.y + 150.0
-		and absf(guest.position.x - register.position.x) < 100.0, {
+	_record("guest_is_in_frontdesk_exterior", guest.position.y < register.position.y
+		and absf(guest.position.x - register.position.x) <= 120.0, {
 			"guest": [guest.position.x, guest.position.y],
 			"register": [register.position.x, register.position.y],
 		})
@@ -205,12 +273,55 @@ func _verify_guest_visual(guest: Node2D) -> void:
 	var opaque_bottom_local := portrait.position.y + 927.0 * portrait.scale.y
 	var visual_size := Vector2(1301.0, 909.0) * portrait.scale.abs()
 	_record("foot_anchor_and_scale_are_reasonable", absf(opaque_bottom_local) <= 0.25
-		and visual_size.x >= 280.0 and visual_size.x <= 320.0
-		and visual_size.y >= 195.0 and visual_size.y <= 220.0
+		and visual_size.x >= 95.0 and visual_size.x <= 100.0
+		and visual_size.y >= 66.0 and visual_size.y <= 70.0
 		and guest.z_index > 0, {
 			"opaque_bottom_local": opaque_bottom_local,
 			"visual_size": [visual_size.x, visual_size.y],
 			"z_index": guest.z_index,
+		})
+	var cam := get_viewport().get_camera_2d()
+	var screen_visual_size := visual_size * cam.zoom.abs() if is_instance_valid(cam) else Vector2.ZERO
+	var viewport_size := get_viewport().get_visible_rect().size
+	var opaque_top_left_local := portrait.position + Vector2(118.0, 19.0) * portrait.scale
+	var screen_top_left := (guest.global_position + opaque_top_left_local \
+		- cam.get_screen_center_position()) * cam.zoom + viewport_size * 0.5 \
+		if is_instance_valid(cam) else Vector2.ZERO
+	var screen_bottom_right := screen_top_left + screen_visual_size
+	_record("guest_fits_reference_box_at_1152x648", screen_visual_size.x >= 128.0
+		and screen_visual_size.x <= 136.0
+		and screen_visual_size.y >= 89.0 and screen_visual_size.y <= 95.0
+		and screen_top_left.x >= 350.0 and screen_top_left.x <= 410.0
+		and screen_top_left.y >= 55.0 and screen_top_left.y <= 85.0
+		and screen_bottom_right.x <= 540.0 and screen_bottom_right.y <= 175.0, {
+			"screen_visual_size": [screen_visual_size.x, screen_visual_size.y],
+			"screen_top_left": [screen_top_left.x, screen_top_left.y],
+			"screen_bottom_right": [screen_bottom_right.x, screen_bottom_right.y],
+			"camera_zoom": [cam.zoom.x, cam.zoom.y] if is_instance_valid(cam) else [],
+		})
+
+func _verify_unknown_portrait(stage: int) -> void:
+	if stage in unknown_portrait_stages:
+		return
+	unknown_portrait_stages.append(stage)
+	var texture_rect := guide.dialog.portrait_texture as TextureRect
+	var fallback := guide.dialog.portrait_fallback as Label
+	var texture := texture_rect.texture if is_instance_valid(texture_rect) else null
+	_record("stage_%d_unknown_portrait_texture" % stage, texture != null
+		and texture.resource_path == TIESHAN_PORTRAIT
+		and texture.get_width() == 256 and texture.get_height() == 256, {
+			"resource_path": texture.resource_path if texture else "none",
+			"source_size": [texture.get_width(), texture.get_height()] if texture else [],
+		})
+	_record("stage_%d_unknown_portrait_layout" % stage, is_instance_valid(texture_rect)
+		and guide.dialog.visible and guide.dialog.speaker_name.text == "？？？"
+		and texture_rect.visible and is_instance_valid(fallback) and not fallback.visible
+		and texture_rect.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		and absf(texture_rect.size.x - 80.0) <= 2.0
+		and absf(texture_rect.size.y - 80.0) <= 2.0, {
+			"content_size": [texture_rect.size.x, texture_rect.size.y] if is_instance_valid(texture_rect) else [],
+			"stretch_mode": texture_rect.stretch_mode if is_instance_valid(texture_rect) else -1,
+			"fallback_visible": fallback.visible if is_instance_valid(fallback) else true,
 		})
 
 func _complete_default_lesson() -> void:
@@ -224,6 +335,11 @@ func _complete_default_lesson() -> void:
 			"cutscene_guest":
 				await get_tree().create_timer(2.3).timeout
 			"dialog":
+				if str(step.get("speaker", "")) == "？？？":
+					var stage := int(step.get("stage", 0))
+					_verify_unknown_portrait(stage)
+					if stage == 6:
+						await _capture_stage_6_if_requested()
 				guide.dialog._advance()
 				guide.dialog._advance()
 				await get_tree().process_frame
@@ -260,11 +376,38 @@ func _capture_if_requested() -> void:
 		_record("visible_capture", false, {"reason": "no_viewport_image"})
 		return
 	var err := image.save_png(output)
-	_record("visible_capture", err == OK, {
+	_record("visible_capture", err == OK and image.get_width() == 1152 and image.get_height() == 648, {
 		"path": output,
 		"size": [image.get_width(), image.get_height()],
 		"error": err,
 	})
+
+func _capture_stage_6_if_requested() -> void:
+	var stage_2_output := _argument("--output=")
+	if stage_2_output.is_empty():
+		return
+	await get_tree().create_timer(1.1).timeout
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_record("stage_6_capture_dialog_text_visible", guide.dialog.visible
+		and guide.dialog.speaker_name.text == "？？？"
+		and not guide.dialog.dialog_text.text.is_empty(), {
+			"speaker": guide.dialog.speaker_name.text,
+			"text": guide.dialog.dialog_text.text,
+		})
+	var output := stage_2_output.get_base_dir().path_join("CH1-04-tieshan-stage6-dialog.png")
+	var viewport_texture := get_viewport().get_texture()
+	var image := viewport_texture.get_image() if viewport_texture != null else null
+	if image == null:
+		_record("stage_6_visible_capture", false, {"reason": "no_viewport_image"})
+		return
+	var err := image.save_png(output)
+	_record("stage_6_visible_capture", err == OK
+		and image.get_width() == 1152 and image.get_height() == 648, {
+			"path": output,
+			"size": [image.get_width(), image.get_height()],
+			"error": err,
+		})
 
 func _record(name: String, passed: bool, details: Dictionary = {}) -> void:
 	checks.append({"name": name, "passed": passed, "details": details})
