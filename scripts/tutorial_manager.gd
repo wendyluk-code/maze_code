@@ -96,12 +96,18 @@ func _resume_saved_cooking() -> void:
 	if _replay_requested:
 		return
 	var sm := get_node_or_null("/root/SaveManager")
-	if sm == null or not sm.is_canonical_first_order(sm.current_order()):
+	if sm == null:
+		return
+	var settled: bool = sm.has_first_order_settlement() \
+		and str(sm.current_order().get("status", "")) == sm.ORDER_STATUS_COMPLETED
+	if not settled and not sm.is_canonical_first_order(sm.current_order()):
 		return
 	var progress: Dictionary = sm.first_order_progress()
 	if not bool(progress.get("ingredients_claimed", false)):
 		return
 	var next_stage := 6 if str(progress.get("next_step", "")) == "deliver" else 5
+	if settled and str(progress.get("next_step", "")) == "chapter_wrap_up":
+		next_stage = 7
 	for i in steps.size():
 		if int(steps[i].get("stage", 0)) == next_stage:
 			idx = i
@@ -231,7 +237,7 @@ func chapter_1_lesson() -> Array:
 			"toast": "顾客吃得很满足！ 餐厅声望 +20",
 		},
 		{
-			"stage": 6,
+			"stage": 7,
 			"type": "dialog", "speaker": "？？？",
 			"portrait": "res://assets/characters/tieshan/tieshan_portrait.png",
 			"lines": [
@@ -239,7 +245,7 @@ func chapter_1_lesson() -> Array:
 			],
 		},
 		{
-			"stage": 6,
+			"stage": 7,
 			"type": "dialog", "speaker": "芽芽",
 			"portrait": "res://assets/characters/yaya_portrait.png",
 			"lines": [
@@ -519,6 +525,29 @@ func _on_player_interact(node: Node2D) -> void:
 		if is_instance_valid(tracker):
 			tracker.refresh_saved_state()
 		guide.show_toast(str(step.get("toast", "")))
+		_complete_step(_run_token)
+		return
+	if _chapter_1_run and int(step.get("stage", 0)) == 6 and str(step.get("target", "")) == "前台":
+		if not is_instance_valid(player) or player.interaction_distance_to(target) > 120.0:
+			return
+		var sm := get_node_or_null("/root/SaveManager")
+		if sm == null:
+			return
+		var result: Dictionary = sm.deliver_first_order()
+		if not bool(result.get("success", false)):
+			var messages := {
+				"no_canonical_order": "请先到前台接下首单。",
+				"not_ready_to_deliver": "请先领取食材并完成料理。",
+				"missing_dish": "缺少盐烤岩鬃肉，暂时无法交单。",
+				"already_completed": "首单已完成，声望已经结算。",
+				"save_failed": "保存失败，本次未交单，请重试。",
+			}
+			guide.show_toast(str(messages.get(result.get("reason", ""), "暂时无法交单。")))
+			return
+		var tracker := get_tree().get_first_node_in_group("order_tracking")
+		if is_instance_valid(tracker):
+			tracker.refresh_saved_state()
+		guide.show_toast("顾客吃得很满足！ 餐厅声望 +20")
 		_complete_step(_run_token)
 		return
 	var toast := str(step.get("toast", ""))

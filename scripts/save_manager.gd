@@ -7,6 +7,10 @@ const CHAPTER_1_DONE_KEY := "chapter_1_done"
 const CURRENT_ORDER_KEY := "current_order"
 const ORDER_STATUS_NONE := "none"
 const ORDER_STATUS_IN_PROGRESS := "in_progress"
+const ORDER_STATUS_COMPLETED := "completed"
+const FIRST_ORDER_SETTLEMENT_KEY := "first_order_settlement"
+const REPUTATION_KEY := "reputation"
+const FIRST_ORDER_REPUTATION := 20
 const FIRST_ORDER_ID := "chapter_1_first_order"
 const FIRST_ORDER_ITEM_ID := "salt_grilled_rockmane"
 const FIRST_ORDER_ITEM_NAME := "盐烤岩鬃肉"
@@ -17,6 +21,8 @@ const ROCKMAN_MEAT_ID := "rockmane_meat"
 const ROCK_SALT_ID := "rock_salt"
 
 var data: Dictionary = _defaults()
+## 只记录读取时补齐的字段，不在迁移时推断或补发奖励。
+var migration_diagnostics: Array[String] = []
 
 func _ready() -> void:
 	load_data()
@@ -28,6 +34,8 @@ func _defaults() -> Dictionary:
 		CURRENT_ORDER_KEY: _empty_order(),
 		INVENTORY_KEY: {ROCKMAN_MEAT_ID: 0, ROCK_SALT_ID: 0, FIRST_ORDER_ITEM_ID: 0},
 		FIRST_ORDER_PROGRESS_KEY: {"ingredients_claimed": false, "next_step": "accept_order"},
+		FIRST_ORDER_SETTLEMENT_KEY: {},
+		REPUTATION_KEY: 0,
 	}
 
 func _empty_order() -> Dictionary:
@@ -44,16 +52,22 @@ func _normalize_order(value) -> Dictionary:
 		return _empty_order()
 	# 保留所有进行中订单字段，以便拒绝冲突订单；只有 canonical 首单
 	# 才能在 accept_first_order() 中走幂等成功分支。
-	if str(value.get("status", ORDER_STATUS_NONE)) != ORDER_STATUS_IN_PROGRESS:
+	if str(value.get("status", ORDER_STATUS_NONE)) not in [ORDER_STATUS_IN_PROGRESS, ORDER_STATUS_COMPLETED]:
 		return _empty_order()
 	return value.duplicate(true)
 
 func load_data() -> void:
+	migration_diagnostics.clear()
 	if FileAccess.file_exists(SAVE_PATH):
 		var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
 		if f:
 			var parsed = JSON.parse_string(f.get_as_text())
 			if parsed is Dictionary:
+				for key in [FIRST_ORDER_SETTLEMENT_KEY, REPUTATION_KEY]:
+					if not parsed.has(key):
+						migration_diagnostics.append("旧存档补齐默认字段：" + key + "；未补发声望。")
+				for diagnostic in migration_diagnostics:
+					print("SaveManager: ", diagnostic)
 				# 旧存档可能只有 tutorial_done；合并默认值而不是丢弃未知字段，
 				# 这样旧存档能继续使用，同时缺少第一章标记时会进入第一章。
 				data = _defaults()
@@ -80,7 +94,7 @@ func _normalize_progress(value) -> Dictionary:
 		return progress
 	progress["ingredients_claimed"] = bool(value.get("ingredients_claimed", false))
 	var next_step := str(value.get("next_step", "accept_order"))
-	if next_step not in ["accept_order", "prepare_ingredients", "cook", "deliver"]:
+	if next_step not in ["accept_order", "prepare_ingredients", "cook", "deliver", "chapter_wrap_up"]:
 		next_step = "accept_order"
 	progress["next_step"] = next_step
 	return progress
@@ -128,6 +142,8 @@ func is_canonical_first_order(order) -> bool:
 ## 原子接受第一笔订单：相同有效订单重复调用保持幂等，不创建第二单。
 ## 返回 success=true 表示调用方可以继续教程；created 表示本次是否真的写入新订单。
 func accept_first_order() -> Dictionary:
+	if has_first_order_settlement() or str(current_order().get("status", "")) == ORDER_STATUS_COMPLETED:
+		return {"success": false, "created": false, "reason": "already_completed", "order": current_order()}
 	var raw_existing = data.get(CURRENT_ORDER_KEY)
 	if raw_existing is Dictionary \
 			and str(raw_existing.get("status", ORDER_STATUS_NONE)) == ORDER_STATUS_IN_PROGRESS:
@@ -209,3 +225,44 @@ func cook_first_order() -> Dictionary:
 		data = previous
 		return {"success": false, "reason": "save_failed"}
 	return {"success": true, "reason": "cooked", "inventory": inventory_snapshot()}
+
+func reputation() -> int:
+	return int(data.get(REPUTATION_KEY, 0))
+
+func has_first_order_settlement() -> bool:
+	var receipt = data.get(FIRST_ORDER_SETTLEMENT_KEY, {})
+	return receipt is Dictionary and str(receipt.get("order_id", "")) == FIRST_ORDER_ID \
+		and str(receipt.get("item_id", "")) == FIRST_ORDER_ITEM_ID \
+		and int(receipt.get("quantity", 0)) == FIRST_ORDER_QUANTITY \
+		and int(receipt.get("reputation_awarded", 0)) == FIRST_ORDER_REPUTATION
+
+## 交付、订单完成、声望与凭证在同一存档提交；失败恢复完整内存快照。
+## 地点与距离由 TutorialManager/Player 的同一交互选择器校验。
+func deliver_first_order() -> Dictionary:
+	if has_first_order_settlement() or str(current_order().get("status", "")) == ORDER_STATUS_COMPLETED:
+		return {"success": false, "reason": "already_completed"}
+	if not is_canonical_first_order(current_order()):
+		return {"success": false, "reason": "no_canonical_order"}
+	var progress := first_order_progress()
+	if not bool(progress.get("ingredients_claimed", false)) or str(progress.get("next_step", "")) != "deliver":
+		return {"success": false, "reason": "not_ready_to_deliver"}
+	var inventory := inventory_snapshot()
+	if int(inventory[FIRST_ORDER_ITEM_ID]) < FIRST_ORDER_QUANTITY:
+		return {"success": false, "reason": "missing_dish"}
+	var previous := data.duplicate(true)
+	var order := current_order()
+	inventory[FIRST_ORDER_ITEM_ID] -= FIRST_ORDER_QUANTITY
+	order["status"] = ORDER_STATUS_COMPLETED
+	progress["next_step"] = "chapter_wrap_up"
+	data[INVENTORY_KEY] = inventory
+	data[CURRENT_ORDER_KEY] = order
+	data[FIRST_ORDER_PROGRESS_KEY] = progress
+	data[REPUTATION_KEY] = reputation() + FIRST_ORDER_REPUTATION
+	data[FIRST_ORDER_SETTLEMENT_KEY] = {
+		"order_id": FIRST_ORDER_ID, "item_id": FIRST_ORDER_ITEM_ID,
+		"quantity": FIRST_ORDER_QUANTITY, "reputation_awarded": FIRST_ORDER_REPUTATION,
+	}
+	if not save():
+		data = previous
+		return {"success": false, "reason": "save_failed"}
+	return {"success": true, "reason": "delivered", "order": current_order(), "reputation": reputation()}

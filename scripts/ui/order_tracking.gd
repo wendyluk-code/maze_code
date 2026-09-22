@@ -11,6 +11,8 @@ var _order_status: Button
 var _meat_status: Button
 var _salt_status: Button
 var _cook_status: Button
+var _order_prefix: Label
+var _cook_title: Label
 
 func _ready() -> void:
 	add_to_group("order_tracking")
@@ -93,6 +95,7 @@ func _build() -> void:
 	order_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	outer.add_child(order_row)
 	var order_prefix := _make_label("接到订单：交出", 16, SproutTheme.INK)
+	_order_prefix = order_prefix
 	order_row.add_child(order_prefix)
 	order_row.add_child(_make_icon(4))
 	var dish_name := _make_label("盐烤岩鬃肉", 16, SproutTheme.INK)
@@ -105,7 +108,8 @@ func _build() -> void:
 	outer.add_child(_make_item_row(0, "岩鬃肉", "meat"))
 	outer.add_child(_make_item_row(1, "岩盐", "salt"))
 
-	outer.add_child(_make_section_title("烹饪"))
+	_cook_title = _make_section_title("烹饪")
+	outer.add_child(_cook_title)
 	var cook_row := HBoxContainer.new()
 	cook_row.add_theme_constant_override("separation", 7)
 	cook_row.custom_minimum_size.y = 34
@@ -194,15 +198,18 @@ func refresh_saved_state() -> void:
 		visible = false
 		return
 	var order: Dictionary = sm.current_order()
-	if str(order.get("status", "none")) != "in_progress":
+	var completed := str(order.get("status", "none")) == "completed"
+	if str(order.get("status", "none")) != "in_progress" and not completed:
 		visible = false
 		return
 	var meat := int(sm.inventory_quantity("rockmane_meat")) if sm.has_method("inventory_quantity") else 0
 	var salt := int(sm.inventory_quantity("rock_salt")) if sm.has_method("inventory_quantity") else 0
-	_set_counter(_order_status, 0)
+	_set_counter(_order_status, 1 if completed else 0)
+	_order_prefix.text = "订单完成：" if completed else "接到订单：交出"
+	_cook_title.text = "烹饪 · 餐厅声望 %d" % sm.reputation()
 	_set_counter(_meat_status, meat)
 	_set_counter(_salt_status, salt)
-	# 取货栏显示当前库存；制作扣料后归零。交付仍等待实际交单事务。
+	# 材料与料理栏均显示当前库存；完成状态仅来自已提交的订单。
 	_set_counter(_cook_status, int(sm.inventory_quantity("salt_grilled_rockmane")))
 	visible = true
 

@@ -78,6 +78,8 @@ func _process(_delta: float) -> void:
 		if not is_instance_valid(btn) or not is_instance_valid(node):
 			continue
 		btn.visible = false
+		if "display_name" in node:
+			btn.get_node("Content/ActionLabel").text = action_for(str(node.display_name))
 		_place_button(btn, node, cam, zone, vp)
 	if is_instance_valid(selected):
 		var selected_button: Control = _buttons.get(selected)
@@ -120,6 +122,9 @@ func action_for(display_name: String) -> String:
 		"吧台":
 			return "上菜"
 		"前台":
+			var tm := get_node_or_null("/root/TutorialManager")
+			if tm != null and tm.active and tm.current_stage == 6:
+				return "交单上菜"
 			return "点单"
 		"仓库":
 			return "取货"

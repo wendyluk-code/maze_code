@@ -135,12 +135,22 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func nearest_interactable() -> Node2D:
 	var best: Node2D = null
-	var best_d := INTERACT_RANGE
+	var best_d := INF
+	var serving_target: Node2D = null
+	var tm := get_node_or_null("/root/TutorialManager")
+	if tm != null and tm.active and tm._chapter_1_run and tm.current_stage == 6 \
+			and tm.idx >= 0 and tm.idx < tm.steps.size():
+		var step: Dictionary = tm.steps[tm.idx]
+		if step.get("type", "") in ["move_to", "interact"] and step.get("target", "") == "前台":
+			serving_target = tm.resolve_target("前台")
 	for n in get_tree().get_nodes_in_group("interactable"):
 		var node := n as Node2D
 		if not node:
 			continue
 		var d := interaction_distance_to(node)
+		var allowed_range := 120.0 if node == serving_target else INTERACT_RANGE
+		if d > allowed_range:
+			continue
 		if d <= best_d and (best == null or d < best_d or str(node.get_path()) < str(best.get_path())):
 			best_d = d
 			best = node
