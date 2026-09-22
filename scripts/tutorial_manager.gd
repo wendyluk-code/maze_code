@@ -215,7 +215,7 @@ func chapter_1_lesson() -> Array:
 			"stage": 4,
 			"type": "interact", "target": "仓库",
 			"hint": "靠近仓库，按 E 领取食材",
-			"toast": "获得：魔物肉 ×1、岩盐 ×1",
+			"toast": "获得：岩鬃肉 ×1、岩盐 ×1",
 		},
 		{
 			"stage": 5,
@@ -619,10 +619,14 @@ func _on_warehouse_claimed(result: Dictionary) -> void:
 	var step: Dictionary = steps[idx]
 	if step.get("type", "") != "interact" or int(step.get("stage", 0)) != 4:
 		return
+	if not bool(result.get("success", false)):
+		return
 	_set_player_locked(false)
 	var tracker := get_tree().get_first_node_in_group("order_tracking")
 	if is_instance_valid(tracker) and tracker.has_method("refresh_saved_state"):
 		tracker.refresh_saved_state()
+	if is_instance_valid(guide):
+		guide.show_toast(str(step.get("toast", "")))
 	_complete_step(_run_token)
 
 func _on_warehouse_cancelled() -> void:

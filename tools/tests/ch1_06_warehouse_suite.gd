@@ -2,6 +2,7 @@ extends Node
 
 const RESTAURANT_SCENE := preload("res://scenes/restaurant_map_2d.tscn")
 const SAVE_PATH := "user://save.json"
+const WAREHOUSE_CLAIM_TOAST := "获得：岩鬃肉 ×1、岩盐 ×1"
 var checks: Array = []
 var failures := 0
 var scene: Node2D
@@ -55,13 +56,15 @@ func run_suite() -> void:
 	var before_order: Dictionary = sm.current_order()
 	player.interacted.emit(scene.get_node("InteractPoints/Fridge"))
 	await get_tree().process_frame
-	_check(tm.idx == before_idx and sm.current_order() == before_order and not modal.visible,
+	_check(tm.idx == before_idx and sm.current_order() == before_order and not modal.visible
+		and not _warehouse_claim_toast_visible(),
 		"wrong_target_does_not_open_warehouse", {"idx": tm.idx})
 	player.global_position = Vector2(-10000, -10000)
 	var out_of_range_e := InputEventAction.new(); out_of_range_e.action = &"interact"; out_of_range_e.pressed = true
 	player._unhandled_input(out_of_range_e)
 	await get_tree().process_frame
-	_check(not modal.visible and tm.idx == before_idx and sm.inventory_snapshot() == {"rockmane_meat": 0, "rock_salt": 0, "salt_grilled_rockmane": 0},
+	_check(not modal.visible and tm.idx == before_idx and sm.inventory_snapshot() == {"rockmane_meat": 0, "rock_salt": 0, "salt_grilled_rockmane": 0}
+		and not _warehouse_claim_toast_visible(),
 		"out_of_range_e_does_not_open_warehouse", {})
 
 	# 真实 E：先确认唯一最近目标为仓库，再由玩家入口发出 interact。
@@ -86,6 +89,8 @@ func run_suite() -> void:
 	modal._on_claim_pressed()
 	_check(sm.inventory_quantity("rockmane_meat") == 0 and sm.inventory_quantity("rock_salt") == 0,
 		"missing_selection_cannot_claim", {})
+	_check(not _warehouse_claim_toast_visible(),
+		"failed_claim_does_not_fake_warehouse_feedback", {"toast": guide.toast.text, "visible": guide.toast.visible})
 	modal._on_slot_selected("rockmane_meat")
 	modal._on_slot_selected("rockmane_meat")
 	_check(modal.get("_claim_button").disabled and str(modal.get("_selection_label").text).contains("0 / 2"),
@@ -104,6 +109,8 @@ func run_suite() -> void:
 	await get_tree().process_frame
 	_check(sm.inventory_quantity("rockmane_meat") == 1 and sm.inventory_quantity("rock_salt") == 1,
 		"successful_claim_writes_exact_inventory", {"inventory": sm.inventory_snapshot()})
+	_check(_warehouse_claim_toast_visible() and str(guide.toast.text) == WAREHOUSE_CLAIM_TOAST,
+		"successful_claim_shows_exact_warehouse_feedback", {"toast": guide.toast.text, "visible": guide.toast.visible})
 	_check(tm.idx == before_idx + 1 and not modal.visible and not player.input_locked,
 		"successful_claim_advances_tutorial_and_unlocks", {"idx": tm.idx})
 	_check(str(tracker.get("_meat_status").text) == "1/1"
@@ -117,6 +124,12 @@ func run_suite() -> void:
 			"delivery": tracker.get("_order_status").text,
 		})
 
+	guide._hide_toast()
+	var duplicate_e_inventory: Dictionary = sm.inventory_snapshot()
+	player._unhandled_input(real_e)
+	await get_tree().process_frame
+	_check(sm.inventory_snapshot() == duplicate_e_inventory and not _warehouse_claim_toast_visible(),
+		"duplicate_e_does_not_fake_warehouse_feedback", {"inventory": sm.inventory_snapshot(), "toast": guide.toast.text, "visible": guide.toast.visible})
 	var duplicate: Dictionary = sm.claim_first_order_ingredients()
 	_check(bool(duplicate.get("success", false)) and not bool(duplicate.get("created", true))
 		and sm.inventory_quantity("rockmane_meat") == 1 and sm.inventory_quantity("rock_salt") == 1,
@@ -184,6 +197,9 @@ func _visible_buttons(ui: Node) -> Array:
 		if is_instance_valid(button) and button.visible:
 			result.append(button)
 	return result
+
+func _warehouse_claim_toast_visible() -> bool:
+	return guide.toast.visible and str(guide.toast.text) == WAREHOUSE_CLAIM_TOAST
 
 func _find_stand(target: Node2D) -> Vector2:
 	var player := scene.get_node("Player")
