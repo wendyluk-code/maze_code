@@ -1,6 +1,17 @@
 extends Node
 
-const SCENE := preload("res://scenes/restaurant_map_2d.tscn")
+const SCENE_PATH := "res://scenes/restaurant_map_2d.tscn"
+
+class EmptyWalkZone:
+	extends Node
+	var polygons: Array = []
+	var rebuild_calls := 0
+
+	func _build_polygons() -> void:
+		rebuild_calls += 1
+
+	func get_spawn_point(_radius: float = 0.0) -> Vector2:
+		return Vector2.ZERO
 
 var report := {"checks": [], "stage_events": [], "failures": 0}
 var failures := 0
@@ -24,7 +35,6 @@ func run_suite() -> void:
 	await start_scene()
 	verify_real_entry_spawn()
 	check(guide.should_start_chapter_1(), "new_entry_requires_chapter")
-	tm.start()
 	await get_tree().process_frame
 	check(tm.active and tm.current_stage == 1, "new_entry_starts_chapter_1")
 	check(guide.visible and guide.chapter_title.visible
@@ -55,9 +65,13 @@ func run_suite() -> void:
 	# 旧存档只带 tutorial_done 时，第一章仍然是未完成状态。
 	sm.data = {"tutorial_done": true}
 	await start_scene()
-	check(guide.should_start_chapter_1(), "legacy_tutorial_done_does_not_skip_chapter")
+	check(guide.should_start_chapter_1() and tm.active,
+		"legacy_tutorial_done_does_not_skip_chapter")
+	tm._cancel_current_run()
+	await dispose_scene()
 	# 新完成态独立于旧兼容字段。
-	sm.data["chapter_1_done"] = true
+	sm.data = {"tutorial_done": true, "chapter_1_done": true}
+	await start_scene()
 	check(not guide.should_start_chapter_1(),
 		"completed_chapter_skips_normal_entry")
 
@@ -93,7 +107,6 @@ func run_suite() -> void:
 	await get_tree().create_timer(0.15).timeout
 	await dispose_scene()
 	await start_scene()
-	tm.start()
 	await get_tree().process_frame
 	check(tm.active and tm.idx == 0 and tm.current_stage == 1
 		and guide.chapter_title.visible and get_tree().get_nodes_in_group("guest").is_empty(),
@@ -102,6 +115,7 @@ func run_suite() -> void:
 	await get_tree().create_timer(0.8).timeout
 	check(not tm.active and not guide.visible and get_tree().get_nodes_in_group("guest").is_empty(),
 		"exit_reentry_skip_has_no_residue")
+	await verify_spawn_failure_is_bounded()
 
 	report["stage_events"] = stage_events
 	report["failures"] = failures
@@ -133,11 +147,16 @@ func check_lesson_shape() -> void:
 		"opening_dialogue_is_locked")
 
 func start_scene() -> void:
-	scene = SCENE.instantiate()
-	get_tree().root.add_child(scene)
-	get_tree().current_scene = scene
-	await get_tree().process_frame
-	await get_tree().process_frame
+	# 测试控制节点留在 root 下，不再把夹具实例当作 current_scene；使用与产品
+	# 相同的场景切换，使 TutorialGuide._ready() 自动启动并立即锁定玩家。
+	if get_tree().current_scene == self:
+		get_tree().current_scene = null
+	var err := get_tree().change_scene_to_file(SCENE_PATH)
+	check(err == OK, "restaurant_scene_change_started", {"error": err})
+	if err != OK:
+		return
+	await get_tree().scene_changed
+	scene = get_tree().current_scene as Node2D
 	guide = scene.get_node("UIOverlay/TutorialGuide")
 
 func verify_real_entry_spawn() -> void:
@@ -145,9 +164,23 @@ func verify_real_entry_spawn() -> void:
 	var zone := scene.get_node("WalkZone")
 	var safe: bool = zone.has_method("is_circle_inside") \
 		and zone.is_circle_inside(player.global_position, player.collision_radius_world())
-	check(player.spawn_ready, "real_entry_spawn_ready_before_tutorial_lock", {
+	var entry_observation := {
+		"tutorial_active": tm.active,
+		"tutorial_index": tm.idx,
+		"input_locked": player.input_locked,
 		"physics_processing": player.is_physics_processing(),
-		"position": [player.global_position.x, player.global_position.y]})
+		"spawn_ready": player.spawn_ready,
+		"spawn_init_state": player.spawn_init_state,
+		"spawn_init_attempts": player.spawn_init_attempts,
+		"spawn_resolved_in_ready": player.spawn_resolved_in_ready,
+		"position": [player.global_position.x, player.global_position.y],
+	}
+	report["real_entry_observation"] = entry_observation
+	check(tm.active and tm.idx == 0 and player.input_locked \
+		and not player.is_physics_processing() and player.spawn_ready \
+		and player.spawn_init_state == player.SPAWN_INIT_READY \
+		and player.spawn_init_attempts == 1 and player.spawn_resolved_in_ready,
+		"real_entry_spawn_ready_before_tutorial_lock", entry_observation)
 	check(safe, "real_entry_spawn_has_collision_clearance", {
 		"position": [player.global_position.x, player.global_position.y],
 		"radius": player.collision_radius_world()})
@@ -163,12 +196,39 @@ func verify_real_entry_spawn() -> void:
 
 func dispose_scene() -> void:
 	if is_instance_valid(scene):
+		if get_tree().current_scene == scene:
+			get_tree().current_scene = null
 		scene.queue_free()
-	get_tree().current_scene = self
 	await get_tree().process_frame
 	await get_tree().process_frame
 	scene = null
 	guide = null
+
+func verify_spawn_failure_is_bounded() -> void:
+	var player = scene.get_node("Player")
+	var fake_zone := EmptyWalkZone.new()
+	scene.add_child(fake_zone)
+	player.walk_zone = fake_zone
+	player.spawn_ready = false
+	player.spawn_init_state = player.SPAWN_INIT_PENDING
+	player.spawn_init_attempts = 0
+	for _i in 8:
+		player._try_resolve_spawn()
+	var attempts_after_calls: int = player.spawn_init_attempts
+	for _i in 3:
+		await get_tree().physics_frame
+	var details := {
+		"state": player.spawn_init_state,
+		"attempts_after_calls": attempts_after_calls,
+		"attempts_after_physics": player.spawn_init_attempts,
+		"rebuild_calls": fake_zone.rebuild_calls,
+	}
+	report["spawn_failure_probe"] = details
+	check(player.spawn_init_state == player.SPAWN_INIT_FAILED \
+		and attempts_after_calls == 1 and player.spawn_init_attempts == 1 \
+		and fake_zone.rebuild_calls == 0,
+		"spawn_failure_is_terminal_without_rebuild_loop", details)
+	fake_zone.queue_free()
 
 func verify_opening_dialogue() -> void:
 	var lesson: Array = tm.chapter_1_lesson()
