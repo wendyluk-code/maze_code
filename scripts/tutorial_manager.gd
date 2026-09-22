@@ -88,7 +88,34 @@ func start(custom_steps: Array = []) -> void:
 	tutorial_started.emit()
 	if _chapter_1_run:
 		chapter_1_started.emit()
+		_resume_saved_cooking()
 	_run_step(_run_token)
+
+## 领取材料后从真实经营进度恢复，避免退出重进重复制作。
+func _resume_saved_cooking() -> void:
+	if _replay_requested:
+		return
+	var sm := get_node_or_null("/root/SaveManager")
+	if sm == null or not sm.is_canonical_first_order(sm.current_order()):
+		return
+	var progress: Dictionary = sm.first_order_progress()
+	if not bool(progress.get("ingredients_claimed", false)):
+		return
+	var next_stage := 6 if str(progress.get("next_step", "")) == "deliver" else 5
+	for i in steps.size():
+		if int(steps[i].get("stage", 0)) == next_stage:
+			idx = i
+			break
+	# 正式入口可能仍在 _ready 中，等场景完成入树后恢复客人。
+	_restore_cooking_guest.call_deferred(_run_token)
+
+func _restore_cooking_guest(token: int) -> void:
+	if not _run_is_valid(token):
+		return
+	# 恢复已登场的客人；不重播镜头或锁定玩家。
+	_parked_guest = (load("res://scenes/guest_placeholder.tscn") as PackedScene).instantiate()
+	_parked_guest.position = Vector2(910, 198)
+	get_tree().current_scene.add_child(_parked_guest)
 
 ## 第一章：醒来与首单教程（脚本化演示，后续接真实经营系统）
 ## 叙事：片头视频（占位）→ 芽芽唤醒失忆的主角 → 饥肠辘辘的客人(？？？)来临 → 芽芽引导做菜
@@ -190,7 +217,7 @@ func chapter_1_lesson() -> Array:
 			"stage": 5,
 			"type": "interact", "target": "魔法汤锅",
 			"hint": "靠近料理台，按 E 制作料理",
-			"toast": "【魔物烤肉】 做好了！",
+			"toast": "【盐烤岩鬃肉】做好了！",
 		},
 		{
 			"stage": 6,
@@ -472,6 +499,27 @@ func _on_player_interact(node: Node2D) -> void:
 			warehouse_modal.connect("cancelled", _on_warehouse_cancelled)
 		_set_player_locked(true)
 		warehouse_modal.open_for_order()
+		return
+	if _chapter_1_run and int(step.get("stage", 0)) == 5 and str(step.get("target", "")) == "魔法汤锅":
+		var sm := get_node_or_null("/root/SaveManager")
+		if sm == null:
+			return
+		var result: Dictionary = sm.cook_first_order()
+		if not bool(result.get("success", false)):
+			var messages := {
+				"no_canonical_order": "请先到前台接下首单。",
+				"ingredients_not_claimed": "请先到仓库领取首单食材。",
+				"insufficient_ingredients": "食材不足，需要岩鬃肉 ×1、岩盐 ×1。",
+				"already_cooked": "料理已做好，请前往前台交付。",
+				"save_failed": "保存失败，本次未制作，请重试。",
+			}
+			guide.show_toast(str(messages.get(result.get("reason", ""), "暂时无法制作。")))
+			return
+		var tracker := get_tree().get_first_node_in_group("order_tracking")
+		if is_instance_valid(tracker):
+			tracker.refresh_saved_state()
+		guide.show_toast(str(step.get("toast", "")))
+		_complete_step(_run_token)
 		return
 	var toast := str(step.get("toast", ""))
 	if not toast.is_empty():

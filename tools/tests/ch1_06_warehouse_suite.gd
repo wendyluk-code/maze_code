@@ -61,7 +61,7 @@ func run_suite() -> void:
 	var out_of_range_e := InputEventAction.new(); out_of_range_e.action = &"interact"; out_of_range_e.pressed = true
 	player._unhandled_input(out_of_range_e)
 	await get_tree().process_frame
-	_check(not modal.visible and tm.idx == before_idx and sm.inventory_snapshot() == {"rockmane_meat": 0, "rock_salt": 0},
+	_check(not modal.visible and tm.idx == before_idx and sm.inventory_snapshot() == {"rockmane_meat": 0, "rock_salt": 0, "salt_grilled_rockmane": 0},
 		"out_of_range_e_does_not_open_warehouse", {})
 
 	# 真实 E：先确认唯一最近目标为仓库，再由玩家入口发出 interact。

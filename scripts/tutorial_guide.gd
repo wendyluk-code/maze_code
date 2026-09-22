@@ -98,7 +98,19 @@ func set_chapter_stage(stage: int, title: String) -> void:
 func _process(_delta: float) -> void:
 	_sync_dialog_mask()
 	_position_hint_panel()
+	_position_toast()
 	_position_skip_button()
+
+func _position_toast() -> void:
+	if not toast.visible:
+		return
+	# 制作反馈沿用已避开订单卡的提示列，避免覆盖消耗后的库存计数。
+	toast.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	toast.offset_left = hint_panel.offset_left
+	toast.offset_right = hint_panel.offset_right
+	toast.offset_top = 164.0
+	toast.offset_bottom = 240.0
+	toast.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 func _position_hint_panel() -> void:
 	var viewport_width := get_viewport_rect().size.x

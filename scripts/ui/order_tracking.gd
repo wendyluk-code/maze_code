@@ -202,8 +202,8 @@ func refresh_saved_state() -> void:
 	_set_counter(_order_status, 0)
 	_set_counter(_meat_status, meat)
 	_set_counter(_salt_status, salt)
-	# 料理与交付事务尚未实现；不得因拥有食材而伪报完成。
-	_set_counter(_cook_status, 0)
+	# 取货栏显示当前库存；制作扣料后归零。交付仍等待实际交单事务。
+	_set_counter(_cook_status, int(sm.inventory_quantity("salt_grilled_rockmane")))
 	visible = true
 
 func show_order_receipt(order) -> void:

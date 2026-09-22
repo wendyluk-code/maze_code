@@ -26,7 +26,7 @@ func _defaults() -> Dictionary:
 		"tutorial_done": false,
 		CHAPTER_1_DONE_KEY: false,
 		CURRENT_ORDER_KEY: _empty_order(),
-		INVENTORY_KEY: {ROCKMAN_MEAT_ID: 0, ROCK_SALT_ID: 0},
+		INVENTORY_KEY: {ROCKMAN_MEAT_ID: 0, ROCK_SALT_ID: 0, FIRST_ORDER_ITEM_ID: 0},
 		FIRST_ORDER_PROGRESS_KEY: {"ingredients_claimed": false, "next_step": "accept_order"},
 	}
 
@@ -66,10 +66,10 @@ func load_data() -> void:
 	data = _defaults()
 
 func _normalize_inventory(value) -> Dictionary:
-	var inventory := {ROCKMAN_MEAT_ID: 0, ROCK_SALT_ID: 0}
+	var inventory := {ROCKMAN_MEAT_ID: 0, ROCK_SALT_ID: 0, FIRST_ORDER_ITEM_ID: 0}
 	if not value is Dictionary:
 		return inventory
-	for key in [ROCKMAN_MEAT_ID, ROCK_SALT_ID]:
+	for key in [ROCKMAN_MEAT_ID, ROCK_SALT_ID, FIRST_ORDER_ITEM_ID]:
 		var quantity := int(value.get(key, 0))
 		inventory[key] = maxi(0, quantity)
 	return inventory
@@ -80,19 +80,22 @@ func _normalize_progress(value) -> Dictionary:
 		return progress
 	progress["ingredients_claimed"] = bool(value.get("ingredients_claimed", false))
 	var next_step := str(value.get("next_step", "accept_order"))
-	if next_step not in ["accept_order", "prepare_ingredients", "cook"]:
+	if next_step not in ["accept_order", "prepare_ingredients", "cook", "deliver"]:
 		next_step = "accept_order"
 	progress["next_step"] = next_step
 	return progress
 
 func save() -> bool:
-	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	# 先完整写入同目录临时文件，再替换正式存档；失败时保留上次提交。
+	var temporary_path := SAVE_PATH + ".tmp"
+	var f := FileAccess.open(temporary_path, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(data, "\t"))
 		f.flush()
 		var write_error := f.get_error()
 		f.close()
-		return write_error == OK
+		if write_error == OK:
+			return DirAccess.rename_absolute(temporary_path, SAVE_PATH) == OK
 	return false
 
 func is_tutorial_done() -> bool:
@@ -181,3 +184,28 @@ func claim_first_order_ingredients() -> Dictionary:
 		data[FIRST_ORDER_PROGRESS_KEY] = before_progress
 		return {"success": false, "created": false, "reason": "save_failed", "inventory": before_inventory}
 	return {"success": true, "created": true, "reason": "claimed", "inventory": inventory_snapshot(), "delta": {ROCKMAN_MEAT_ID: 1, ROCK_SALT_ID: 1}}
+
+## 首单制作是一次提交：扣除两种材料、增加成品、保存交付进度。
+## 只有成功写盘才能推进教程；重复制作失败且不改变库存或进度。
+func cook_first_order() -> Dictionary:
+	if not is_canonical_first_order(current_order()):
+		return {"success": false, "reason": "no_canonical_order"}
+	var progress := first_order_progress()
+	if str(progress.get("next_step", "")) == "deliver":
+		return {"success": false, "reason": "already_cooked"}
+	if not bool(progress.get("ingredients_claimed", false)) or str(progress.get("next_step", "")) != "cook":
+		return {"success": false, "reason": "ingredients_not_claimed"}
+	var inventory := inventory_snapshot()
+	if int(inventory[ROCKMAN_MEAT_ID]) < 1 or int(inventory[ROCK_SALT_ID]) < 1:
+		return {"success": false, "reason": "insufficient_ingredients"}
+	var previous := data.duplicate(true)
+	inventory[ROCKMAN_MEAT_ID] -= 1
+	inventory[ROCK_SALT_ID] -= 1
+	inventory[FIRST_ORDER_ITEM_ID] += 1
+	progress["next_step"] = "deliver"
+	data[INVENTORY_KEY] = inventory
+	data[FIRST_ORDER_PROGRESS_KEY] = progress
+	if not save():
+		data = previous
+		return {"success": false, "reason": "save_failed"}
+	return {"success": true, "reason": "cooked", "inventory": inventory_snapshot()}
