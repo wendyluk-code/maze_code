@@ -60,7 +60,7 @@ func is_replay_requested() -> bool:
 ## 启动教程。custom_steps 为空时使用正式的“第一章：醒来与首单教程”。
 ## 非空 custom_steps 仅作为兼容测试/内部脚本入口，不改变章节完成状态。
 func start(custom_steps: Array = []) -> void:
-	if custom_steps.is_empty() and SaveManager.is_ready_to_depart():
+	if custom_steps.is_empty() and not _replay_requested and SaveManager.is_ready_to_depart():
 		_cancel_current_run()
 		return
 	var next_guide = get_tree().get_first_node_in_group("tutorial_guide")
@@ -81,6 +81,8 @@ func start(custom_steps: Array = []) -> void:
 		guide.prepare_for_start()
 	active = true
 	_chapter_1_run = custom_steps.is_empty()
+	if _replay_requested:
+		SaveManager.begin_replay()
 	steps = custom_steps if not custom_steps.is_empty() else chapter_1_lesson()
 	idx = 0
 	current_stage = 0
@@ -101,22 +103,21 @@ func _resume_saved_cooking() -> void:
 	var sm := get_node_or_null("/root/SaveManager")
 	if sm == null:
 		return
-	var settled: bool = sm.has_first_order_settlement() \
-		and str(sm.current_order().get("status", "")) == sm.ORDER_STATUS_COMPLETED
-	if not settled and not sm.is_canonical_first_order(sm.current_order()):
+	var stage: String = sm.lifecycle_stage()
+	if stage == "not_started":
 		return
-	var progress: Dictionary = sm.first_order_progress()
-	if not bool(progress.get("ingredients_claimed", false)):
-		return
-	var next_stage := 6 if str(progress.get("next_step", "")) == "deliver" else 5
-	if settled and str(progress.get("next_step", "")) == "chapter_wrap_up":
-		next_stage = 7
+	var next_stage: int = {"awakened": 2, "guest_arrived": 2, "order_accepted": 4,
+		"ingredients_collected": 5, "dish_ready": 6, "order_served": 7}.get(stage, 1)
 	for i in steps.size():
+		if stage == "guest_arrived" and steps[i].get("type") == "cutscene_guest":
+			idx = i + 1
+			break
 		if int(steps[i].get("stage", 0)) == next_stage and (next_stage != 7 or steps[i].get("wrapup_id", "") == sm.departure_state().step):
 			idx = i
 			break
 	# 正式入口可能仍在 _ready 中，等场景完成入树后恢复客人。
-	_restore_cooking_guest.call_deferred(_run_token)
+	if stage != "awakened":
+		_restore_cooking_guest.call_deferred(_run_token)
 
 func _restore_cooking_guest(token: int) -> void:
 	if not _run_is_valid(token):
@@ -309,10 +310,10 @@ func resolve_target(target) -> Node2D:
 	return null
 
 func skip_all() -> void:
+	_finish(true)
 	var tracker := get_tree().get_first_node_in_group("order_tracking")
 	if is_instance_valid(tracker) and tracker.has_method("hide_tracking"):
 		tracker.hide_tracking()
-	_finish(true)
 
 func _run_is_valid(token: int) -> bool:
 	return active and token == _run_token and is_instance_valid(guide)
@@ -466,6 +467,18 @@ func _unpark_camera(token: int) -> void:
 func _complete_step(token: int) -> void:
 	if not _run_is_valid(token):
 		return
+	if _chapter_1_run and idx < steps.size():
+		var checkpoint := ""
+		if steps[idx].get("type") == "cutscene_guest":
+			checkpoint = "guest_arrived"
+		elif int(steps[idx].get("stage", 0)) == 1 and idx + 1 < steps.size() and int(steps[idx + 1].get("stage", 0)) == 2:
+			checkpoint = "awakened"
+		if not checkpoint.is_empty() and not SaveManager.record_intro(checkpoint):
+			guide.show_toast("开场进度未保存，请重试。")
+			if checkpoint == "guest_arrived":
+				_cleanup_cutscene(true)
+			_run_step(token)
+			return
 	if _chapter_1_run and idx < steps.size() and steps[idx].has("wrapup_id"):
 		var result := SaveManager.advance_departure(str(steps[idx].wrapup_id))
 		if not result.success:
@@ -491,6 +504,12 @@ func _cancel_current_run() -> void:
 	idx = 0
 	current_stage = 0
 	_chapter_1_run = false
+	var was_replaying: bool = SaveManager._replaying
+	SaveManager.end_replay()
+	if was_replaying:
+		var tracker := get_tree().get_first_node_in_group("order_tracking")
+		if is_instance_valid(tracker) and tracker.has_method("refresh_saved_state"):
+			tracker.refresh_saved_state()
 
 func _on_dialog_done() -> void:
 	if not active:
@@ -681,23 +700,15 @@ func _kill_guest_fade_tween() -> void:
 func _finish(remove_guest := false) -> void:
 	if not active:
 		return
-	active = false
-	_run_token += 1
-	_close_departure_modals()
-	_set_player_locked(false)
-	# 正常完成与跳过都必须清理临时客人；remove_guest 参数保留给旧调用方兼容。
-	_cleanup_cutscene(true)
-	if is_instance_valid(guide) and guide.has_method("finish_all"):
-		guide.finish_all()
+	_cancel_current_run()
 	# 卡牌与最终生命周期票据未完成，不写完成标记，不发章节完成信号。
 	# 跳过仅结束本次引导，已保存检查点供重进恢复。
 	tutorial_finished.emit()
-	_chapter_1_run = false
 
 ## 仅回收本票据新增模态状态；先恢复模态快照，再释放教程拥有的玩家锁。
 func _close_departure_modals() -> void:
 	var warehouse := get_tree().get_first_node_in_group("warehouse_modal")
-	if is_instance_valid(warehouse) and warehouse._empty_stock and warehouse._open:
+	if is_instance_valid(warehouse) and warehouse._open:
 		warehouse.close_modal()
 	var panel := get_tree().get_first_node_in_group("departure_panel")
 	if is_instance_valid(panel) and panel._open:

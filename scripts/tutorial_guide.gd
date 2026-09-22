@@ -26,11 +26,11 @@ func _ready() -> void:
 	# 只有正式餐厅入口负责自动启动。测试或其他场景临时实例化地图时，
 	# 不抢占 TutorialManager，避免产生第二条异步教程流程。
 	if get_tree().current_scene != _scene_root():
-		visible = false
+		finish_all()
 		return
 	# 已完成第一章：直接隐藏整个引导层，不干扰正常游戏；开发重播参数例外
 	if not should_start_chapter_1():
-		visible = false
+		finish_all()
 		return
 	prepare_for_start()
 	# 首次进入游戏自动开始新手教学
@@ -43,14 +43,16 @@ func _scene_root() -> Node:
 	return node
 
 func should_start_chapter_1() -> bool:
-	if SaveManager.is_ready_to_depart():
-		return false
 	var replay := TutorialManager.has_method("is_replay_requested") and TutorialManager.is_replay_requested()
 	if replay:
 		return true
+	if SaveManager.is_ready_to_depart():
+		return false
 	return not SaveManager.has_method("is_chapter_1_done") or not SaveManager.is_chapter_1_done()
 
 func prepare_for_start() -> void:
+	_modal_suppressed = false
+	_modal_hint_visible = false
 	if _toast_tween != null and _toast_tween.is_valid():
 		_toast_tween.kill()
 	_toast_tween = null
@@ -222,6 +224,8 @@ func _hide_toast() -> void:
 	toast.modulate.a = 1.0
 
 func finish_all() -> void:
+	_modal_suppressed = false
+	_modal_hint_visible = false
 	if _toast_tween != null and _toast_tween.is_valid():
 		_toast_tween.kill()
 	_toast_tween = null

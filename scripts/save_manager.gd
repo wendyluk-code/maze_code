@@ -28,6 +28,17 @@ const WRAPUP_STEPS := ["relief", "meat", "yaya_past", "hero_past", "yaya_yes",
 	"yaya_join", "stay_shallow", "agreement", "ready_to_depart"]
 
 var data: Dictionary = _defaults()
+## 重播使用独立工作副本；公开 data 和正式文件在整个重播期间保持原样。
+var _replay_data: Dictionary = {}
+var _replaying := false
+var _state: Dictionary:
+	get:
+		return _replay_data if _replaying else data
+	set(value):
+		if _replaying:
+			_replay_data = value
+		else:
+			data = value
 ## 只记录读取时补齐的字段，不在迁移时推断或补发奖励。
 var migration_diagnostics: Array[String] = []
 
@@ -44,6 +55,7 @@ func _defaults() -> Dictionary:
 		FIRST_ORDER_SETTLEMENT_KEY: {},
 		REPUTATION_KEY: 0,
 		WRAPUP_KEY: _empty_departure(),
+		"chapter_1_intro": "not_started",
 	}
 
 func _empty_order() -> Dictionary:
@@ -62,29 +74,78 @@ func _empty_departure() -> Dictionary:
 		"cards": {"status": "pending_content", "unlocked": false, "card_ids": []}}
 
 func departure_state() -> Dictionary:
-	var state := _empty_departure()
-	var saved = data.get(WRAPUP_KEY, {})
-	if saved is Dictionary:
-		for key in state:
-			if saved.has(key):
-				state[key] = saved[key]
-	# JSON 将数字读为浮点；查询契约固定使用整数楼层，跨进程比较保持一致。
-	state = state.duplicate(true)
-	if state.map is Dictionary and state.map.get("unlocked_floors") is Array:
-		var floors: Array = []
-		for floor_number in state.map.unlocked_floors:
-			floors.append(int(floor_number))
-		state.map.unlocked_floors = floors
-	return state.duplicate(true)
+	var saved = _state.get(WRAPUP_KEY)
+	var problem := _departure_problem(saved)
+	if not problem.is_empty():
+		_diagnose("准备状态回退 relief：" + problem)
+		return _empty_departure()
+	var state: Dictionary = saved.duplicate(true)
+	if not state.map.unlocked_floors.is_empty():
+		state.map.unlocked_floors = [1]
+	return state
+
+func _diagnose(message: String) -> void:
+	if not migration_diagnostics.has(message):
+		migration_diagnostics.append(message)
+		print("SaveManager: ", message)
+
+## 检查点只接受与已执行步骤一致的结构，缺字段不能由默认值拼成完成态。
+func _departure_problem(value) -> String:
+	if not value is Dictionary:
+		return "departure 必须是字典"
+	for key in _empty_departure():
+		if not value.has(key):
+			return "departure 缺少 " + key
+	if not value.step is String or not value.step in WRAPUP_STEPS:
+		return "departure.step 无效"
+	var index: int = WRAPUP_STEPS.find(value.step)
+	for key in ["empty_warehouse_checked", "tieshan_name_revealed", "entrance_lit"]:
+		if not value[key] is bool:
+			return key + " 必须是布尔值"
+	if not value.map is Dictionary:
+		return "map 必须是字典"
+	var map: Dictionary = value.map
+	if not map.get("unlocked_floors") is Array or not map.get("visible_regions") is Array or not map.get("other_regions") is String or map.other_regions != "fog":
+		return "map 楼层、区域或迷雾无效"
+	var unlocked := index > WRAPUP_STEPS.find("salt_pool")
+	if unlocked:
+		if map.unlocked_floors.size() != 1 or typeof(map.unlocked_floors[0]) not in [TYPE_INT, TYPE_FLOAT] or map.unlocked_floors[0] != 1 or map.visible_regions != ["old_salt_pool"]:
+			return "map 旧盐池解锁与步骤矛盾"
+	elif not map.unlocked_floors.is_empty() or not map.visible_regions.is_empty():
+		return "map 提前解锁"
+	if not value.party is Array or not value.objective is String or not value.cards is Dictionary:
+		return "party、objective 或 cards 类型错误"
+	if not value.cards.get("status") is String or not value.cards.get("unlocked") is bool or not value.cards.get("card_ids") is Array or value.cards != {"status": "pending_content", "unlocked": false, "card_ids": []}:
+		return "cards 必须保持待提供且未解锁"
+	var ready: bool = value.step == "ready_to_depart"
+	if value.party != (["yaya", "tieshan"] if ready else []) or value.objective != (DEPARTURE_OBJECTIVE if ready else "") or value.entrance_lit != ready:
+		return "队伍、目标、入口与步骤矛盾"
+	if value.empty_warehouse_checked != (index > WRAPUP_STEPS.find("warehouse_inspect")) or value.tieshan_name_revealed != (index > WRAPUP_STEPS.find("introduction")):
+		return "仓库或姓名检查点与步骤矛盾"
+	if index > 0 and not can_start_departure():
+		return "准备步骤缺少真实首单结算或库存未清空"
+	return ""
 
 func is_ready_to_depart() -> bool:
-	return departure_state().step == "ready_to_depart"
+	return departure_state().step == "ready_to_depart" and can_start_departure()
 
 func can_start_departure() -> bool:
-	return has_first_order_settlement() and current_order().get("status") == ORDER_STATUS_COMPLETED \
-		and first_order_progress().next_step == "chapter_wrap_up" \
-		and inventory_quantity(ROCKMAN_MEAT_ID) == 0 and inventory_quantity(ROCK_SALT_ID) == 0 \
-		and inventory_quantity(FIRST_ORDER_ITEM_ID) == 0
+	var order := current_order()
+	var progress = _state.get(FIRST_ORDER_PROGRESS_KEY)
+	var inventory = _state.get(INVENTORY_KEY)
+	if not progress is Dictionary or not inventory is Dictionary:
+		return false
+	if not progress.get("next_step") is String or progress.next_step != "chapter_wrap_up" or not progress.get("ingredients_claimed") is bool or not progress.ingredients_claimed:
+		return false
+	for key in [ROCKMAN_MEAT_ID, ROCK_SALT_ID, FIRST_ORDER_ITEM_ID]:
+		if typeof(inventory.get(key)) not in [TYPE_INT, TYPE_FLOAT] or inventory[key] != 0:
+			return false
+	if order.get("status") != ORDER_STATUS_COMPLETED:
+		return false
+	order.status = ORDER_STATUS_IN_PROGRESS
+	return is_canonical_first_order(order) and has_first_order_settlement() \
+		and typeof(_state.get(REPUTATION_KEY)) in [TYPE_INT, TYPE_FLOAT] \
+		and _state[REPUTATION_KEY] >= FIRST_ORDER_REPUTATION
 
 ## 完成一个阶段7步骤时原子提交下一检查点及对应解锁；失败时完整回滚。
 func advance_departure(expected_step: String) -> Dictionary:
@@ -94,7 +155,7 @@ func advance_departure(expected_step: String) -> Dictionary:
 	var index := WRAPUP_STEPS.find(expected_step)
 	if index < 0 or index >= WRAPUP_STEPS.size() - 1 or state.step != expected_step:
 		return {"success": false, "reason": "wrong_step"}
-	var previous := data.duplicate(true)
+	var previous := _state.duplicate(true)
 	state.step = WRAPUP_STEPS[index + 1]
 	match expected_step:
 		"warehouse_inspect":
@@ -107,9 +168,9 @@ func advance_departure(expected_step: String) -> Dictionary:
 			state.party = ["yaya", "tieshan"]
 			state.objective = DEPARTURE_OBJECTIVE
 			state.entrance_lit = true
-	data[WRAPUP_KEY] = state
+	_state[WRAPUP_KEY] = state
 	if not save():
-		data = previous
+		_state = previous
 		return {"success": false, "reason": "save_failed"}
 	return {"success": true, "state": departure_state()}
 
@@ -123,33 +184,94 @@ func _normalize_order(value) -> Dictionary:
 	return value.duplicate(true)
 
 func load_data() -> void:
+	if _replaying:
+		return
 	migration_diagnostics.clear()
+	data = _defaults()
 	if FileAccess.file_exists(SAVE_PATH):
 		var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
 		if f:
-			var parsed = JSON.parse_string(f.get_as_text())
+			var parser := JSON.new()
+			var error := parser.parse(f.get_as_text())
+			f.close()
+			if error != OK:
+				_diagnose("存档 JSON 损坏，回退默认状态：" + parser.get_error_message())
+				return
+			var parsed = parser.data
 			if parsed is Dictionary:
-				for key in [FIRST_ORDER_SETTLEMENT_KEY, REPUTATION_KEY]:
+				for key in _defaults():
 					if not parsed.has(key):
-						migration_diagnostics.append("旧存档补齐默认字段：" + key + "；未补发声望。")
-				for diagnostic in migration_diagnostics:
-					print("SaveManager: ", diagnostic)
+						_diagnose("旧存档补齐默认字段：" + key + "；未补发声望。")
 				# 旧存档可能只有 tutorial_done；合并默认值而不是丢弃未知字段，
 				# 这样旧存档能继续使用，同时缺少第一章标记时会进入第一章。
-				data = _defaults()
+				_state = _defaults()
 				for key in parsed:
-					data[key] = parsed[key]
-				data[CURRENT_ORDER_KEY] = _normalize_order(data.get(CURRENT_ORDER_KEY))
-				data[INVENTORY_KEY] = _normalize_inventory(data.get(INVENTORY_KEY))
-				data[FIRST_ORDER_PROGRESS_KEY] = _normalize_progress(data.get(FIRST_ORDER_PROGRESS_KEY))
+					_state[key] = parsed[key]
+				# 先核对原始事务结构，不能把错误库存归零后误认作已就绪。
+				_state[WRAPUP_KEY] = departure_state()
+				_state[CURRENT_ORDER_KEY] = _normalize_order(_state.get(CURRENT_ORDER_KEY))
+				_state[INVENTORY_KEY] = _normalize_inventory(_state.get(INVENTORY_KEY))
+				_state[FIRST_ORDER_PROGRESS_KEY] = _normalize_progress(_state.get(FIRST_ORDER_PROGRESS_KEY))
+				for key in ["tutorial_done", CHAPTER_1_DONE_KEY]:
+					if not _state[key] is bool:
+						_diagnose(key + " 类型错误，回退 false")
+						_state[key] = false
+				if not _state.chapter_1_intro is String or _state.chapter_1_intro not in ["not_started", "awakened", "guest_arrived"]:
+					_diagnose("chapter_1_intro 无效，回退 not_started")
+					_state.chapter_1_intro = "not_started"
 				return
-	data = _defaults()
+			_diagnose("存档顶层必须是字典，回退默认状态")
+		else:
+			_diagnose("存档读取失败，回退默认状态：" + str(FileAccess.get_open_error()))
+	_state = _defaults()
+
+func begin_replay() -> void:
+	_replay_data = _defaults()
+	_replaying = true
+
+func end_replay() -> void:
+	_replaying = false
+	_replay_data = {}
+
+func record_intro(stage: String) -> bool:
+	if stage not in ["awakened", "guest_arrived"]:
+		return false
+	var previous: String = _state.get("chapter_1_intro", "not_started")
+	if previous == "guest_arrived" or previous == stage:
+		return true
+	_state.chapter_1_intro = stage
+	if save():
+		return true
+	_state.chapter_1_intro = previous
+	return false
+
+## 经营阶段从事务结果派生，不另存一个可能与库存矛盾的阶段标记。
+func lifecycle_stage() -> String:
+	if is_ready_to_depart():
+		return "ready_to_depart"
+	if can_start_departure():
+		return "order_served"
+	var progress := first_order_progress()
+	if is_canonical_first_order(current_order()):
+		if progress.next_step == "deliver" and progress.ingredients_claimed and inventory_quantity(FIRST_ORDER_ITEM_ID) >= 1:
+			return "dish_ready"
+		if progress.next_step == "cook" and progress.ingredients_claimed and inventory_quantity(ROCKMAN_MEAT_ID) >= 1 and inventory_quantity(ROCK_SALT_ID) >= 1:
+			return "ingredients_collected"
+		if progress.next_step == "prepare_ingredients" and not progress.ingredients_claimed:
+			return "order_accepted"
+		_diagnose("首单进度与库存矛盾，保留经营数据并回退接单引导")
+		return "guest_arrived"
+	return str(_state.get("chapter_1_intro", "not_started"))
 
 func _normalize_inventory(value) -> Dictionary:
 	var inventory := {ROCKMAN_MEAT_ID: 0, ROCK_SALT_ID: 0, FIRST_ORDER_ITEM_ID: 0}
 	if not value is Dictionary:
+		_diagnose("inventory 类型错误，使用空库存视图")
 		return inventory
 	for key in [ROCKMAN_MEAT_ID, ROCK_SALT_ID, FIRST_ORDER_ITEM_ID]:
+		if typeof(value.get(key, 0)) not in [TYPE_INT, TYPE_FLOAT]:
+			_diagnose("inventory." + key + " 数量类型错误，使用 0")
+			continue
 		var quantity := int(value.get(key, 0))
 		inventory[key] = maxi(0, quantity)
 	return inventory
@@ -158,7 +280,11 @@ func _normalize_progress(value) -> Dictionary:
 	var progress := {"ingredients_claimed": false, "next_step": "accept_order"}
 	if not value is Dictionary:
 		return progress
-	progress["ingredients_claimed"] = bool(value.get("ingredients_claimed", false))
+	var claimed = value.get("ingredients_claimed", false)
+	if claimed is bool:
+		progress["ingredients_claimed"] = claimed
+	else:
+		_diagnose("ingredients_claimed 类型错误，回退 false")
 	var next_step := str(value.get("next_step", "accept_order"))
 	if next_step not in ["accept_order", "prepare_ingredients", "cook", "deliver", "chapter_wrap_up"]:
 		next_step = "accept_order"
@@ -166,11 +292,13 @@ func _normalize_progress(value) -> Dictionary:
 	return progress
 
 func save() -> bool:
+	if _replaying:
+		return true
 	# 先完整写入同目录临时文件，再替换正式存档；失败时保留上次提交。
 	var temporary_path := SAVE_PATH + ".tmp"
 	var f := FileAccess.open(temporary_path, FileAccess.WRITE)
 	if f:
-		f.store_string(JSON.stringify(data, "\t"))
+		f.store_string(JSON.stringify(_state, "\t"))
 		f.flush()
 		var write_error := f.get_error()
 		f.close()
@@ -179,19 +307,19 @@ func save() -> bool:
 	return false
 
 func is_tutorial_done() -> bool:
-	return bool(data.get("tutorial_done", false))
+	return bool(_state.get("tutorial_done", false))
 
 func mark_tutorial_done() -> void:
-	data["tutorial_done"] = true
+	_state["tutorial_done"] = true
 
 func is_chapter_1_done() -> bool:
-	return bool(data.get(CHAPTER_1_DONE_KEY, false))
+	return bool(_state.get(CHAPTER_1_DONE_KEY, false))
 
 func mark_chapter_1_done() -> void:
-	data[CHAPTER_1_DONE_KEY] = true
+	_state[CHAPTER_1_DONE_KEY] = true
 
 func current_order() -> Dictionary:
-	return _normalize_order(data.get(CURRENT_ORDER_KEY))
+	return _normalize_order(_state.get(CURRENT_ORDER_KEY))
 
 func has_active_order() -> bool:
 	return str(current_order().get("status", ORDER_STATUS_NONE)) == ORDER_STATUS_IN_PROGRESS
@@ -202,7 +330,8 @@ func is_canonical_first_order(order) -> bool:
 	return str(order.get("id", "")) == FIRST_ORDER_ID \
 		and str(order.get("item_id", "")) == FIRST_ORDER_ITEM_ID \
 		and str(order.get("item_name", "")) == FIRST_ORDER_ITEM_NAME \
-		and int(order.get("quantity", 0)) == FIRST_ORDER_QUANTITY \
+		and typeof(order.get("quantity")) in [TYPE_INT, TYPE_FLOAT] \
+		and order.quantity == FIRST_ORDER_QUANTITY \
 		and str(order.get("status", "")) == ORDER_STATUS_IN_PROGRESS
 
 ## 原子接受第一笔订单：相同有效订单重复调用保持幂等，不创建第二单。
@@ -210,7 +339,7 @@ func is_canonical_first_order(order) -> bool:
 func accept_first_order() -> Dictionary:
 	if has_first_order_settlement() or str(current_order().get("status", "")) == ORDER_STATUS_COMPLETED:
 		return {"success": false, "created": false, "reason": "already_completed", "order": current_order()}
-	var raw_existing = data.get(CURRENT_ORDER_KEY)
+	var raw_existing = _state.get(CURRENT_ORDER_KEY)
 	if raw_existing is Dictionary \
 			and str(raw_existing.get("status", ORDER_STATUS_NONE)) == ORDER_STATUS_IN_PROGRESS:
 		var existing := current_order()
@@ -225,27 +354,27 @@ func accept_first_order() -> Dictionary:
 		"quantity": FIRST_ORDER_QUANTITY,
 		"status": ORDER_STATUS_IN_PROGRESS,
 	}
-	var previous_order = data.get(CURRENT_ORDER_KEY)
+	var previous_order = _state.get(CURRENT_ORDER_KEY)
 	var previous_progress := first_order_progress()
-	data[CURRENT_ORDER_KEY] = next_order
-	data[FIRST_ORDER_PROGRESS_KEY] = {"ingredients_claimed": false, "next_step": "prepare_ingredients"}
+	_state[CURRENT_ORDER_KEY] = next_order
+	_state[FIRST_ORDER_PROGRESS_KEY] = {"ingredients_claimed": false, "next_step": "prepare_ingredients"}
 	if not save():
 		if previous_order is Dictionary:
-			data[CURRENT_ORDER_KEY] = previous_order
+			_state[CURRENT_ORDER_KEY] = previous_order
 		else:
-			data[CURRENT_ORDER_KEY] = _empty_order()
-		data[FIRST_ORDER_PROGRESS_KEY] = previous_progress
+			_state[CURRENT_ORDER_KEY] = _empty_order()
+		_state[FIRST_ORDER_PROGRESS_KEY] = previous_progress
 		return {"success": false, "created": false, "reason": "save_failed", "order": current_order()}
 	return {"success": true, "created": true, "reason": "created", "order": current_order()}
 
 func inventory_snapshot() -> Dictionary:
-	return _normalize_inventory(data.get(INVENTORY_KEY)).duplicate(true)
+	return _normalize_inventory(_state.get(INVENTORY_KEY)).duplicate(true)
 
 func inventory_quantity(item_id: String) -> int:
 	return int(inventory_snapshot().get(item_id, 0))
 
 func first_order_progress() -> Dictionary:
-	return _normalize_progress(data.get(FIRST_ORDER_PROGRESS_KEY)).duplicate(true)
+	return _normalize_progress(_state.get(FIRST_ORDER_PROGRESS_KEY)).duplicate(true)
 
 ## 原子领取首单材料。只接受 canonical 首单；重复领取成功但不叠加。
 func claim_first_order_ingredients() -> Dictionary:
@@ -259,11 +388,11 @@ func claim_first_order_ingredients() -> Dictionary:
 	var next_inventory := before_inventory.duplicate(true)
 	next_inventory[ROCKMAN_MEAT_ID] = int(next_inventory.get(ROCKMAN_MEAT_ID, 0)) + 1
 	next_inventory[ROCK_SALT_ID] = int(next_inventory.get(ROCK_SALT_ID, 0)) + 1
-	data[INVENTORY_KEY] = next_inventory
-	data[FIRST_ORDER_PROGRESS_KEY] = {"ingredients_claimed": true, "next_step": "cook"}
+	_state[INVENTORY_KEY] = next_inventory
+	_state[FIRST_ORDER_PROGRESS_KEY] = {"ingredients_claimed": true, "next_step": "cook"}
 	if not save():
-		data[INVENTORY_KEY] = before_inventory
-		data[FIRST_ORDER_PROGRESS_KEY] = before_progress
+		_state[INVENTORY_KEY] = before_inventory
+		_state[FIRST_ORDER_PROGRESS_KEY] = before_progress
 		return {"success": false, "created": false, "reason": "save_failed", "inventory": before_inventory}
 	return {"success": true, "created": true, "reason": "claimed", "inventory": inventory_snapshot(), "delta": {ROCKMAN_MEAT_ID: 1, ROCK_SALT_ID: 1}}
 
@@ -280,27 +409,29 @@ func cook_first_order() -> Dictionary:
 	var inventory := inventory_snapshot()
 	if int(inventory[ROCKMAN_MEAT_ID]) < 1 or int(inventory[ROCK_SALT_ID]) < 1:
 		return {"success": false, "reason": "insufficient_ingredients"}
-	var previous := data.duplicate(true)
+	var previous := _state.duplicate(true)
 	inventory[ROCKMAN_MEAT_ID] -= 1
 	inventory[ROCK_SALT_ID] -= 1
 	inventory[FIRST_ORDER_ITEM_ID] += 1
 	progress["next_step"] = "deliver"
-	data[INVENTORY_KEY] = inventory
-	data[FIRST_ORDER_PROGRESS_KEY] = progress
+	_state[INVENTORY_KEY] = inventory
+	_state[FIRST_ORDER_PROGRESS_KEY] = progress
 	if not save():
-		data = previous
+		_state = previous
 		return {"success": false, "reason": "save_failed"}
 	return {"success": true, "reason": "cooked", "inventory": inventory_snapshot()}
 
 func reputation() -> int:
-	return int(data.get(REPUTATION_KEY, 0))
+	return int(_state.get(REPUTATION_KEY, 0))
 
 func has_first_order_settlement() -> bool:
-	var receipt = data.get(FIRST_ORDER_SETTLEMENT_KEY, {})
+	var receipt = _state.get(FIRST_ORDER_SETTLEMENT_KEY, {})
 	return receipt is Dictionary and str(receipt.get("order_id", "")) == FIRST_ORDER_ID \
 		and str(receipt.get("item_id", "")) == FIRST_ORDER_ITEM_ID \
-		and int(receipt.get("quantity", 0)) == FIRST_ORDER_QUANTITY \
-		and int(receipt.get("reputation_awarded", 0)) == FIRST_ORDER_REPUTATION
+		and typeof(receipt.get("quantity")) in [TYPE_INT, TYPE_FLOAT] \
+		and receipt.quantity == FIRST_ORDER_QUANTITY \
+		and typeof(receipt.get("reputation_awarded")) in [TYPE_INT, TYPE_FLOAT] \
+		and receipt.reputation_awarded == FIRST_ORDER_REPUTATION
 
 ## 交付、订单完成、声望与凭证在同一存档提交；失败恢复完整内存快照。
 ## 地点与距离由 TutorialManager/Player 的同一交互选择器校验。
@@ -315,20 +446,20 @@ func deliver_first_order() -> Dictionary:
 	var inventory := inventory_snapshot()
 	if int(inventory[FIRST_ORDER_ITEM_ID]) < FIRST_ORDER_QUANTITY:
 		return {"success": false, "reason": "missing_dish"}
-	var previous := data.duplicate(true)
+	var previous := _state.duplicate(true)
 	var order := current_order()
 	inventory[FIRST_ORDER_ITEM_ID] -= FIRST_ORDER_QUANTITY
 	order["status"] = ORDER_STATUS_COMPLETED
 	progress["next_step"] = "chapter_wrap_up"
-	data[INVENTORY_KEY] = inventory
-	data[CURRENT_ORDER_KEY] = order
-	data[FIRST_ORDER_PROGRESS_KEY] = progress
-	data[REPUTATION_KEY] = reputation() + FIRST_ORDER_REPUTATION
-	data[FIRST_ORDER_SETTLEMENT_KEY] = {
+	_state[INVENTORY_KEY] = inventory
+	_state[CURRENT_ORDER_KEY] = order
+	_state[FIRST_ORDER_PROGRESS_KEY] = progress
+	_state[REPUTATION_KEY] = reputation() + FIRST_ORDER_REPUTATION
+	_state[FIRST_ORDER_SETTLEMENT_KEY] = {
 		"order_id": FIRST_ORDER_ID, "item_id": FIRST_ORDER_ITEM_ID,
 		"quantity": FIRST_ORDER_QUANTITY, "reputation_awarded": FIRST_ORDER_REPUTATION,
 	}
 	if not save():
-		data = previous
+		_state = previous
 		return {"success": false, "reason": "save_failed"}
 	return {"success": true, "reason": "delivered", "order": current_order(), "reputation": reputation()}
