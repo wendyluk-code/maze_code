@@ -4,6 +4,7 @@ extends Control
 
 const RECEIPT_DURATION := 1.45
 const PANEL_SIZE := Vector2(356, 178)
+const TOP_OFFSET := 96.0
 
 var _panel: PanelContainer
 var _receipt: Label
@@ -15,11 +16,13 @@ var _receipt_tween: Tween
 func _ready() -> void:
 	add_to_group("order_tracking")
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	offset_left = -PANEL_SIZE.x - 24.0
-	offset_top = 20.0
-	offset_right = -24.0
-	offset_bottom = 20.0 + PANEL_SIZE.y
+	set_anchors_preset(Control.PRESET_TOP_LEFT)
+	offset_left = 24.0
+	# SkipButton occupies the top-right strip; keep the tracker below it and
+	# below the centered chapter title at common 1280x720 layouts.
+	offset_top = TOP_OFFSET
+	offset_right = 24.0 + PANEL_SIZE.x
+	offset_bottom = TOP_OFFSET + PANEL_SIZE.y
 	visible = false
 	_build()
 	call_deferred("_restore_saved_order")

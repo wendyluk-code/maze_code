@@ -52,9 +52,33 @@ func run_suite() -> void:
 	_check(tm.idx == before_idx and sm.current_order() == before_order,
 		"out_of_range_keeps_tutorial_and_order", {"idx": tm.idx, "order": sm.current_order()})
 
+	# 写入失败必须回滚内存事务，且教程不推进；该失败只发生在隔离 user://。
+	var failure_idx: int = int(tm.idx)
+	var failure_order: Dictionary = sm.current_order()
+	var isolated_save_path := ProjectSettings.globalize_path(SAVE_PATH)
+	if FileAccess.file_exists(SAVE_PATH):
+		DirAccess.remove_absolute(isolated_save_path)
+	DirAccess.make_dir_absolute(isolated_save_path)
+	var failed_result: Dictionary = sm.accept_first_order()
+	_check(not bool(failed_result.get("success", true))
+		and str(failed_result.get("reason", "")) == "save_failed"
+		and sm.current_order() == failure_order
+		and tm.idx == failure_idx,
+		"save_failure_rolls_back_order_and_tutorial", {
+			"result": failed_result,
+			"order": sm.current_order(),
+			"idx": tm.idx,
+		})
+	DirAccess.remove_absolute(isolated_save_path)
+	sm.save()
+
 	# 真实前台输入：先写订单，再推进教程，再显示回执与持续追踪。
-	player.global_position = register.global_position
-	player.interacted.emit(register)
+	player.global_position = _find_register_stand_point(player, register)
+	await _wait_for_stage_three_ui(player, register)
+	var real_e := InputEventAction.new()
+	real_e.action = &"interact"
+	real_e.pressed = true
+	player._unhandled_input(real_e)
 	await get_tree().process_frame
 	var order: Dictionary = sm.current_order()
 	_check(tm.idx == before_idx + 1, "successful_transaction_advances_tutorial", {"idx": tm.idx})
@@ -70,12 +94,34 @@ func run_suite() -> void:
 	_check(str(tracker.get("_receipt").text).contains("已接单：盐烤岩鬃肉 ×1")
 		and str(tracker.get("_status").text).contains("进行中"),
 		"receipt_and_tracking_are_visible", {
-			"receipt": tracker.get("_receipt").text,
+		"receipt": tracker.get("_receipt").text,
 			"status": tracker.get("_status").text,
 		})
+	var order_after_first: Dictionary = order.duplicate(true)
+
+	# 任意冲突进行中订单不得冒充 canonical 首单幂等。
+	var conflict_order := {
+		"id": "other_order",
+		"item_id": "other_item",
+		"item_name": "其他料理",
+		"quantity": 1,
+		"status": "in_progress",
+	}
+	sm.data[sm.CURRENT_ORDER_KEY] = conflict_order
+	var conflict_idx: int = int(tm.idx)
+	var conflict_result: Dictionary = sm.accept_first_order()
+	_check(not bool(conflict_result.get("success", true))
+		and str(conflict_result.get("reason", "")) == "conflicting_order"
+		and sm.current_order() == conflict_order
+		and tm.idx == conflict_idx,
+		"conflicting_order_cannot_be_idempotent", {
+			"result": conflict_result,
+			"order": sm.current_order(),
+		})
+	sm.data[sm.CURRENT_ORDER_KEY] = order_after_first
+	sm.save()
 
 	# 重复输入/重复事务幂等：不生成第二个订单、不改变订单字段。
-	var order_after_first: Dictionary = order.duplicate(true)
 	var second_result: Dictionary = sm.accept_first_order()
 	player.interacted.emit(register)
 	await get_tree().process_frame
@@ -151,6 +197,45 @@ func _reach_stage_three_interact() -> void:
 		await get_tree().process_frame
 	_check(tm.idx == 9 and sm.current_order().get("status", "none") == "none",
 		"stage_three_interact_starts_without_order", {"idx": tm.idx, "order": sm.current_order()})
+
+func _wait_for_stage_three_ui(player: Node, register: Node2D) -> void:
+	var ui := scene.get_node("UIOverlay")
+	var deadline := Time.get_ticks_msec() + 3000
+	while Time.get_ticks_msec() < deadline:
+		await get_tree().process_frame
+		var visible_buttons: Array = []
+		for target in ui._buttons:
+			var button: Control = ui._buttons[target]
+			if is_instance_valid(button) and button.visible:
+				visible_buttons.append({"target": target, "button": button})
+		if tm.idx == 9 and guide.chapter_stage.text == "阶段 3/7 · 前台接单" \
+				and not scene.get_node("Camera").paused \
+				and guide.hint_panel.visible \
+				and player.nearest_interactable() == register \
+				and visible_buttons.size() == 1 \
+				and visible_buttons[0]["target"] == register:
+			_check(true, "stage_three_has_one_nearest_e_button")
+			return
+	_check(false, "stage_three_has_one_nearest_e_button", {
+		"idx": tm.idx,
+		"stage": guide.chapter_stage.text,
+		"camera_paused": scene.get_node("Camera").paused,
+	})
+
+func _find_register_stand_point(player: Node, register: Node2D) -> Vector2:
+	var zone := scene.get_node("WalkZone")
+	var store := scene.get_node("InteractPoints/Store") as Node2D
+	var radius: float = player.collision_radius_world()
+	for y in range(-240, 241, 10):
+		for x in range(-300, 301, 10):
+			var candidate := register.global_position + Vector2(x, y)
+			if not zone.is_circle_inside(candidate, radius):
+				continue
+			var distance := maxf(0.0, register.interaction_distance_from(candidate) - radius)
+			player.global_position = candidate
+			if distance <= 90.0 and player.interaction_distance_to(store) > 180.0:
+				return candidate
+	return register.global_position + Vector2(0, 180)
 
 func _start_scene() -> void:
 	scene = RESTAURANT_SCENE.instantiate()

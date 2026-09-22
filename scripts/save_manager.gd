@@ -34,20 +34,13 @@ func _empty_order() -> Dictionary:
 	}
 
 func _normalize_order(value) -> Dictionary:
-	var normalized := _empty_order()
-	if value is Dictionary:
-		for key in normalized:
-			if value.has(key):
-				normalized[key] = value[key]
-	# 不完整/不支持的旧字段不能伪造一笔进行中的订单。
-	if str(normalized.get("status", ORDER_STATUS_NONE)) != ORDER_STATUS_IN_PROGRESS:
+	if not value is Dictionary:
 		return _empty_order()
-	if str(normalized.get("id", "")).is_empty() \
-			or str(normalized.get("item_id", "")).is_empty() \
-			or str(normalized.get("item_name", "")).is_empty() \
-			or int(normalized.get("quantity", 0)) <= 0:
+	# 保留所有进行中订单字段，以便拒绝冲突订单；只有 canonical 首单
+	# 才能在 accept_first_order() 中走幂等成功分支。
+	if str(value.get("status", ORDER_STATUS_NONE)) != ORDER_STATUS_IN_PROGRESS:
 		return _empty_order()
-	return normalized
+	return value.duplicate(true)
 
 func load_data() -> void:
 	if FileAccess.file_exists(SAVE_PATH):
@@ -68,7 +61,10 @@ func save() -> bool:
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(data, "\t"))
-		return true
+		f.flush()
+		var write_error := f.get_error()
+		f.close()
+		return write_error == OK
 	return false
 
 func is_tutorial_done() -> bool:
@@ -89,12 +85,25 @@ func current_order() -> Dictionary:
 func has_active_order() -> bool:
 	return str(current_order().get("status", ORDER_STATUS_NONE)) == ORDER_STATUS_IN_PROGRESS
 
+func is_canonical_first_order(order) -> bool:
+	if not order is Dictionary or order.size() != 5:
+		return false
+	return str(order.get("id", "")) == FIRST_ORDER_ID \
+		and str(order.get("item_id", "")) == FIRST_ORDER_ITEM_ID \
+		and str(order.get("item_name", "")) == FIRST_ORDER_ITEM_NAME \
+		and int(order.get("quantity", 0)) == FIRST_ORDER_QUANTITY \
+		and str(order.get("status", "")) == ORDER_STATUS_IN_PROGRESS
+
 ## 原子接受第一笔订单：相同有效订单重复调用保持幂等，不创建第二单。
 ## 返回 success=true 表示调用方可以继续教程；created 表示本次是否真的写入新订单。
 func accept_first_order() -> Dictionary:
-	var existing := current_order()
-	if str(existing.get("status", ORDER_STATUS_NONE)) == ORDER_STATUS_IN_PROGRESS:
-		return {"success": true, "created": false, "reason": "already_active", "order": existing}
+	var raw_existing = data.get(CURRENT_ORDER_KEY)
+	if raw_existing is Dictionary \
+			and str(raw_existing.get("status", ORDER_STATUS_NONE)) == ORDER_STATUS_IN_PROGRESS:
+		var existing := current_order()
+		if is_canonical_first_order(raw_existing):
+			return {"success": true, "created": false, "reason": "already_active", "order": existing}
+		return {"success": false, "created": false, "reason": "conflicting_order", "order": existing}
 
 	var next_order := {
 		"id": FIRST_ORDER_ID,
