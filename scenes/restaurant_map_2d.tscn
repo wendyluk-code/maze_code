@@ -119,6 +119,8 @@ ui_offset = Vector2(35, -40)
 script = ExtResource("5_walk")
 ; 可走掩码图路径：绿色像素 = 角色可走区域
 mask_path = "res://assets/maps/walkable_mask.png"
+; 第一章开场出生点：右下空旷石砖路面，远离所有交互道具
+preferred_spawn_point = Vector2(1000, 850)
 
 ; 扁平底图上的动态道具前景采样层
 [node name="PropForeground" type="Node2D" parent="."]
@@ -126,8 +128,8 @@ script = ExtResource("9_foreground")
 
 ; 主角节点：CharacterBody2D（带碰撞体、可移动）
 [node name="Player" type="CharacterBody2D" parent="." unique_id=1162146397]
-; 初始出生位置 (720, 720)（运行时会被 walk_zone 重定位到可走区中心）
-position = Vector2(720, 720)
+; 初始位置与 WalkZone 出生点一致，避免首帧发生可见重定位
+position = Vector2(1000, 850)
 script = ExtResource("2_player")
 
 ; 主角脚下的碰撞形状
@@ -144,7 +146,7 @@ texture = ExtResource("4_hero")
 
 ; 跟随主角的 2D 相机
 [node name="Camera" type="Camera2D" parent="." unique_id=1562908801]
-position = Vector2(720, 720)
+position = Vector2(1000, 850)
 ; 缩放 0.85：画面缩小，看到更大范围
 zoom = Vector2(0.85, 0.85)
 script = ExtResource("3_cam")

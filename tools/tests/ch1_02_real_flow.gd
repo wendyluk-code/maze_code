@@ -39,6 +39,7 @@ func run_real_flow() -> void:
 	if not _check_auto_entry("initial_auto_entry"):
 		_finish_report()
 		return
+	await _wait_for_opening_line()
 	await _capture("01-opening")
 
 	# 真实退出重进：只投递一个开场对白后切换场景，不调用 TutorialManager.start()。
@@ -97,30 +98,41 @@ func _load_restaurant() -> void:
 	player = scene.get_node("Player") as CharacterBody2D
 	zone = scene.get_node("WalkZone")
 	guide = scene.get_node("UIOverlay/TutorialGuide") as Control
-	# 正式入口可能先由 TutorialGuide 锁住玩家，再轮到 Player 的首个物理帧；
-	# 仅在测试启动同步阶段临时允许该物理帧执行，随后恢复原锁定状态。
-	var physics_before_spawn := player.is_physics_processing()
-	if not player.spawn_ready:
-		player.set_physics_process(true)
+	# 真实入口必须在教程锁定玩家物理前完成出生定位；测试不得临时开启
+	# 物理帧来掩盖产品初始化时序错误。
 	max_guard_frames = 0
 	var spawn_point := Vector2.ZERO
-	while max_guard_frames < 180:
+	while max_guard_frames < 4 and not player.spawn_ready:
 		max_guard_frames += 1
-		await physics_frame
-		if zone.polygons.size() > 0:
-			spawn_point = zone.get_spawn_point(player.collision_radius_world())
-		if player.spawn_ready and spawn_point != Vector2.ZERO \
-			and player.global_position.distance_to(spawn_point) <= 0.1:
-			break
-	if not physics_before_spawn and player.is_physics_processing() and player.input_locked:
-		player.set_physics_process(false)
+		await process_frame
+	if zone.polygons.size() > 0:
+		spawn_point = zone.get_spawn_point(player.collision_radius_world())
 	var spawn_safe: bool = zone.has_method("is_circle_inside") \
 		and zone.is_circle_inside(player.global_position, player.collision_radius_world())
-	_record("scene_loaded", scene != null and player != null and guide != null and spawn_safe, {
+	var spawn_not_on_interactable: bool = player.nearest_interactable() == null
+	var camera := scene.get_node("Camera") as Camera2D
+	var camera_on_spawn: bool = camera.global_position.distance_to(player.global_position) <= 0.1
+	_record("scene_loaded", scene != null and player != null and guide != null and spawn_safe \
+		and player.spawn_ready and spawn_not_on_interactable and camera_on_spawn, {
 		"scene": scene.name if scene else "none", "save_path": ProjectSettings.globalize_path("user://save.json"),
 		"spawn_ready": player.spawn_ready, "spawn": [player.global_position.x, player.global_position.y],
 		"spawn_expected": [spawn_point.x, spawn_point.y], "spawn_safe": spawn_safe,
-		"physics_processing": player.is_physics_processing()})
+		"nearest_interactable": player.nearest_interactable().name if player.nearest_interactable() else "none",
+		"camera_on_spawn": camera_on_spawn,
+		"physics_processing": player.is_physics_processing(), "input_locked": player.input_locked})
+
+func _wait_for_opening_line() -> void:
+	var expected := "……你终于醒了。"
+	var frames := 0
+	while guide.dialog.dialog_text.text != expected and frames < 120:
+		frames += 1
+		await process_frame
+	_record("opening_line_visible_at_safe_spawn",
+		guide.dialog.speaker_name.text == "芽芽" and guide.dialog.dialog_text.text == expected \
+		and player.spawn_ready and player.input_locked and not player.is_physics_processing() \
+		and player.nearest_interactable() == null,
+		{"frames": frames, "speaker": guide.dialog.speaker_name.text,
+		"line": guide.dialog.dialog_text.text, "spawn": [player.global_position.x, player.global_position.y]})
 
 func _check_auto_entry(label: String) -> bool:
 	var ok: bool = tm.active and tm.idx == 0 and tm.current_stage == 1 and guide.visible \

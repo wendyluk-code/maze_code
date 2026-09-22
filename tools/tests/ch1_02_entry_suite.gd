@@ -22,6 +22,7 @@ func run_suite() -> void:
 
 	check_lesson_shape()
 	await start_scene()
+	verify_real_entry_spawn()
 	check(guide.should_start_chapter_1(), "new_entry_requires_chapter")
 	tm.start()
 	await get_tree().process_frame
@@ -138,7 +139,27 @@ func start_scene() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	guide = scene.get_node("UIOverlay/TutorialGuide")
-	scene.get_node("Player").spawn_ready = true
+
+func verify_real_entry_spawn() -> void:
+	var player := scene.get_node("Player")
+	var zone := scene.get_node("WalkZone")
+	var safe: bool = zone.has_method("is_circle_inside") \
+		and zone.is_circle_inside(player.global_position, player.collision_radius_world())
+	check(player.spawn_ready, "real_entry_spawn_ready_before_tutorial_lock", {
+		"physics_processing": player.is_physics_processing(),
+		"position": [player.global_position.x, player.global_position.y]})
+	check(safe, "real_entry_spawn_has_collision_clearance", {
+		"position": [player.global_position.x, player.global_position.y],
+		"radius": player.collision_radius_world()})
+	check(player.nearest_interactable() == null, "real_entry_spawn_not_on_interactable", {
+		"nearest": player.nearest_interactable().name if player.nearest_interactable() else "none"})
+	var camera := scene.get_node("Camera") as Camera2D
+	check(player.global_position == zone.preferred_spawn_point \
+		and camera.global_position.distance_to(player.global_position) <= 0.1,
+		"camera_starts_on_final_spawn_without_jump", {
+			"player": [player.global_position.x, player.global_position.y],
+			"camera": [camera.global_position.x, camera.global_position.y],
+			"preferred": [zone.preferred_spawn_point.x, zone.preferred_spawn_point.y]})
 
 func dispose_scene() -> void:
 	if is_instance_valid(scene):

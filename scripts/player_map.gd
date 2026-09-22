@@ -26,18 +26,19 @@ var input_locked := false
 
 func _ready() -> void:
 	add_to_group("player")
+	# TutorialGuide 打开首句对白时会禁用玩家物理帧；出生定位必须在这里完成，
+	# 不能等待首个物理帧，否则开场画面会渲染场景中的占位位置。
+	_try_resolve_spawn()
 	last_valid = global_position
 	_apply_facing()
+	# 若以后调整场景树就绪顺序，延迟重试仍不依赖物理帧；同步定位成功后为空操作。
+	call_deferred("_try_resolve_spawn")
 
 func _physics_process(delta: float) -> void:
 	if walk_zone == null:
 		walk_zone = get_tree().get_first_node_in_group("walk_zone")
-	if walk_zone and not spawn_ready and walk_zone.polygons.size() > 0:
-		var sp: Vector2 = walk_zone.get_spawn_point(collision_radius_world())
-		if sp != Vector2.ZERO:
-			global_position = sp
-		spawn_ready = true
-		last_valid = global_position
+	if not spawn_ready:
+		_try_resolve_spawn()
 
 	var input_dir := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
 	velocity = input_dir * SPEED
@@ -74,6 +75,27 @@ func _physics_process(delta: float) -> void:
 	else:
 		anim_t = 0.0
 		body.position.y = 0.0
+
+func _try_resolve_spawn() -> bool:
+	if spawn_ready:
+		return true
+	if walk_zone == null:
+		walk_zone = get_tree().get_first_node_in_group("walk_zone")
+	if not is_instance_valid(walk_zone):
+		return false
+	# WalkZone 通常先于 Player._ready() 完成构建；这里显式兜底，确保兄弟节点
+	# 就绪顺序变化后仍能在教程锁定物理帧前完成定位。
+	if walk_zone.polygons.is_empty() and walk_zone.has_method("_build_polygons"):
+		walk_zone._build_polygons()
+	if walk_zone.polygons.is_empty() or not walk_zone.has_method("get_spawn_point"):
+		return false
+	var sp: Vector2 = walk_zone.get_spawn_point(collision_radius_world())
+	if sp == Vector2.ZERO or not is_walkable_footprint(sp):
+		return false
+	global_position = sp
+	last_valid = sp
+	spawn_ready = true
+	return true
 
 func is_walkable_footprint(point: Vector2) -> bool:
 	if not is_instance_valid(walk_zone):

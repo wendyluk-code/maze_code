@@ -5,6 +5,7 @@ extends Node2D
 @export var sample_step := 2
 @export var green_tolerance := 60.0
 @export var debug_draw := false
+@export var preferred_spawn_point := Vector2.ZERO
 
 const FOOTPRINT_EPSILON := 0.5
 
@@ -146,7 +147,11 @@ func distance_to_polygon_boundary(point: Vector2, poly: PackedVector2Array) -> f
 	return best
 
 func get_spawn_point(radius: float = 0.0) -> Vector2:
-	# 优先用最大可走多边形的质心；若落在道具岛上，从质心向外扩展搜索可走点
+	# 场景可声明一处经过视觉与交互验收的出生点；不可用时才回退到
+	# 最大可走多边形的质心与扩展搜索。
+	if preferred_spawn_point != Vector2.ZERO \
+		and is_circle_inside(preferred_spawn_point, radius):
+		return preferred_spawn_point
 	var best: PackedVector2Array = PackedVector2Array()
 	var best_area := 0.0
 	for poly in polygons:
