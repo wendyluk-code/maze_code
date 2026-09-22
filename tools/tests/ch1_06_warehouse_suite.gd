@@ -106,10 +106,16 @@ func run_suite() -> void:
 		"successful_claim_writes_exact_inventory", {"inventory": sm.inventory_snapshot()})
 	_check(tm.idx == before_idx + 1 and not modal.visible and not player.input_locked,
 		"successful_claim_advances_tutorial_and_unlocks", {"idx": tm.idx})
-	_check(str(tracker.get("_status").text).contains("下一步：制作料理")
-		and str(tracker.get("_inventory").text).contains("岩鬃肉 ×1")
-		and str(tracker.get("_inventory").text).contains("岩盐 ×1"),
-		"hud_shows_cooking_next_step_and_inventory", {"status": tracker.get("_status").text, "inventory": tracker.get("_inventory").text})
+	_check(str(tracker.get("_meat_status").text) == "1/1"
+		and str(tracker.get("_salt_status").text) == "1/1"
+		and str(tracker.get("_cook_status").text) == "0/1"
+		and str(tracker.get("_order_status").text) == "0/1",
+		"hud_shows_claimed_ingredients_without_faking_cooking_or_delivery", {
+			"meat": tracker.get("_meat_status").text,
+			"salt": tracker.get("_salt_status").text,
+			"cooking": tracker.get("_cook_status").text,
+			"delivery": tracker.get("_order_status").text,
+		})
 
 	var duplicate: Dictionary = sm.claim_first_order_ingredients()
 	_check(bool(duplicate.get("success", false)) and not bool(duplicate.get("created", true))

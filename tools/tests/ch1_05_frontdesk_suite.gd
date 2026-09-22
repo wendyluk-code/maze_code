@@ -88,14 +88,16 @@ func run_suite() -> void:
 		and int(order.get("quantity", 0)) == 1
 		and order.get("status", "") == "in_progress",
 		"successful_transaction_writes_unique_order", {"order": order})
-	_check(tracker.visible and tracker.get("_receipt") != null and tracker.get("_status") != null,
+	_check(tracker.visible and tracker.get("_order_status") != null,
 		"tracker_scene_is_present", {"visible": tracker.visible})
-	# 订单回执由 tracker 内部生成；检查其可观察文本和持续状态。
-	_check(str(tracker.get("_receipt").text).contains("已接单：盐烤岩鬃肉 ×1")
-		and str(tracker.get("_status").text).contains("进行中"),
-		"receipt_and_tracking_are_visible", {
-		"receipt": tracker.get("_receipt").text,
-			"status": tracker.get("_status").text,
+	# 接单仅展示一张订单卡；交付尚未实现，因此状态保持 0/1。
+	_check(str(tracker.get("_order_status").text) == "0/1"
+		and str(tracker.get("_cook_status").text) == "0/1"
+		and not guide.toast.visible,
+		"single_order_card_shows_uncompleted_delivery_and_cooking", {
+			"delivery": tracker.get("_order_status").text,
+			"cooking": tracker.get("_cook_status").text,
+			"duplicate_toast_visible": guide.toast.visible,
 		})
 	var order_after_first: Dictionary = order.duplicate(true)
 
@@ -150,7 +152,7 @@ func run_suite() -> void:
 	var restored_tracker := scene.get_node("UIOverlay/OrderTracking")
 	await get_tree().process_frame
 	_check(restored_tracker.visible
-		and str(restored_tracker.get("_status").text).contains("进行中"),
+		and str(restored_tracker.get("_order_status").text) == "0/1",
 		"reentry_hud_queries_restored_order", {"visible": restored_tracker.visible})
 
 	var report := {

@@ -76,19 +76,20 @@ func _run() -> void:
 		while tm.active and Time.get_ticks_msec() < stage4_deadline:
 			await get_tree().process_frame
 			if tm.idx == 10 and sm.has_active_order() and tracker.visible \
-					and tracker.get("_receipt").visible \
+					and str(tracker.get("_order_status").text) == "0/1" \
 					and guide.chapter_stage.text == "阶段 4/7 · 仓库取料" \
 					and not scene.get_node("Camera").paused:
 				break
 		if tm.idx == 10 and sm.has_active_order() and tracker.visible \
-				and tracker.get("_receipt").visible \
+				and str(tracker.get("_order_status").text) == "0/1" \
 				and guide.chapter_stage.text == "阶段 4/7 · 仓库取料" \
 				and not scene.get_node("Camera").paused:
 			var after_path := output_dir.path_join("CH1-05-frontdesk-stage4-after.png")
 			get_viewport().get_texture().get_image().save_png(after_path)
 			print("CH1_05 visual_capture_stage4=", after_path,
-				" receipt=", tracker.get("_receipt").text,
-				" status=", tracker.get("_status").text)
+				" order=", tracker.get("_order_status").text,
+				" meat=", tracker.get("_meat_status").text,
+				" salt=", tracker.get("_salt_status").text)
 		else:
 			push_error("CH1_05 visual capture stage4 precondition failed idx=%d stage=%s order=%s tracker=%s" %
 				[tm.idx, guide.chapter_stage.text, str(sm.current_order()), str(tracker.visible)])

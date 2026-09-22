@@ -169,7 +169,6 @@ func chapter_1_lesson() -> Array:
 			"stage": 3,
 			"type": "interact", "target": "前台",
 			"hint": "靠近前台后，按 E 接下订单",
-			"toast": "已接单：盐烤岩鬃肉 ×1",
 		},
 		{
 			"stage": 4,
@@ -261,6 +260,9 @@ func resolve_target(target) -> Node2D:
 	return null
 
 func skip_all() -> void:
+	var tracker := get_tree().get_first_node_in_group("order_tracking")
+	if is_instance_valid(tracker) and tracker.has_method("hide_tracking"):
+		tracker.hide_tracking()
 	_finish(true)
 
 func _run_is_valid(token: int) -> bool:
@@ -453,11 +455,6 @@ func _on_player_interact(node: Node2D) -> void:
 		var tracker := get_tree().get_first_node_in_group("order_tracking")
 		if is_instance_valid(tracker) and tracker.has_method("show_order_receipt"):
 			tracker.show_order_receipt(result.get("order", {}))
-		else:
-			# 测试场景可能没有完整 HUD；只有事务成功后才允许使用兼容反馈。
-			var fallback_toast := str(step.get("toast", ""))
-			if not fallback_toast.is_empty():
-				guide.show_toast(fallback_toast)
 		_complete_step(_run_token)
 		return
 	var is_warehouse_step := _chapter_1_run \
@@ -491,8 +488,6 @@ func _on_warehouse_claimed(result: Dictionary) -> void:
 	var tracker := get_tree().get_first_node_in_group("order_tracking")
 	if is_instance_valid(tracker) and tracker.has_method("refresh_saved_state"):
 		tracker.refresh_saved_state()
-	if is_instance_valid(guide):
-		guide.show_toast("获得：岩鬃肉 ×1、岩盐 ×1")
 	_complete_step(_run_token)
 
 func _on_warehouse_cancelled() -> void:
