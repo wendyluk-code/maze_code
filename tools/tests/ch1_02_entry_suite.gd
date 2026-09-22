@@ -43,23 +43,24 @@ func run_suite() -> void:
 		"chapter_title_and_identity_visible")
 
 	await verify_opening_dialogue()
-	await complete_default_lesson()
+	# 本夹具只验证真实入口与早期退出；首单及阶段7由 CH1-05~09 的真实事务夹具覆盖。
+	tm._cancel_current_run()
 	await get_tree().create_timer(0.8).timeout
-	check(not tm.active and sm.is_chapter_1_done() and sm.is_tutorial_done(),
-		"normal_completion_persists_independent_state")
+	check(not tm.active and not sm.is_chapter_1_done() and not sm.is_tutorial_done(),
+		"early_exit_keeps_chapter_unfinished")
 	check(not guide.visible and not guide.dim.visible and not guide.chapter_title.visible
 		and not guide.chapter_stage.visible and not guide.skip_button.visible,
-		"normal_completion_cleans_guide")
+		"early_exit_cleans_guide")
 	check(not is_instance_valid(tm._parked_guest)
 		and get_tree().get_nodes_in_group("guest").is_empty()
 		and not scene.get_node("Camera").paused
 		and not scene.get_node("Player").input_locked
 		and scene.get_node("Player").is_physics_processing(),
-		"normal_completion_cleans_async_state")
+		"early_exit_cleans_async_state")
 	check(get_tree().current_scene == scene, "chapter_stays_in_restaurant")
-	check(stage_events == [1, 2, 3, 4, 5, 6, 7],
-		"seven_stages_run_in_order", {"events": stage_events})
-	report["normal_stage_events"] = stage_events.duplicate()
+	check(stage_events == [1, 2],
+		"entry_reaches_guest_stage_only", {"events": stage_events})
+	report["entry_stage_events"] = stage_events.duplicate()
 
 	await dispose_scene()
 	# 旧存档只带 tutorial_done 时，第一章仍然是未完成状态。
@@ -87,17 +88,17 @@ func run_suite() -> void:
 	check(not tm.active and get_tree().get_nodes_in_group("guest").is_empty()
 		and not scene.get_node("Camera").paused, "replay_skip_cleans_state")
 	tm._replay_requested = false
-	# 跳过路径需要恢复锁定、镜头、遮罩并写入同一独立完成态。
+	# 跳过路径需要恢复锁定、镜头、遮罩，但不能伪造章节完成态。
 	sm.data = {"tutorial_done": false, "chapter_1_done": false}
 	tm.start()
 	await get_tree().process_frame
 	tm.skip_all()
 	await get_tree().create_timer(0.8).timeout
-	check(not tm.active and sm.is_chapter_1_done() and not guide.visible
+	check(not tm.active and not sm.is_chapter_1_done() and not sm.is_tutorial_done() and not guide.visible
 		and not scene.get_node("Camera").paused
 		and not scene.get_node("Player").input_locked
 		and scene.get_node("Player").is_physics_processing(),
-		"skip_restores_and_persists")
+		"skip_restores_without_marking_completion")
 	check(get_tree().get_nodes_in_group("guest").is_empty(), "skip_cleans_guest")
 
 	# 在客人过场期间退出，旧 token 失效；重新进入只能启动一条新流程。
@@ -238,30 +239,6 @@ func verify_opening_dialogue() -> void:
 		guide.dialog._advance()
 		await get_tree().process_frame
 	check(tm.idx == 5, "opening_dialogue_reaches_guest_stage")
-
-func complete_default_lesson() -> void:
-	var guard := 0
-	while tm.active and guard < 40:
-		guard += 1
-		if tm.idx < 0 or tm.idx >= tm.steps.size():
-			break
-		var step: Dictionary = tm.steps[tm.idx]
-		match str(step.get("type", "")):
-			"cutscene_guest":
-				await get_tree().create_timer(2.3).timeout
-			"dialog":
-				guide.dialog._advance()
-				guide.dialog._advance()
-				await get_tree().process_frame
-			"move_to", "interact":
-				tm._complete_step(tm._run_token)
-				await get_tree().create_timer(1.0).timeout
-			"notify":
-				await get_tree().create_timer(2.2).timeout
-			"finish":
-				break
-			_:
-				break
 
 func _on_stage_changed(stage: int, _title: String) -> void:
 	stage_events.append(stage)

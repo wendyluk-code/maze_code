@@ -30,7 +30,7 @@ func run_suite() -> void:
 	})
 	_verify_lesson_portrait_contract()
 
-	# 路径一：阶段 2 可见、对白驻留，并在正常完成时清理。
+	# 路径一：阶段 2 可见、对白驻留；阶段 7 的正式事务由 CH1-05~09 夹具覆盖。
 	sm.data = {"tutorial_done": false, "chapter_1_done": false}
 	await _start_scene()
 	tm.start()
@@ -39,14 +39,12 @@ func run_suite() -> void:
 	_verify_guest_visual(normal_guest)
 	_verify_unknown_portrait(2)
 	await _capture_if_requested()
-	await _complete_default_lesson()
-	_record("both_unknown_dialogs_use_tieshan_portrait", unknown_portrait_stages == [2, 6], {
-		"stages": unknown_portrait_stages,
-	})
+	tm._cancel_current_run()
 	await get_tree().create_timer(0.8).timeout
-	_record("normal_completion_cleans_guest", not tm.active
+	_record("dialog_path_cancel_cleans_guest", not tm.active
 		and not is_instance_valid(tm._parked_guest)
-		and get_tree().get_nodes_in_group("guest").is_empty())
+		and get_tree().get_nodes_in_group("guest").is_empty()
+		and not sm.is_chapter_1_done() and not sm.is_tutorial_done())
 
 	# 路径二：阶段 2 直接跳过，旧异步 timer 不得复活角色。
 	await _dispose_scene()
@@ -166,11 +164,44 @@ func _verify_lesson_portrait_contract() -> void:
 	for step in unknown_steps:
 		stages.append(int(step.get("stage", 0)))
 		portraits.append(str(step.get("portrait", "")))
-	_record("lesson_keeps_two_unknown_tieshan_dialogs", unknown_steps.size() == 2
-		and stages == [2, 6]
-		and portraits == [TIESHAN_PORTRAIT, TIESHAN_PORTRAIT], {
+	var departure_unknown: Array = []
+	var introduction_speaker := ""
+	var offer_speaker := ""
+	var agreement_speaker := ""
+	for step in tm.departure_lesson():
+		if str(step.get("speaker", "")) == "？？？":
+			departure_unknown.append(step)
+		match str(step.get("wrapup_id", "")):
+			"introduction":
+				introduction_speaker = str(step.get("speaker", ""))
+			"offer":
+				offer_speaker = str(step.get("speaker", ""))
+			"agreement":
+				agreement_speaker = str(step.get("speaker", ""))
+	var chapter_unknown_contract := unknown_steps.size() > 2
+	if chapter_unknown_contract:
+		chapter_unknown_contract = stages[0] == 2
+	for i in range(1, stages.size()):
+		chapter_unknown_contract = chapter_unknown_contract and stages[i] == 7
+	for portrait in portraits:
+		chapter_unknown_contract = chapter_unknown_contract and portrait == TIESHAN_PORTRAIT
+	var departure_portraits_are_tieshan := departure_unknown.size() > 1
+	for step in departure_unknown:
+		departure_portraits_are_tieshan = departure_portraits_are_tieshan \
+			and str(step.get("portrait", "")) == TIESHAN_PORTRAIT
+	_record("lesson_unknown_identity_contract", chapter_unknown_contract
+		and departure_unknown.size() > 1
+		and departure_portraits_are_tieshan
+		and introduction_speaker == "？？？"
+		and offer_speaker == "铁山"
+		and agreement_speaker == "铁山", {
 			"stages": stages,
 			"portraits": portraits,
+			"departure_unknown_count": departure_unknown.size(),
+			"chapter_unknown_count": unknown_steps.size(),
+			"introduction_speaker": introduction_speaker,
+			"offer_speaker": offer_speaker,
+			"agreement_speaker": agreement_speaker,
 		})
 
 func _reach_guest_spawn() -> Node2D:
@@ -324,35 +355,6 @@ func _verify_unknown_portrait(stage: int) -> void:
 			"fallback_visible": fallback.visible if is_instance_valid(fallback) else true,
 		})
 
-func _complete_default_lesson() -> void:
-	var guard := 0
-	while tm.active and guard < 40:
-		guard += 1
-		if tm.idx < 0 or tm.idx >= tm.steps.size():
-			break
-		var step: Dictionary = tm.steps[tm.idx]
-		match str(step.get("type", "")):
-			"cutscene_guest":
-				await get_tree().create_timer(2.3).timeout
-			"dialog":
-				if str(step.get("speaker", "")) == "？？？":
-					var stage := int(step.get("stage", 0))
-					_verify_unknown_portrait(stage)
-					if stage == 6:
-						await _capture_stage_6_if_requested()
-				guide.dialog._advance()
-				guide.dialog._advance()
-				await get_tree().process_frame
-			"move_to", "interact":
-				tm._complete_step(tm._run_token)
-				await get_tree().create_timer(1.0).timeout
-			"notify":
-				await get_tree().create_timer(2.2).timeout
-			"finish":
-				break
-			_:
-				break
-
 func _capture_if_requested() -> void:
 	var output := _argument("--output=")
 	if output.is_empty():
@@ -381,33 +383,6 @@ func _capture_if_requested() -> void:
 		"size": [image.get_width(), image.get_height()],
 		"error": err,
 	})
-
-func _capture_stage_6_if_requested() -> void:
-	var stage_2_output := _argument("--output=")
-	if stage_2_output.is_empty():
-		return
-	await get_tree().create_timer(1.1).timeout
-	await get_tree().process_frame
-	await get_tree().process_frame
-	_record("stage_6_capture_dialog_text_visible", guide.dialog.visible
-		and guide.dialog.speaker_name.text == "？？？"
-		and not guide.dialog.dialog_text.text.is_empty(), {
-			"speaker": guide.dialog.speaker_name.text,
-			"text": guide.dialog.dialog_text.text,
-		})
-	var output := stage_2_output.get_base_dir().path_join("CH1-04-tieshan-stage6-dialog.png")
-	var viewport_texture := get_viewport().get_texture()
-	var image := viewport_texture.get_image() if viewport_texture != null else null
-	if image == null:
-		_record("stage_6_visible_capture", false, {"reason": "no_viewport_image"})
-		return
-	var err := image.save_png(output)
-	_record("stage_6_visible_capture", err == OK
-		and image.get_width() == 1152 and image.get_height() == 648, {
-			"path": output,
-			"size": [image.get_width(), image.get_height()],
-			"error": err,
-		})
 
 func _record(name: String, passed: bool, details: Dictionary = {}) -> void:
 	checks.append({"name": name, "passed": passed, "details": details})

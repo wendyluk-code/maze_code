@@ -60,32 +60,33 @@ func run_real_flow() -> void:
 
 	await _complete_opening_dialogues_with_input()
 	await _run_remaining_steps_with_input()
-	# finish_all() 的淡出是异步 Tween；等待其完成后再验收引导层已隐藏。
-	await create_timer(0.8).timeout
-	await _wait_frames(4)
-	await _capture("02-complete")
+	# 真实首单交付后故意停在阶段7；CH1-09 负责真实仓库、地图、队伍与 ready_to_depart。
+	await _capture("02-stage7-checkpoint")
 	var normal_stage_events := stage_events.duplicate()
 	_record("seven_stages_in_order", normal_stage_events == [1, 2, 3, 4, 5, 6, 7], {"events": normal_stage_events})
 	_record("four_real_interactions", interactions.size() == 4 and _all_interactions_valid(), {"interactions": interactions})
 
-	_record("normal_completion", not tm.active and sm.is_chapter_1_done() and sm.is_tutorial_done(), {
-		"chapter_1_done": sm.is_chapter_1_done(), "tutorial_done": sm.is_tutorial_done()})
-	_record("normal_cleanup", not guide.visible and not guide.dim.visible
-		and get_nodes_in_group("guest").is_empty()
-		and not is_instance_valid(tm._parked_guest)
-		and not player.input_locked and player.is_physics_processing()
-		and not scene.get_node("Camera").paused, {
-		"guide_visible": guide.visible, "guest_count": get_nodes_in_group("guest").size(),
-		"input_locked": player.input_locked, "camera_paused": scene.get_node("Camera").paused})
+	_record("stage7_checkpoint_is_not_completion", tm.active and tm.current_stage == 7
+		and not sm.is_chapter_1_done() and not sm.is_tutorial_done()
+		and not sm.is_ready_to_depart()
+		and sm.departure_state().cards == {"status": "pending_content", "unlocked": false, "card_ids": []}, {
+		"active": tm.active, "stage": tm.current_stage, "idx": tm.idx,
+		"chapter_1_done": sm.is_chapter_1_done(), "tutorial_done": sm.is_tutorial_done(),
+		"departure_step": sm.departure_state().step, "cards": sm.departure_state().cards})
 	_record("chapter_stays_in_restaurant", current_scene == scene
 		and scene.name == "RestaurantMap", {"scene": current_scene.name if current_scene else "none"})
 
-	# 完成档再次进入：正式入口不应自动重播，也不应残留旧锁定或客人。
+	# 首单结算档再次进入：应恢复阶段7检查点，而不是重播阶段1或伪造完成。
+	tm._cancel_current_run()
 	await _load_restaurant()
-	_record("completed_reentry_does_not_replay", not tm.active and not guide.visible
-		and get_nodes_in_group("guest").is_empty()
-		and not scene.get_node("Camera").paused
-		and not player.input_locked, {"active": tm.active, "guide_visible": guide.visible})
+	_record("settled_reentry_resumes_wrapup", tm.active and tm.current_stage == 7
+		and tm.idx >= 0 and str(tm.steps[tm.idx].get("wrapup_id", "")) == "relief"
+		and guide.visible and not sm.is_chapter_1_done() and not sm.is_tutorial_done()
+		and not scene.get_node("Camera").paused, {
+			"active": tm.active, "stage": tm.current_stage, "idx": tm.idx,
+			"wrapup_id": str(tm.steps[tm.idx].get("wrapup_id", "")) if tm.active else "inactive",
+			"guide_visible": guide.visible, "camera_paused": scene.get_node("Camera").paused})
+	tm._cancel_current_run()
 
 	_finish_report()
 
@@ -161,6 +162,9 @@ func _run_remaining_steps_with_input() -> void:
 		if tm.idx < 0 or tm.idx >= tm.steps.size():
 			break
 		var step: Dictionary = tm.steps[tm.idx]
+		if int(step.get("stage", 0)) == 7:
+			# 首单交付已经完成 CH1-05~08；阶段7的真实经营检查点由 CH1-09 接管。
+			break
 		var step_type := str(step.get("type", ""))
 		match step_type:
 			"cutscene_guest":
