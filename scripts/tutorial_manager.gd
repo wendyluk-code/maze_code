@@ -166,7 +166,7 @@ func chapter_1_lesson() -> Array:
 			"stage": 3,
 			"type": "interact", "target": "前台",
 			"hint": "靠近前台后，按 E 接下订单",
-			"toast": "已接单：魔物烤肉 ×1",
+			"toast": "已接单：盐烤岩鬃肉 ×1",
 		},
 		{
 			"stage": 4,
@@ -410,6 +410,31 @@ func _on_player_interact(node: Node2D) -> void:
 		return
 	var target := resolve_target(step.get("target"))
 	if target == null or node != target:
+		return
+	# 交互信号通常只由 Player 在范围内发出；这里再做一次同一选择器校验，
+	# 防止测试/其他调用方直接投递错误目标或超距目标时改变教程和订单状态。
+	if is_instance_valid(player) and player.has_method("nearest_interactable"):
+		if player.nearest_interactable() != node:
+			return
+	var is_first_order_step := _chapter_1_run \
+			and int(step.get("stage", 0)) == 3 \
+			and str(step.get("target", "")) == "前台"
+	if is_first_order_step:
+		var sm := get_node_or_null("/root/SaveManager")
+		if sm == null or not sm.has_method("accept_first_order"):
+			return
+		var result: Dictionary = sm.accept_first_order()
+		if not bool(result.get("success", false)):
+			return
+		var tracker := get_tree().get_first_node_in_group("order_tracking")
+		if is_instance_valid(tracker) and tracker.has_method("show_order_receipt"):
+			tracker.show_order_receipt(result.get("order", {}))
+		else:
+			# 测试场景可能没有完整 HUD；只有事务成功后才允许使用兼容反馈。
+			var fallback_toast := str(step.get("toast", ""))
+			if not fallback_toast.is_empty():
+				guide.show_toast(fallback_toast)
+		_complete_step(_run_token)
 		return
 	var toast := str(step.get("toast", ""))
 	if not toast.is_empty():
