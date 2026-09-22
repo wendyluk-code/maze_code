@@ -200,6 +200,15 @@ func _interact_with_input(step: Dictionary) -> bool:
 	var in_range: bool = target != null and player.interaction_distance_to(target) <= player.INTERACT_RANGE
 	var nearest_matches: bool = chosen == target
 	await _press_viewport_action("interact")
+	# CH1-06 的仓库交互先打开真实模态；回归流继续走真实 UI 选择与领取，
+	# 不把仓库领取重新降级为单次 Toast。
+	if str(step.get("target", "")) == "仓库":
+		var warehouse_modal := scene.get_node_or_null("UIOverlay/WarehouseModal")
+		if is_instance_valid(warehouse_modal) and warehouse_modal.visible:
+			warehouse_modal._on_slot_selected("rockmane_meat")
+			warehouse_modal._on_slot_selected("rock_salt")
+			warehouse_modal._on_claim_pressed()
+			await process_frame
 	var step_delta: int = tm.idx - before
 	# 交互完成后若下一步立刻是单句对话，同一个 E 事件可能被新对话框消费，
 	# 因此允许 idx 多推进一步；仍要求本次输入至少推进了当前 interact 步骤。

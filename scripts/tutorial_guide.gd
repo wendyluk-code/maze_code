@@ -20,6 +20,9 @@ var _has_target := false
 var _toast_tween: Tween = null
 var _finish_tween: Tween = null
 var _visual_token := 0
+var _modal_suppressed := false
+var _modal_hint_visible := false
+var _modal_marker_visible := false
 
 func _ready() -> void:
 	add_to_group("tutorial_guide")
@@ -80,6 +83,19 @@ func _on_skip() -> void:
 ## 过场期间调整暗幕透明度（0=全亮，0.5=常规），保持画面观察
 func set_dim(alpha: float) -> void:
 	dim.color.a = clampf(alpha, 0.0, 1.0)
+
+func set_modal_suppressed(value: bool) -> void:
+	if value == _modal_suppressed:
+		return
+	_modal_suppressed = value
+	if value:
+		_modal_hint_visible = hint_panel.visible
+		_modal_marker_visible = marker.visible
+		hint_panel.visible = false
+		marker.visible = false
+	else:
+		hint_panel.visible = _modal_hint_visible
+		marker.visible = _modal_marker_visible
 
 func setup(step: Dictionary) -> void:
 	# 底部提示

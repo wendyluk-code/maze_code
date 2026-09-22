@@ -64,6 +64,13 @@ func _process(_delta: float) -> void:
 	var zone := get_tree().get_first_node_in_group("walk_zone")
 	var vp := get_viewport().get_visible_rect().size
 	var selected: Node2D = player.nearest_interactable() if is_instance_valid(player) else null
+	var warehouse_modal := get_tree().get_first_node_in_group("warehouse_modal")
+	if is_instance_valid(warehouse_modal) and warehouse_modal.visible:
+		_hiding = true
+		for b in _buttons.values():
+			if is_instance_valid(b):
+				b.visible = false
+		return
 	# Clear every button before enabling the one chosen by the same selector used by E.
 	# This prevents a frame of overlap when the player crosses between targets.
 	for node in _buttons.keys():

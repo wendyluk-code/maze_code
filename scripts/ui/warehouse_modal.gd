@@ -16,6 +16,7 @@ var _selected := {}
 var _open := false
 
 func _ready() -> void:
+	add_to_group("warehouse_modal")
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = false
@@ -60,11 +61,13 @@ func _build() -> void:
 	stock.add_child(slots)
 	_meat_slot = SproutItemSlot.new()
 	_meat_slot.configure("rockmane_meat", "岩鬃肉", 1, 0, false)
+	_meat_slot.focus_mode = Control.FOCUS_NONE
 	_meat_slot.custom_minimum_size = Vector2(170, 150)
 	_meat_slot.slot_selected.connect(_on_slot_selected)
 	slots.add_child(_meat_slot)
 	_salt_slot = SproutItemSlot.new()
 	_salt_slot.configure("rock_salt", "岩盐", 1, 1, false)
+	_salt_slot.focus_mode = Control.FOCUS_NONE
 	_salt_slot.custom_minimum_size = Vector2(170, 150)
 	_salt_slot.slot_selected.connect(_on_slot_selected)
 	slots.add_child(_salt_slot)
@@ -119,11 +122,12 @@ func open_for_order() -> void:
 	visible = true
 	_message.text = "请选齐两种材料后领取"
 	_update_selection()
-	_meat_slot.grab_focus()
+	_set_tutorial_suppressed(true)
 
 func close_modal() -> void:
 	_open = false
 	visible = false
+	_set_tutorial_suppressed(false)
 
 func _on_slot_selected(item_id: String) -> void:
 	if not _open:
@@ -166,3 +170,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _open and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 		get_viewport().set_input_as_handled()
 		_on_cancel_pressed()
+
+func _set_tutorial_suppressed(value: bool) -> void:
+	var guide := get_tree().get_first_node_in_group("tutorial_guide")
+	if is_instance_valid(guide) and guide.has_method("set_modal_suppressed"):
+		guide.set_modal_suppressed(value)

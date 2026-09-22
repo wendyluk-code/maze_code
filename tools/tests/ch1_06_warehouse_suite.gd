@@ -57,6 +57,12 @@ func run_suite() -> void:
 	await get_tree().process_frame
 	_check(tm.idx == before_idx and sm.current_order() == before_order and not modal.visible,
 		"wrong_target_does_not_open_warehouse", {"idx": tm.idx})
+	player.global_position = Vector2(-10000, -10000)
+	var out_of_range_e := InputEventAction.new(); out_of_range_e.action = &"interact"; out_of_range_e.pressed = true
+	player._unhandled_input(out_of_range_e)
+	await get_tree().process_frame
+	_check(not modal.visible and tm.idx == before_idx and sm.inventory_snapshot() == {"rockmane_meat": 0, "rock_salt": 0},
+		"out_of_range_e_does_not_open_warehouse", {})
 
 	# 真实 E：先确认唯一最近目标为仓库，再由玩家入口发出 interact。
 	player.global_position = Vector2(1400, 630)
@@ -69,10 +75,28 @@ func run_suite() -> void:
 	await get_tree().process_frame
 	_check(modal.visible and player.input_locked and tm.idx == before_idx,
 		"real_e_opens_modal_and_locks_player", {"visible": modal.visible, "locked": player.input_locked})
+	var locked_position: Vector2 = player.global_position
+	var world_buttons_before := _visible_buttons(scene.get_node("UIOverlay"))
+	var blocked_e := InputEventAction.new(); blocked_e.action = &"interact"; blocked_e.pressed = true
+	player._unhandled_input(blocked_e)
+	_check(modal.visible and player.input_locked and not player.is_physics_processing()
+		and player.global_position == locked_position and world_buttons_before.is_empty(),
+		"modal_blocks_world_input_and_hides_e_button", {"buttons": world_buttons_before.size()})
 
 	modal._on_claim_pressed()
 	_check(sm.inventory_quantity("rockmane_meat") == 0 and sm.inventory_quantity("rock_salt") == 0,
 		"missing_selection_cannot_claim", {})
+	modal._on_slot_selected("rockmane_meat")
+	modal._on_slot_selected("rockmane_meat")
+	_check(modal.get("_claim_button").disabled and str(modal.get("_selection_label").text).contains("0 / 2"),
+		"reclick_material_cancels_selection", {"selection": modal.get("_selection_label").text})
+	modal._on_cancel_pressed()
+	await get_tree().process_frame
+	_check(not modal.visible and not player.input_locked and tm.idx == before_idx
+		and sm.inventory_quantity("rockmane_meat") == 0 and sm.inventory_quantity("rock_salt") == 0,
+		"cancel_closes_without_side_effects", {"idx": tm.idx})
+	player._unhandled_input(real_e)
+	await _wait_until(func(): return modal.visible, 2000)
 	modal._on_slot_selected("rockmane_meat")
 	modal._on_slot_selected("rock_salt")
 	_check(not modal.get("_claim_button").disabled, "both_materials_selected_enables_claim", {})
@@ -146,6 +170,14 @@ func _wait_until(predicate: Callable, timeout_ms: int) -> bool:
 		if bool(predicate.call()): return true
 		await get_tree().process_frame
 	return false
+
+func _visible_buttons(ui: Node) -> Array:
+	var result: Array = []
+	for target in ui._buttons:
+		var button: Control = ui._buttons[target]
+		if is_instance_valid(button) and button.visible:
+			result.append(button)
+	return result
 
 func _find_stand(target: Node2D) -> Vector2:
 	var player := scene.get_node("Player")
