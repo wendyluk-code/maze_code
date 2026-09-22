@@ -1,0 +1,10 @@
+[CmdletBinding()]
+param([string]$GodotPath='F:\SteamLibrary\steamapps\common\Godot Engine\godot.windows.opt.tools.64.exe',[string]$OutputDir='')
+$ErrorActionPreference='Stop';$workspace=(Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+if([string]::IsNullOrWhiteSpace($OutputDir)){$OutputDir=Join-Path ([IO.Path]::GetTempPath()) ('maze_code_ch1_06_visual_'+[guid]::NewGuid().ToString('N'))};New-Item -ItemType Directory -Path $OutputDir -Force|Out-Null
+$runRoot=Join-Path ([IO.Path]::GetTempPath()) ('maze_code_ch1_06_visual_iso_'+[guid]::NewGuid().ToString('N'));$app=Join-Path $runRoot 'Roaming';$local=Join-Path $runRoot 'Local';New-Item -ItemType Directory -Path $app,$local|Out-Null
+$report=Join-Path $OutputDir 'ch1-06-visual-report.json';$stdout=Join-Path $OutputDir 'ch1-06-visual.stdout.txt';$stderr=Join-Path $OutputDir 'ch1-06-visual.stderr.txt'
+$args=@('--path',$workspace,'--scene','res://tools/tests/ch1_06_visual_capture.tscn','--',('--output-dir='+$OutputDir),('--report='+$report))
+$oldA=$env:APPDATA;$oldL=$env:LOCALAPPDATA;try{$env:APPDATA=$app;$env:LOCALAPPDATA=$local;$p=Start-Process -FilePath $GodotPath -ArgumentList $args -Wait -PassThru -NoNewWindow -RedirectStandardOutput $stdout -RedirectStandardError $stderr}finally{$env:APPDATA=$oldA;$env:LOCALAPPDATA=$oldL}
+$ok=$false;if(Test-Path $report){try{$j=Get-Content -Raw $report|ConvertFrom-Json;$ok=([int]$j.before_error -eq 0)-and([int]$j.after_error -eq 0)-and$j.before_exists-and$j.after_exists}catch{}}
+Write-Output "VISUAL exit_code=$($p.ExitCode)";Write-Output "VISUAL passed=$ok";Write-Output "VISUAL report=$report";Write-Output "VISUAL before=$(Join-Path $OutputDir 'CH1-06-warehouse-stage4-before.png')";Write-Output "VISUAL after=$(Join-Path $OutputDir 'CH1-06-warehouse-stage5-after.png')";exit $(if($ok -and $p.ExitCode -eq 0){0}else{1})

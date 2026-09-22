@@ -436,10 +436,44 @@ func _on_player_interact(node: Node2D) -> void:
 				guide.show_toast(fallback_toast)
 		_complete_step(_run_token)
 		return
+	var is_warehouse_step := _chapter_1_run \
+			and int(step.get("stage", 0)) == 4 \
+			and str(step.get("target", "")) == "仓库"
+	if is_warehouse_step:
+		var warehouse_modal := get_tree().current_scene.get_node_or_null("UIOverlay/WarehouseModal")
+		if not is_instance_valid(warehouse_modal) or not warehouse_modal.has_method("open_for_order"):
+			return
+		if warehouse_modal.get("_open"):
+			return
+		if not warehouse_modal.is_connected("claimed", _on_warehouse_claimed):
+			warehouse_modal.connect("claimed", _on_warehouse_claimed)
+		if not warehouse_modal.is_connected("cancelled", _on_warehouse_cancelled):
+			warehouse_modal.connect("cancelled", _on_warehouse_cancelled)
+		_set_player_locked(true)
+		warehouse_modal.open_for_order()
+		return
 	var toast := str(step.get("toast", ""))
 	if not toast.is_empty():
 		guide.show_toast(toast)
 	_complete_step(_run_token)
+
+func _on_warehouse_claimed(result: Dictionary) -> void:
+	if not active or idx < 0 or idx >= steps.size():
+		return
+	var step: Dictionary = steps[idx]
+	if step.get("type", "") != "interact" or int(step.get("stage", 0)) != 4:
+		return
+	_set_player_locked(false)
+	var tracker := get_tree().get_first_node_in_group("order_tracking")
+	if is_instance_valid(tracker) and tracker.has_method("refresh_saved_state"):
+		tracker.refresh_saved_state()
+	if is_instance_valid(guide):
+		guide.show_toast("获得：岩鬃肉 ×1、岩盐 ×1")
+	_complete_step(_run_token)
+
+func _on_warehouse_cancelled() -> void:
+	if active:
+		_set_player_locked(false)
 
 func _process(_delta: float) -> void:
 	if not active or not is_instance_valid(player) or idx < 0 or idx >= steps.size():

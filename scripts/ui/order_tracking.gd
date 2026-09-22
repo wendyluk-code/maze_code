@@ -3,13 +3,14 @@ extends Control
 ## 只由 SaveManager 的真实订单结果驱动，不把普通 Toast 当作订单状态。
 
 const RECEIPT_DURATION := 1.45
-const PANEL_SIZE := Vector2(356, 178)
+const PANEL_SIZE := Vector2(356, 244)
 const TOP_OFFSET := 96.0
 
 var _panel: PanelContainer
 var _receipt: Label
 var _title: Label
 var _status: Label
+var _inventory: Label
 var _item_slot: SproutItemSlot
 var _receipt_tween: Tween
 
@@ -78,12 +79,32 @@ func _build() -> void:
 	_status.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(_status)
 
+	_inventory = Label.new()
+	_inventory.text = "库存：岩鬃肉 ×0    岩盐 ×0"
+	_inventory.add_theme_color_override("font_color", SproutTheme.INK_MUTED)
+	_inventory.add_theme_font_size_override("font_size", 17)
+	_inventory.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	outer.add_child(_inventory)
+
 func _restore_saved_order() -> void:
 	var sm := get_node_or_null("/root/SaveManager")
 	if sm != null and sm.has_method("current_order"):
 		var order: Dictionary = sm.current_order()
 		if str(order.get("status", "none")) == "in_progress":
 			_refresh(order)
+	refresh_saved_state()
+
+func refresh_saved_state() -> void:
+	var sm := get_node_or_null("/root/SaveManager")
+	if sm == null:
+		return
+	var order: Dictionary = sm.current_order() if sm.has_method("current_order") else {}
+	if str(order.get("status", "none")) == "in_progress":
+		_refresh(order)
+	var meat := int(sm.inventory_quantity("rockmane_meat")) if sm.has_method("inventory_quantity") else 0
+	var salt := int(sm.inventory_quantity("rock_salt")) if sm.has_method("inventory_quantity") else 0
+	if is_instance_valid(_inventory):
+		_inventory.text = "库存：岩鬃肉 ×%d    岩盐 ×%d" % [meat, salt]
 
 func show_order_receipt(order) -> void:
 	if not order is Dictionary:
@@ -106,5 +127,10 @@ func _refresh(order: Dictionary) -> void:
 	var quantity := int(order.get("quantity", 0))
 	_item_slot.configure(str(order.get("item_id", "")), item_name, quantity, 4, true)
 	_item_slot.custom_minimum_size = Vector2(148, 76)
-	_status.text = "状态：进行中\n订单号：%s\n下一步：准备食材" % str(order.get("id", ""))
+	var sm := get_node_or_null("/root/SaveManager")
+	var next_step := "准备食材"
+	if sm != null and sm.has_method("first_order_progress"):
+		if str(sm.first_order_progress().get("next_step", "")) == "cook":
+			next_step = "制作料理"
+	_status.text = "状态：进行中\n订单号：%s\n下一步：%s" % [str(order.get("id", "")), next_step]
 	visible = true
