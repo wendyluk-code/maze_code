@@ -3,6 +3,7 @@ extends Node
 ## 全量 JSON 存档，路径 user://save.json；维护教程兼容标记、章节完成状态与首单
 
 const SAVE_PATH := "user://save.json"
+const PROLOGUE_DONE_KEY := "prologue_done"
 const CHAPTER_1_DONE_KEY := "chapter_1_done"
 const CURRENT_ORDER_KEY := "current_order"
 const ORDER_STATUS_NONE := "none"
@@ -31,6 +32,8 @@ var data: Dictionary = _defaults()
 ## 重播使用独立工作副本；公开 data 和正式文件在整个重播期间保持原样。
 var _replay_data: Dictionary = {}
 var _replaying := false
+## 序章预览覆盖整个进程，避免进入餐厅或取消教程后意外恢复正式写入。
+var _prologue_preview := false
 var _state: Dictionary:
 	get:
 		return _replay_data if _replaying else data
@@ -43,10 +46,14 @@ var _state: Dictionary:
 var migration_diagnostics: Array[String] = []
 
 func _ready() -> void:
+	_prologue_preview = "--replay-prologue" in OS.get_cmdline_user_args() or "--replay-prologue" in OS.get_cmdline_args()
 	load_data()
+	if _prologue_preview:
+		begin_replay()
 
 func _defaults() -> Dictionary:
 	return {
+		PROLOGUE_DONE_KEY: false,
 		"tutorial_done": false,
 		CHAPTER_1_DONE_KEY: false,
 		CURRENT_ORDER_KEY: _empty_order(),
@@ -219,6 +226,8 @@ func load_data() -> void:
 				if not _state.chapter_1_intro is String or _state.chapter_1_intro not in ["not_started", "awakened", "guest_arrived"]:
 					_diagnose("chapter_1_intro 无效，回退 not_started")
 					_state.chapter_1_intro = "not_started"
+				if not _prologue_preview:
+					_migrate_prologue(parsed)
 				return
 			_diagnose("存档顶层必须是字典，回退默认状态")
 		else:
@@ -230,8 +239,36 @@ func begin_replay() -> void:
 	_replaying = true
 
 func end_replay() -> void:
+	if _prologue_preview:
+		return
 	_replaying = false
 	_replay_data = {}
+
+## 只在旧档缺字段或字段损坏时从稳定第一章状态推断；保留全部经营状态。
+## 与既有迁移一致：读取不落盘，下一次正常原子保存时持久化补齐字段。
+func _migrate_prologue(parsed: Dictionary) -> void:
+	if parsed.get(PROLOGUE_DONE_KEY) is bool:
+		return
+	_state[PROLOGUE_DONE_KEY] = is_chapter_1_done() or lifecycle_stage() != "not_started"
+	_diagnose("序章标记迁移：" + str(_state[PROLOGUE_DONE_KEY]) + "；第一章与经营进度保持不变")
+
+func is_prologue_done() -> bool:
+	return _state.get(PROLOGUE_DONE_KEY, false) == true
+
+func is_prologue_preview() -> bool:
+	return _prologue_preview
+
+## 仅在餐厅成功入树后调用。原子保存失败时回滚，不伪造观看/章节完成。
+func complete_prologue() -> bool:
+	if is_prologue_done():
+		return true
+	var previous := _state.duplicate(true)
+	_state[PROLOGUE_DONE_KEY] = true
+	if save():
+		return true
+	_state = previous
+	_diagnose("序章完成标记保存失败，保留上次存档；本次仍可进入第一章")
+	return false
 
 func record_intro(stage: String) -> bool:
 	if stage not in ["awakened", "guest_arrived"]:
