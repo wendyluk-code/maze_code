@@ -175,6 +175,10 @@ func _corrupt_cases() -> void:
 		file.close()
 		var disk: String = _disk()
 		sm.load_data()
+		if item[0] == "缺少 cards":
+			_check(sm.is_ready_to_depart() and sm.departure_state().cards == {"status": "pending_content", "unlocked": false, "card_ids": []}
+				and _disk() == disk, "旧档缺少 cards 只迁移 pending 且不落盘")
+			continue
 		_check(not sm.is_ready_to_depart() and not sm.migration_diagnostics.is_empty()
 			and sm.departure_state().step == "relief" and _disk() == disk, "损坏有诊断并安全回退：" + str(item[0]))
 		_check(not sm.is_chapter_1_done() and not sm.is_tutorial_done(), "损坏不能变成最终完成")

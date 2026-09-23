@@ -63,7 +63,13 @@ try {
         $results += [ordered]@{ mode=$mode; exit_code=$code; passed=$passed; report=$report }
         if (-not $passed) { break }
     }
-    # 最低主入口冒烟检查同样使用隔离存档。
+    # 最低主入口冒烟检查同样使用隔离存档；标记序章已看，
+    # 让 smoke 关注主入口加载而不依赖当前环境缺失视频流的序章媒体。
+    foreach ($smokeRoot in @($roaming, $localData)) {
+        $smokeUser = Join-Path $smokeRoot 'Godot\app_userdata\maze_code'
+        New-Item -ItemType Directory -Force -Path $smokeUser | Out-Null
+        @{ prologue_done = $true } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $smokeUser 'save.json') -Encoding UTF8
+    }
     $code = Invoke-Godot 'main-smoke' @('--headless','--path',$workspace,'--quit-after','5')
     $results += [ordered]@{ mode='main-smoke'; exit_code=$code; passed=($code -eq 0) }
 } finally {

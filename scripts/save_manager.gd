@@ -276,15 +276,21 @@ func load_data() -> void:
 			_diagnose("存档读取失败，回退默认状态：" + str(FileAccess.get_open_error()))
 	_state = _defaults()
 
-func _normalize_departure_cards(value) -> Dictionary:
+func _normalize_departure_cards(value):
+	## 旧档只在 departure 是字典且缺少 cards 字段时补齐 pending；
+	## 非法 cards 原样保留，交由 departure_state 诊断并回退，避免静默吞错。
 	if not value is Dictionary:
-		return _empty_departure()
+		return value
 	var result: Dictionary = value.duplicate(true)
+	if not result.has("cards"):
+		result["cards"] = _pending_cards()
+		return result
 	var cards = result.get("cards")
-	if cards is Dictionary and bool(cards.get("unlocked", false)) and cards.get("card_ids", []).size() == CH1_CARD_IDS.size():
-		result.cards = _unlocked_cards()
-	else:
-		result.cards = _pending_cards()
+	if cards is Dictionary and cards == _pending_cards():
+		result["cards"] = _pending_cards()
+	elif cards is Dictionary and cards == _unlocked_cards():
+		result["cards"] = _unlocked_cards()
+	# 其他类型/字段组合保持原值，让 _departure_problem 给出诊断。
 	return result
 
 func begin_replay() -> void:
