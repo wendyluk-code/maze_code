@@ -12,6 +12,8 @@ var _locked_player: Node
 var _input_before := false
 var _physics_before := true
 var _entrance: Node2D
+var _cards_button: SproutButton
+var _card_viewer: Control
 
 func _ready() -> void:
 	add_to_group("departure_panel")
@@ -35,6 +37,11 @@ func _ready() -> void:
 	view.set_icon_visible(false)
 	view.pressed.connect(open_map)
 	summary_rows.add_child(view)
+	_cards_button = SproutButton.new()
+	_cards_button.configure("查看芽芽与铁山卡组")
+	_cards_button.set_icon_visible(false)
+	_cards_button.pressed.connect(_open_cards)
+	summary_rows.add_child(_cards_button)
 	_modal = ColorRect.new()
 	_modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_modal.color = Color(0.04, 0.07, 0.05, 0.78)
@@ -97,12 +104,39 @@ func _process(_delta: float) -> void:
 func _refresh() -> void:
 	var state := SaveManager.departure_state()
 	_summary.visible = SaveManager.is_ready_to_depart() and not _open
-	_objective.text = "准备同行\n" + str(state.objective) + "\n卡牌内容待提供 · 暂未开放出发"
+	_objective.text = "准备同行\n" + str(state.objective) + ("\n初始卡组：16 张已保存" if SaveManager.cards_unlocked() else "\n初始卡组：查看后解锁并保存")
+	_cards_button.visible = SaveManager.is_ready_to_depart() and not _open and not _cards_open()
+	if SaveManager.cards_unlocked():
+		_cards_button.text = "查看芽芽与铁山卡组（已保存）"
 	var map: Dictionary = state.map
 	var floor_text := "第一层：已解锁" if map.unlocked_floors == [1] else "第一层：未解锁"
 	var region_text := "旧盐池：可见" if map.visible_regions == ["old_salt_pool"] else "旧盐池：迷雾"
 	var party_text := "芽芽、铁山" if state.party == ["yaya", "tieshan"] else "尚未决定同行"
-	_map_text.text = "%s\n%s\n其余区域：迷雾 · 更深层：未解锁\n\n探索队伍：%s\n%s\n\n卡牌内容待提供 / 未解锁\n区域状态示意，正式迷宫地图尚未开放。" % [floor_text, region_text, party_text, state.objective]
+	_map_text.text = "%s\n%s\n其余区域：迷雾 · 更深层：未解锁\n\n探索队伍：%s\n%s\n\n%s\n区域状态示意，正式迷宫地图尚未开放。" % [floor_text, region_text, party_text, state.objective, ("初始卡组：16 张已保存" if SaveManager.cards_unlocked() else "初始卡组：查看准备同行面板中的卡组按钮")]
+
+func _cards_open() -> bool:
+	return is_instance_valid(_card_viewer) and _card_viewer.visible
+
+func _open_cards() -> void:
+	if not SaveManager.is_ready_to_depart():
+		return
+	var result := SaveManager.unlock_ch1_cards()
+	if not result.success:
+		return
+	if not is_instance_valid(_card_viewer):
+		_card_viewer = Control.new()
+		_card_viewer.name = "CardViewer"
+		_card_viewer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_card_viewer.set_script(load("res://scripts/ui/components/card_preview.gd"))
+		add_child(_card_viewer)
+		_card_viewer.close_requested.connect(_close_cards)
+	_card_viewer.visible = true
+	_cards_button.visible = false
+
+func _close_cards() -> void:
+	if is_instance_valid(_card_viewer):
+		_card_viewer.visible = false
+	_refresh()
 
 func open_map() -> void:
 	if _open or SaveManager.departure_state().map.unlocked_floors != [1]:

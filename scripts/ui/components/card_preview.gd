@@ -1,5 +1,7 @@
 extends Control
-## CH1-10A 卡牌占位预览：独立场景，仅展示视觉组件和输入契约。
+## CH1-10 卡组查看器：统一卡框、文字与现有角色肖像；可嵌入准备同行面板。
+
+signal close_requested
 
 const DATA := preload("res://scripts/ui/components/sprout_card_data.gd")
 const CARD := preload("res://scripts/ui/components/sprout_card.gd")
@@ -17,7 +19,7 @@ var _capture_path := ""
 
 func _ready() -> void:
 	theme = SproutTheme.make_theme()
-	_cards = DATA.placeholder_set()
+	_cards = DATA.formal_set()
 	_build()
 	var args := OS.get_cmdline_args()
 	var faction_arg := args.find("--card-preview-faction")
@@ -57,14 +59,18 @@ func _build() -> void:
 	var header_box := VBoxContainer.new()
 	header.add_child(header_box)
 	var heading := Label.new()
-	heading.text = "CH1-10A · Sprout Lands 卡牌占位预览"
+	heading.text = "芽芽与铁山 · 初始卡组"
 	heading.add_theme_font_size_override("font_size", 28)
 	heading.add_theme_color_override("font_color", SproutTheme.INK)
 	_header_box_add(header_box, heading)
 	_hint = Label.new()
-	_hint.text = "所有名称、费用、类型、效果、数值与稀有度均为待配置占位内容"
+	_hint.text = "16 张正式设计牌 · 方案B统一卡框展示（数值尚未实战平衡）"
 	_hint.add_theme_color_override("font_color", SproutTheme.INK_MUTED)
 	_header_box_add(header_box, _hint)
+	var close := _make_button("关闭", 5)
+	close.set_icon_visible(false)
+	close.pressed.connect(func() -> void: close_requested.emit())
+	header_box.add_child(close)
 
 	var faction_row := HBoxContainer.new()
 	faction_row.alignment = BoxContainer.ALIGNMENT_CENTER

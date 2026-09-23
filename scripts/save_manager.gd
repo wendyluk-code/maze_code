@@ -22,6 +22,7 @@ const ROCKMAN_MEAT_ID := "rockmane_meat"
 const ROCK_SALT_ID := "rock_salt"
 const WRAPUP_KEY := "chapter_1_departure"
 const DEPARTURE_OBJECTIVE := "与芽芽、铁山一同进入迷宫浅层"
+const CH1_CARD_IDS := ["yaya_01", "yaya_02", "yaya_03", "yaya_04", "yaya_05", "yaya_06", "yaya_07", "yaya_08", "tieshan_01", "tieshan_02", "tieshan_03", "tieshan_04", "tieshan_05", "tieshan_06", "tieshan_07", "tieshan_08"]
 ## 顺序是存档契约；已确认的对白逐句提交，重进从尚未确认的一句继续。
 const WRAPUP_STEPS := ["relief", "meat", "yaya_past", "hero_past", "yaya_yes",
 	"second_serving", "check_store", "warehouse_move", "warehouse_inspect", "salt_pool",
@@ -78,7 +79,16 @@ func _empty_departure() -> Dictionary:
 	return {"step": "relief", "empty_warehouse_checked": false, "tieshan_name_revealed": false,
 		"map": {"unlocked_floors": [], "visible_regions": [], "other_regions": "fog"},
 		"party": [], "objective": "", "entrance_lit": false,
-		"cards": {"status": "pending_content", "unlocked": false, "card_ids": []}}
+		"cards": _pending_cards()}
+
+func _pending_cards() -> Dictionary:
+	# 保留 CH1-09 的精确 pending schema；正式解锁后才扩展为完整卡组 schema。
+	return {"status": "pending_content", "unlocked": false, "card_ids": []}
+
+func _unlocked_cards() -> Dictionary:
+	return {"status": "unlocked", "unlocked": true, "card_ids": CH1_CARD_IDS.duplicate(),
+		"deck_ids": CH1_CARD_IDS.duplicate(),
+		"characters": {"yaya": {"attack": 2, "max_hp": 5}, "tieshan": {"attack": 1, "max_hp": 6}}}
 
 func departure_state() -> Dictionary:
 	var saved = _state.get(WRAPUP_KEY)
@@ -122,8 +132,8 @@ func _departure_problem(value) -> String:
 		return "map 提前解锁"
 	if not value.party is Array or not value.objective is String or not value.cards is Dictionary:
 		return "party、objective 或 cards 类型错误"
-	if not value.cards.get("status") is String or not value.cards.get("unlocked") is bool or not value.cards.get("card_ids") is Array or value.cards != {"status": "pending_content", "unlocked": false, "card_ids": []}:
-		return "cards 必须保持待提供且未解锁"
+	if not _cards_problem(value.cards).is_empty():
+		return _cards_problem(value.cards)
 	var ready: bool = value.step == "ready_to_depart"
 	if value.party != (["yaya", "tieshan"] if ready else []) or value.objective != (DEPARTURE_OBJECTIVE if ready else "") or value.entrance_lit != ready:
 		return "队伍、目标、入口与步骤矛盾"
@@ -132,6 +142,37 @@ func _departure_problem(value) -> String:
 	if index > 0 and not can_start_departure():
 		return "准备步骤缺少真实首单结算或库存未清空"
 	return ""
+
+func _cards_problem(cards) -> String:
+	if not cards is Dictionary:
+		return "cards 必须是字典"
+	if cards == _pending_cards():
+		return ""
+	if cards == _unlocked_cards():
+		return ""
+	return "cards schema 无效或卡牌列表不完整"
+
+func cards_state() -> Dictionary:
+	var cards = departure_state().get("cards", _pending_cards())
+	return cards.duplicate(true)
+
+func cards_unlocked() -> bool:
+	return bool(cards_state().get("unlocked", false))
+
+## 在准备同行态查看卡组时幂等解锁；不会推进 ready_to_depart 或章节完成标记。
+func unlock_ch1_cards() -> Dictionary:
+	var state := departure_state()
+	if state.step != "ready_to_depart":
+		return {"success": false, "reason": "not_ready_to_depart", "cards": state.cards}
+	if cards_unlocked():
+		return {"success": true, "created": false, "cards": cards_state()}
+	var previous := _state.duplicate(true)
+	state.cards = _unlocked_cards()
+	_state[WRAPUP_KEY] = state
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed", "cards": cards_state()}
+	return {"success": true, "created": true, "cards": cards_state()}
 
 func is_ready_to_depart() -> bool:
 	return departure_state().step == "ready_to_depart" and can_start_departure()
@@ -214,6 +255,7 @@ func load_data() -> void:
 				_state = _defaults()
 				for key in parsed:
 					_state[key] = parsed[key]
+				_state[WRAPUP_KEY] = _normalize_departure_cards(_state.get(WRAPUP_KEY))
 				# 先核对原始事务结构，不能把错误库存归零后误认作已就绪。
 				_state[WRAPUP_KEY] = departure_state()
 				_state[CURRENT_ORDER_KEY] = _normalize_order(_state.get(CURRENT_ORDER_KEY))
@@ -233,6 +275,17 @@ func load_data() -> void:
 		else:
 			_diagnose("存档读取失败，回退默认状态：" + str(FileAccess.get_open_error()))
 	_state = _defaults()
+
+func _normalize_departure_cards(value) -> Dictionary:
+	if not value is Dictionary:
+		return _empty_departure()
+	var result: Dictionary = value.duplicate(true)
+	var cards = result.get("cards")
+	if cards is Dictionary and bool(cards.get("unlocked", false)) and cards.get("card_ids", []).size() == CH1_CARD_IDS.size():
+		result.cards = _unlocked_cards()
+	else:
+		result.cards = _pending_cards()
+	return result
 
 func begin_replay() -> void:
 	_replay_data = _defaults()
