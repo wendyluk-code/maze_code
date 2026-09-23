@@ -315,6 +315,14 @@ func skip_all() -> void:
 	if is_instance_valid(tracker) and tracker.has_method("hide_tracking"):
 		tracker.hide_tracking()
 
+## 准备面板的显式最终确认。教程已在 ready_to_depart 步骤结束，
+## 因此这里只提交原子完成事务并发出章节完成信号，不切换场景。
+func confirm_chapter_1() -> Dictionary:
+	var result: Dictionary = SaveManager.complete_chapter_1()
+	if result.success and result.created and not SaveManager._replaying:
+		chapter_1_finished.emit()
+	return result
+
 func _run_is_valid(token: int) -> bool:
 	return active and token == _run_token and is_instance_valid(guide)
 
@@ -365,6 +373,8 @@ func _run_step(token: int) -> void:
 			_set_player_locked(true)
 			_open_departure_map.call_deferred(token)
 		"ready_to_depart":
+			# 阶段7只建立稳定的 ready_to_depart 准备态；最终完成必须由
+			# 准备面板的显式确认触发，避免进入餐厅后自动写入 done。
 			_cancel_current_run()
 		_:
 			pass
@@ -697,13 +707,24 @@ func _kill_guest_fade_tween() -> void:
 		_guest_fade_tween.kill()
 	_guest_fade_tween = null
 
-func _finish(remove_guest := false) -> void:
+func _finish(remove_guest := false, finalize_chapter := false) -> void:
 	if not active:
 		return
+	var completed := false
+	var was_replaying := SaveManager._replaying
+	if finalize_chapter and _chapter_1_run:
+		var result: Dictionary = SaveManager.complete_chapter_1()
+		if not result.success:
+			# 保存失败时保留当前流程与 ready_to_depart 检查点，允许玩家重试；
+			# 重复触发不会额外写盘或奖励。
+			if is_instance_valid(guide):
+				guide.show_toast("第一章完成状态未保存，请重试。")
+			return
+		completed = result.created or result.reason == "already_done"
 	_cancel_current_run()
-	# 卡牌与最终生命周期票据未完成，不写完成标记，不发章节完成信号。
-	# 跳过仅结束本次引导，已保存检查点供重进恢复。
 	tutorial_finished.emit()
+	if completed and not was_replaying:
+		chapter_1_finished.emit()
 
 ## 仅回收本票据新增模态状态；先恢复模态快照，再释放教程拥有的玩家锁。
 func _close_departure_modals() -> void:

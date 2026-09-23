@@ -13,6 +13,7 @@ var _input_before := false
 var _physics_before := true
 var _entrance: Node2D
 var _cards_button: SproutButton
+var _complete_button: SproutButton
 var _card_viewer: Control
 
 func _ready() -> void:
@@ -42,6 +43,11 @@ func _ready() -> void:
 	_cards_button.set_icon_visible(false)
 	_cards_button.pressed.connect(_open_cards)
 	summary_rows.add_child(_cards_button)
+	_complete_button = SproutButton.new()
+	_complete_button.configure("确认第一章完成")
+	_complete_button.set_icon_visible(false)
+	_complete_button.pressed.connect(_complete_chapter)
+	summary_rows.add_child(_complete_button)
 	_modal = ColorRect.new()
 	_modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_modal.color = Color(0.04, 0.07, 0.05, 0.78)
@@ -106,6 +112,7 @@ func _refresh() -> void:
 	_summary.visible = SaveManager.is_ready_to_depart() and not _open
 	_objective.text = "准备同行\n" + str(state.objective) + ("\n初始卡组：16 张已保存" if SaveManager.cards_unlocked() else "\n初始卡组：查看后解锁并保存")
 	_cards_button.visible = SaveManager.is_ready_to_depart() and not _open and not _cards_open()
+	_complete_button.visible = SaveManager.is_ready_to_depart() and not SaveManager.is_chapter_1_complete() and not _open and not _cards_open()
 	if SaveManager.cards_unlocked():
 		_cards_button.text = "查看芽芽与铁山卡组（已保存）"
 	var map: Dictionary = state.map
@@ -132,6 +139,15 @@ func _open_cards() -> void:
 		_card_viewer.close_requested.connect(_close_cards)
 	_card_viewer.visible = true
 	_cards_button.visible = false
+	_complete_button.visible = false
+
+func _complete_chapter() -> void:
+	if not SaveManager.is_ready_to_depart() or SaveManager.is_chapter_1_complete():
+		return
+	var result: Dictionary = TutorialManager.confirm_chapter_1()
+	if not result.success:
+		return
+	_refresh()
 
 func _close_cards() -> void:
 	if is_instance_valid(_card_viewer):

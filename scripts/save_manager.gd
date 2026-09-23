@@ -146,10 +146,23 @@ func _departure_problem(value) -> String:
 func _cards_problem(cards) -> String:
 	if not cards is Dictionary:
 		return "cards 必须是字典"
-	if cards == _pending_cards():
+	if str(cards.get("status", "")) == "pending_content" and cards.get("unlocked", null) is bool and cards.unlocked == false \
+			and cards.get("card_ids", []) is Array and cards.card_ids.is_empty() and cards.size() == 3:
 		return ""
-	if cards == _unlocked_cards():
-		return ""
+	if str(cards.get("status", "")) == "unlocked" and cards.get("unlocked", null) is bool and cards.unlocked == true \
+			and cards.get("card_ids", []) is Array and cards.get("deck_ids", []) is Array \
+			and Array(cards.card_ids) == CH1_CARD_IDS and Array(cards.deck_ids) == CH1_CARD_IDS:
+		var chars = cards.get("characters", {})
+		var yaya = chars.get("yaya", {}) if chars is Dictionary else {}
+		var tieshan = chars.get("tieshan", {}) if chars is Dictionary else {}
+		if chars is Dictionary and chars.size() == 2 \
+				and yaya is Dictionary and tieshan is Dictionary \
+				and typeof(yaya.get("attack")) in [TYPE_INT, TYPE_FLOAT] and yaya.attack == 2 \
+				and typeof(yaya.get("max_hp")) in [TYPE_INT, TYPE_FLOAT] and yaya.max_hp == 5 \
+				and typeof(tieshan.get("attack")) in [TYPE_INT, TYPE_FLOAT] and tieshan.attack == 1 \
+				and typeof(tieshan.get("max_hp")) in [TYPE_INT, TYPE_FLOAT] and tieshan.max_hp == 6 \
+				and cards.size() == 5:
+			return ""
 	return "cards schema 无效或卡牌列表不完整"
 
 func cards_state() -> Dictionary:
@@ -176,6 +189,31 @@ func unlock_ch1_cards() -> Dictionary:
 
 func is_ready_to_depart() -> bool:
 	return departure_state().step == "ready_to_depart" and can_start_departure()
+
+## 第一章最终确认的原子提交。
+## 只接受完整的 ready_to_depart 准备态；章节标记、兼容标记和其它经营/出发字段
+## 在同一份存档中提交。重复完成返回幂等成功，不重复写盘或发放奖励。
+func complete_chapter_1() -> Dictionary:
+	if is_chapter_1_complete():
+		return {"success": true, "created": false, "reason": "already_done", "state": completion_state()}
+	if not is_ready_to_depart():
+		return {"success": false, "created": false, "reason": "not_ready_to_depart", "state": completion_state()}
+	var previous := _state.duplicate(true)
+	_state[CHAPTER_1_DONE_KEY] = true
+	_state["tutorial_done"] = true
+	if not save():
+		_state = previous
+		_diagnose("第一章完成标记保存失败，保留 ready_to_depart 准备态")
+		return {"success": false, "created": false, "reason": "save_failed", "state": completion_state()}
+	return {"success": true, "created": true, "reason": "completed", "state": completion_state()}
+
+## done 是最终生命周期阶段；出发状态本身仍保留地图、队伍、入口和卡组快照。
+func is_chapter_1_complete() -> bool:
+	return is_chapter_1_done() and is_tutorial_done() and departure_state().step == "ready_to_depart" and can_start_departure()
+
+func completion_state() -> Dictionary:
+	return {"stage": lifecycle_stage(), "chapter_1_done": is_chapter_1_done(),
+		"tutorial_done": is_tutorial_done(), "departure": departure_state()}
 
 func can_start_departure() -> bool:
 	var order := current_order()
@@ -343,6 +381,8 @@ func record_intro(stage: String) -> bool:
 
 ## 经营阶段从事务结果派生，不另存一个可能与库存矛盾的阶段标记。
 func lifecycle_stage() -> String:
+	if is_chapter_1_complete():
+		return "done"
 	if is_ready_to_depart():
 		return "ready_to_depart"
 	if can_start_departure():
