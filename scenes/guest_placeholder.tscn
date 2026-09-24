@@ -8,8 +8,8 @@ z_index = 10
 script = ExtResource("1_guest")
 
 [node name="Portrait" type="AnimatedSprite2D" parent="."]
-position = Vector2(-73.593, -137.088)
-scale = Vector2(0.306, 0.306)
+position = Vector2(-84.599, -157.591)
+scale = Vector2(0.351765, 0.351765)
 sprite_frames = ExtResource("2_tieshan")
 animation = &"collapse"
 centered = false
