@@ -108,61 +108,35 @@ func _process(_delta: float) -> void:
 func _position_toast() -> void:
 	if not toast.visible:
 		return
-	# 制作反馈沿用已避开订单卡的提示列，避免覆盖消耗后的库存计数。
+	# Toast 与阶段提示共用屏幕中央的提示槽位；同时出现时向下错开。
+	var viewport_size := get_viewport_rect().size
+	var margin := 24.0
+	var width := minf(720.0, maxf(320.0, viewport_size.x - margin * 2.0))
+	var left := (viewport_size.x - width) * 0.5
 	toast.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	toast.offset_left = hint_panel.offset_left
-	toast.offset_right = hint_panel.offset_right
-	toast.offset_top = 164.0
-	toast.offset_bottom = 240.0
+	toast.offset_left = left
+	toast.offset_right = left + width
+	toast.offset_top = 174.0 if hint_panel.visible else 98.0
+	toast.offset_bottom = toast.offset_top + 54.0
 	toast.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 func _position_hint_panel() -> void:
-	var viewport_width := get_viewport_rect().size.x
-	var obstacles: Array[Rect2] = []
-	var player := get_tree().get_first_node_in_group("player") as Node2D
-	if is_instance_valid(player):
-		var player_screen := get_viewport().get_canvas_transform() * player.global_position
-		obstacles.append(Rect2(player_screen + Vector2(-55.0, -155.0), Vector2(110.0, 180.0)))
-	var tracker := get_tree().get_first_node_in_group("order_tracking")
-	if is_instance_valid(tracker) and tracker.visible:
-		obstacles.append(tracker.get("_panel").get_global_rect())
-	var tm := get_node_or_null("/root/TutorialManager")
-	if tm != null and tm.active and tm.idx >= 0 and tm.idx < tm.steps.size():
-		var step: Dictionary = tm.steps[tm.idx]
-		var target: Node2D = tm.resolve_target(step.get("target")) if tm.has_method("resolve_target") else null
-		if is_instance_valid(target):
-			var target_screen := get_viewport().get_canvas_transform() * target.global_position
-			obstacles.append(Rect2(target_screen + Vector2(-130.0, -165.0), Vector2(260.0, 210.0)))
-	var ui := get_tree().get_first_node_in_group("ui_layer")
-	if is_instance_valid(ui):
-		for button in ui.get("_buttons").values():
-			if is_instance_valid(button) and button.visible:
-				obstacles.append(button.get_global_rect())
-	if dialog.visible:
-		obstacles.append(dialog.get_global_rect())
-	var candidates: Array[float] = [20.0, (viewport_width - 380.0) * 0.5, viewport_width - 400.0]
-	var left := candidates[1]
-	var best_score := INF
-	for candidate in candidates:
-		var score := _overlap_score(Rect2(candidate, 94.0, 380.0, 64.0), obstacles)
-		if score < best_score:
-			best_score = score
-			left = candidate
+	if not hint_panel.visible:
+		return
+	# 阶段标题下方的固定中央槽位，宽度随视口收缩，保证长提示换行而不裁切。
+	var viewport_size := get_viewport_rect().size
+	var margin := 24.0
+	var width := minf(720.0, maxf(320.0, viewport_size.x - margin * 2.0))
+	var left := (viewport_size.x - width) * 0.5
 	hint_panel.anchor_left = 0.0
 	hint_panel.anchor_right = 0.0
 	hint_panel.anchor_top = 0.0
 	hint_panel.anchor_bottom = 0.0
 	hint_panel.offset_left = left
-	hint_panel.offset_right = left + 380.0
-	hint_panel.offset_top = 94.0
-	hint_panel.offset_bottom = 158.0
-
-func _overlap_score(rect: Rect2, obstacles: Array[Rect2]) -> float:
-	var score := 0.0
-	for obstacle in obstacles:
-		if rect.intersects(obstacle):
-			score += rect.intersection(obstacle).get_area()
-	return score
+	hint_panel.offset_right = left + width
+	hint_panel.offset_top = 96.0
+	hint_panel.offset_bottom = 166.0
+	hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 func _position_skip_button() -> void:
 	var viewport_width := get_viewport_rect().size.x
