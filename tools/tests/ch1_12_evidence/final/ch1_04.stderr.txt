@@ -1,7 +1,0 @@
-ERROR: CH1_04 FAILED: standing_head_below_chapter_header {"screen_top":[384.641540527344,56.7337646484375]}
-   at: push_error (core/variant/variant_utility.cpp:1023)
-   GDScript backtrace (most recent call first):
-       [0] _record (res://tools/tests/ch1_04_tieshan_suite.gd:425)
-       [1] _verify_guest_visual (res://tools/tests/ch1_04_tieshan_suite.gd:351)
-       [2] run_suite (res://tools/tests/ch1_04_tieshan_suite.gd:39)
-       [3] _wait_for_guest_dialog (res://tools/tests/ch1_04_tieshan_suite.gd:317)
