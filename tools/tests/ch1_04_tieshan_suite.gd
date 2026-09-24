@@ -350,7 +350,7 @@ func _verify_guest_visual(guest: Node2D) -> void:
 	var hero_height := _opaque_bounds(body.texture.get_image()).size.y * absf(body.scale.y)
 	var standing_height := first_bounds.size.y * absf(portrait.scale.y)
 	var ratio := standing_height / hero_height
-	_record("standing_height_115_to_130_percent_of_hero", ratio >= 1.15 and ratio <= 1.30,
+	_record("standing_height_matches_hero", ratio >= 0.98 and ratio <= 1.02,
 		{"hero_height": hero_height, "standing_height": standing_height, "ratio": ratio})
 	_record("fixed_ground_anchor", guest.position.distance_to(EXPECTED_GUEST_POSITION) < 0.01)
 	var cam := get_viewport().get_camera_2d()
