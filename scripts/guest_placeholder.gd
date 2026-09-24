@@ -1,21 +1,29 @@
 extends Node2D
-## 第一章铁山进场演出。根节点就是透明主体的脚底锚点；
-## Portrait 的偏移由素材高不透明度边界校准，不参与经营状态或 NPC 逻辑。
-
-var _base_y := 0.0
-var _t := 0.0
+## 第一章铁山进场演出。根节点固定在地面，动作只切换等比例、同锚点帧。
+## SpriteFrames（精灵帧资源）负责姿势和节奏，不参与经营状态。
+var collapse_completed := false
+var collapse_started := false
 var fade_initial_alpha := 1.0
 var fade_started := false
 var fade_completed := false
 
 func _ready() -> void:
 	add_to_group("guest")
-	_base_y = position.y
+	$Portrait.animation_finished.connect(_on_animation_finished)
 
-func _process(delta: float) -> void:
-	_t += delta
-	# 轻微前后晃动，表现"饿得站不稳"
-	position.y = _base_y + sin(_t * 2.2) * 3.0
+func play_collapse() -> void:
+	collapse_started = true
+	collapse_completed = false
+	$Portrait.play("collapse")
+
+func settle_prone() -> void:
+	$Portrait.stop()
+	$Portrait.animation = "collapse"
+	$Portrait.frame = 7
+	collapse_completed = true
+
+func _on_animation_finished() -> void:
+	collapse_completed = true
 
 func prepare_fade_in() -> void:
 	fade_initial_alpha = 0.0

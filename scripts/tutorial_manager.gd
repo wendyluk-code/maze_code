@@ -126,6 +126,7 @@ func _restore_cooking_guest(token: int) -> void:
 	_parked_guest = (load("res://scenes/guest_placeholder.tscn") as PackedScene).instantiate()
 	_parked_guest.position = Vector2(910, 198)
 	get_tree().current_scene.add_child(_parked_guest)
+	_parked_guest.settle_prone()
 
 ## 第一章：醒来与首单教程（脚本化演示，后续接真实经营系统）
 ## 叙事：片头视频（占位）→ 芽芽唤醒失忆的主角 → 饥肠辘辘的客人(？？？)来临 → 芽芽引导做菜
@@ -174,8 +175,9 @@ func chapter_1_lesson() -> Array:
 		{
 			"stage": 2,
 			"type": "cutscene_guest",
-			"camera_pos": Vector2(1000, 320),
-			"camera_zoom": Vector2(1.35, 1.35),
+			# 地图顶边限制镜头上移，向右构图让站立铁山避开顶栏。
+			"camera_pos": Vector2(1080, 200),
+			"camera_zoom": Vector2(1.6, 1.6),
 			"guest_pos": Vector2(910, 198),
 			"fade_duration": 0.45,
 			"delay": 0.2,
@@ -424,8 +426,7 @@ func _play_guest_cutscene(step: Dictionary, token: int) -> void:
 		_parked_guest = (load(guest_scene) as PackedScene).instantiate()
 		var root := get_tree().current_scene
 		if root:
-			# 先设脚底锚点再入树，让 Guest._ready() 记录正确的晃动基线；
-			# 否则下一帧会把角色从前台拉回实例默认的 y=0。
+			# 根节点保持地面锚点；站立、跪倒、趴下共用同一位置。
 			_parked_guest.position = step.get("guest_pos", Vector2(1000, 300))
 			if _parked_guest.has_method("prepare_fade_in"):
 				_parked_guest.prepare_fade_in()
@@ -448,6 +449,13 @@ func _play_guest_cutscene(step: Dictionary, token: int) -> void:
 				_parked_guest.mark_fade_completed()
 			else:
 				_parked_guest.modulate.a = 1.0
+			_parked_guest.play_collapse()
+			# 帧动画随客人节点销毁；跳过/退出使 token 失效，不遗留异步回调。
+			while _run_is_valid(token) and is_instance_valid(_parked_guest) \
+					and not _parked_guest.collapse_completed:
+				await get_tree().process_frame
+			if not _run_is_valid(token) or not is_instance_valid(_parked_guest):
+				return
 	if is_instance_valid(guide) and guide.has_method("set_dim"):
 		guide.set_dim(0.5)
 	# 淡入完成后才允许短暂停留并进入“？？？”对白；角色与镜头继续驻留。

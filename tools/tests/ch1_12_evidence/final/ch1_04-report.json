@@ -1,0 +1,421 @@
+{
+	"capture": "tools\\tests\\ch1_12_evidence\\final\\CH1-04-tieshan-dialog.png",
+	"checks": [
+		{
+			"details": {
+				"actual_appdata": "c:/users/ksg/appdata/local/temp/maze_code_ch1_04_isolated_0eaa75e338474b9c81e2ff04424cf75d/roaming",
+				"actual_user_dir": "c:/users/ksg/appdata/local/temp/maze_code_ch1_04_isolated_0eaa75e338474b9c81e2ff04424cf75d/roaming/godot/app_userdata/maze_code",
+				"declared_appdata": "c:/users/ksg/appdata/local/temp/maze_code_ch1_04_isolated_0eaa75e338474b9c81e2ff04424cf75d/roaming",
+				"declared_root": "c:/users/ksg/appdata/local/temp/maze_code_ch1_04_isolated_0eaa75e338474b9c81e2ff04424cf75d",
+				"marker": true
+			},
+			"name": "isolated_user_data_directory",
+			"passed": true
+		},
+		{
+			"details": {
+				"args": [
+					"--replay-tutorial",
+					"--isolation-root=C:\\Users\\KSG\\AppData\\Local\\Temp\\maze_code_ch1_04_isolated_0eaa75e338474b9c81e2ff04424cf75d",
+					"--isolation-appdata=C:\\Users\\KSG\\AppData\\Local\\Temp\\maze_code_ch1_04_isolated_0eaa75e338474b9c81e2ff04424cf75d\\Roaming",
+					"--report=tools\\tests\\ch1_12_evidence\\final\\ch1_04-report.json",
+					"--output=tools\\tests\\ch1_12_evidence\\final\\CH1-04-tieshan-dialog.png"
+				]
+			},
+			"name": "replay_argument_detected",
+			"passed": true
+		},
+		{
+			"details": {
+				"agreement_speaker": "铁山",
+				"chapter_unknown_count": 6,
+				"departure_unknown_count": 5,
+				"introduction_speaker": "？？？",
+				"offer_speaker": "铁山",
+				"portraits": [
+					"res://assets/characters/tieshan/tieshan_portrait.png",
+					"res://assets/characters/tieshan/tieshan_portrait.png",
+					"res://assets/characters/tieshan/tieshan_portrait.png",
+					"res://assets/characters/tieshan/tieshan_portrait.png",
+					"res://assets/characters/tieshan/tieshan_portrait.png",
+					"res://assets/characters/tieshan/tieshan_portrait.png"
+				],
+				"stages": [
+					2,
+					7,
+					7,
+					7,
+					7,
+					7
+				]
+			},
+			"name": "lesson_unknown_identity_contract",
+			"passed": true
+		},
+		{
+			"details": {
+				"elapsed_ms": 1138,
+				"frames": 202,
+				"idx": 5
+			},
+			"name": "stage_2_spawns_guest",
+			"passed": true
+		},
+		{
+			"details": {
+				"first_observed_alpha": 0.0,
+				"recorded_initial_alpha": 0.0
+			},
+			"name": "guest_is_created_transparent",
+			"passed": true
+		},
+		{
+			"details": {
+				"first_observed_alpha": 0.0,
+				"frames": 268
+			},
+			"name": "guest_fade_has_intermediate_frame",
+			"passed": true
+		},
+		{
+			"details": {
+				"idx": 6,
+				"speaker": "？？？"
+			},
+			"name": "unknown_dialog_visible",
+			"passed": true
+		},
+		{
+			"details": {
+				"dialog_appeared_before_fade": false,
+				"fade_completed": true,
+				"final_alpha": 1.0
+			},
+			"name": "unknown_dialog_waits_for_completed_fade",
+			"passed": true
+		},
+		{
+			"details": {},
+			"name": "guest_stays_for_unknown_dialog",
+			"passed": true
+		},
+		{
+			"details": {
+				"poses": [
+					0,
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7
+				]
+			},
+			"name": "collapse_visits_all_poses_in_order",
+			"passed": true
+		},
+		{
+			"details": {},
+			"name": "collapse_does_not_move_ground_anchor",
+			"passed": true
+		},
+		{
+			"details": {},
+			"name": "guest_uses_playable_spriteframes",
+			"passed": true
+		},
+		{
+			"details": {},
+			"name": "eight_nonlooping_poses",
+			"passed": true
+		},
+		{
+			"details": {
+				"bounds": [
+					99.0,
+					23.0,
+					283.0,
+					425.0
+				],
+				"foot_local_y": 0.0000057220458984375
+			},
+			"name": "pose_0_transparency_and_anchor",
+			"passed": true
+		},
+		{
+			"details": {
+				"bounds": [
+					98.0,
+					63.0,
+					284.0,
+					385.0
+				],
+				"foot_local_y": 0.0000057220458984375
+			},
+			"name": "pose_1_transparency_and_anchor",
+			"passed": true
+		},
+		{
+			"details": {
+				"bounds": [
+					81.0,
+					106.0,
+					319.0,
+					342.0
+				],
+				"foot_local_y": 0.0000057220458984375
+			},
+			"name": "pose_2_transparency_and_anchor",
+			"passed": true
+		},
+		{
+			"details": {
+				"bounds": [
+					92.0,
+					121.0,
+					296.0,
+					327.0
+				],
+				"foot_local_y": 0.0000057220458984375
+			},
+			"name": "pose_3_transparency_and_anchor",
+			"passed": true
+		},
+		{
+			"details": {
+				"bounds": [
+					52.0,
+					158.0,
+					376.0,
+					290.0
+				],
+				"foot_local_y": 0.0000057220458984375
+			},
+			"name": "pose_4_transparency_and_anchor",
+			"passed": true
+		},
+		{
+			"details": {
+				"bounds": [
+					52.0,
+					144.0,
+					377.0,
+					304.0
+				],
+				"foot_local_y": 0.0000057220458984375
+			},
+			"name": "pose_5_transparency_and_anchor",
+			"passed": true
+		},
+		{
+			"details": {
+				"bounds": [
+					46.0,
+					187.0,
+					388.0,
+					261.0
+				],
+				"foot_local_y": 0.0000057220458984375
+			},
+			"name": "pose_6_transparency_and_anchor",
+			"passed": true
+		},
+		{
+			"details": {
+				"bounds": [
+					21.0,
+					219.0,
+					439.0,
+					229.0
+				],
+				"foot_local_y": 0.0000057220458984375
+			},
+			"name": "pose_7_transparency_and_anchor",
+			"passed": true
+		},
+		{
+			"details": {
+				"hero_height": 130.000003516674,
+				"ratio": 1.19980770427967,
+				"standing_height": 155.97500577569
+			},
+			"name": "standing_height_115_to_130_percent_of_hero",
+			"passed": true
+		},
+		{
+			"details": {},
+			"name": "fixed_ground_anchor",
+			"passed": true
+		},
+		{
+			"details": {
+				"screen_top": [
+					384.641540527344,
+					56.7337646484375
+				]
+			},
+			"name": "standing_head_below_chapter_header",
+			"passed": false
+		},
+		{
+			"details": {},
+			"name": "dialog_waits_for_prone_pose",
+			"passed": true
+		},
+		{
+			"details": {},
+			"name": "guest_is_in_frontdesk_exterior",
+			"passed": true
+		},
+		{
+			"details": {
+				"resource_path": "res://assets/characters/tieshan/tieshan_portrait.png",
+				"source_size": [
+					256,
+					256
+				]
+			},
+			"name": "stage_2_unknown_portrait_texture",
+			"passed": true
+		},
+		{
+			"details": {
+				"content_size": [
+					80.0,
+					82.0
+				],
+				"fallback_visible": false,
+				"stretch_mode": 5
+			},
+			"name": "stage_2_unknown_portrait_layout",
+			"passed": true
+		},
+		{
+			"details": {
+				"speaker": "？？？",
+				"text": "哪……哪里……有吃的吗？我……快不行了……"
+			},
+			"name": "capture_dialog_text_visible",
+			"passed": true
+		},
+		{
+			"details": {
+				"error": 0,
+				"path": "tools\\tests\\ch1_12_evidence\\final\\CH1-04-tieshan-dialog.png",
+				"size": [
+					1152,
+					648
+				]
+			},
+			"name": "visible_capture",
+			"passed": true
+		},
+		{
+			"details": {},
+			"name": "normal_cutscene_restores_camera_input_stage",
+			"passed": true
+		},
+		{
+			"details": {},
+			"name": "dialog_path_cancel_cleans_guest",
+			"passed": true
+		},
+		{
+			"details": {
+				"elapsed_ms": 1137,
+				"frames": 202,
+				"idx": 5
+			},
+			"name": "stage_2_spawns_guest",
+			"passed": true
+		},
+		{
+			"details": {
+				"alpha": 0.0
+			},
+			"name": "skip_precondition_is_mid_fade",
+			"passed": true
+		},
+		{
+			"details": {},
+			"name": "skip_cleans_guest_and_stale_async",
+			"passed": true
+		},
+		{
+			"details": {
+				"elapsed_ms": 1118,
+				"frames": 198,
+				"idx": 5
+			},
+			"name": "stage_2_spawns_guest",
+			"passed": true
+		},
+		{
+			"details": {
+				"alpha": 0.0
+			},
+			"name": "exit_precondition_is_mid_fade",
+			"passed": true
+		},
+		{
+			"details": {},
+			"name": "exit_reentry_has_one_clean_flow",
+			"passed": true
+		},
+		{
+			"details": {},
+			"name": "exit_reentry_final_cleanup",
+			"passed": true
+		},
+		{
+			"details": {
+				"elapsed_ms": 1117,
+				"frames": 198,
+				"idx": 5
+			},
+			"name": "stage_2_spawns_guest",
+			"passed": true
+		},
+		{
+			"details": {},
+			"name": "skip_pose_3_reached",
+			"passed": true
+		},
+		{
+			"details": {},
+			"name": "skip_pose_3_restores_everything",
+			"passed": true
+		},
+		{
+			"details": {
+				"elapsed_ms": 1118,
+				"frames": 198,
+				"idx": 5
+			},
+			"name": "stage_2_spawns_guest",
+			"passed": true
+		},
+		{
+			"details": {},
+			"name": "skip_pose_6_reached",
+			"passed": true
+		},
+		{
+			"details": {},
+			"name": "skip_pose_6_restores_everything",
+			"passed": true
+		}
+	],
+	"failures": [
+		"standing_head_below_chapter_header"
+	],
+	"guest_position": [
+		910.0,
+		198.0
+	],
+	"isolation_appdata": "C:\\Users\\KSG\\AppData\\Local\\Temp\\maze_code_ch1_04_isolated_0eaa75e338474b9c81e2ff04424cf75d\\Roaming",
+	"isolation_root": "C:\\Users\\KSG\\AppData\\Local\\Temp\\maze_code_ch1_04_isolated_0eaa75e338474b9c81e2ff04424cf75d",
+	"texture": "res://assets/characters/tieshan/tieshan_collapse.tres",
+	"user_data_dir": "C:/Users/KSG/AppData/Local/Temp/maze_code_ch1_04_isolated_0eaa75e338474b9c81e2ff04424cf75d/Roaming/Godot/app_userdata/maze_code/"
+}

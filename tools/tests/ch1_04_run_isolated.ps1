@@ -93,8 +93,12 @@ try {
     $env:APPDATA = $isolatedAppData
     $env:LOCALAPPDATA = $isolatedLocalAppData
     $env:MAZE_CH1_04_ISOLATED = '1'
-    $process = Start-Process -FilePath $GodotPath -ArgumentList $godotArgs -Wait -PassThru -NoNewWindow `
+    $process = Start-Process -FilePath $GodotPath -ArgumentList $godotArgs -PassThru -WindowStyle Hidden `
         -RedirectStandardOutput $outputStdout -RedirectStandardError $outputStderr
+    if (-not $process.WaitForExit(120000)) {
+        $process.Kill()
+        throw 'Godot CH1-04 exceeded the 120 second budget.'
+    }
 }
 finally {
     $env:APPDATA = $oldAppData

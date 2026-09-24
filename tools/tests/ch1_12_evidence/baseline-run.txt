@@ -1,0 +1,17 @@
+RUNNER summary=tools\tests\ch1_12_evidence\baseline\ch1_04-runner-summary.json
+RUNNER godot_exit_code=0
+RUNNER runner_exit_code=0
+RUNNER runner_passed=True
+RUNNER fixture_real_save_change=False
+RUNNER real_save_unchanged=True
+RUNNER isolation_path_valid=True
+RUNNER report_exists=True
+RUNNER report_valid=True
+RUNNER report_failures_clear=True
+RUNNER screenshot_required=True
+RUNNER screenshot_exists=True
+RUNNER visible_capture_passed=True
+RUNNER stdout=tools\tests\ch1_12_evidence\baseline\ch1_04.stdout.txt
+RUNNER stderr=tools\tests\ch1_12_evidence\baseline\ch1_04.stderr.txt
+RUNNER report=tools\tests\ch1_12_evidence\baseline\ch1_04-report.json
+RUNNER screenshot=tools\tests\ch1_12_evidence\baseline\CH1-04-tieshan-dialog.png

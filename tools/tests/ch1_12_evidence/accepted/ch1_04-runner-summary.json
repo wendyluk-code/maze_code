@@ -1,0 +1,48 @@
+{
+  "test": "ch1_04",
+  "godot_version": "4.7.2.stable.steam.ed1daf0bf",
+  "workspace": "C:\\Users\\KSG\\.codex\\worktrees\\dc04\\maze_code",
+  "command": "F:\\SteamLibrary\\steamapps\\common\\Godot Engine\\godot.windows.opt.tools.64.exe --path C:\\Users\\KSG\\.codex\\worktrees\\dc04\\maze_code --scene res://tools/tests/ch1_04_tieshan_suite.tscn -- --replay-tutorial --isolation-root=C:\\Users\\KSG\\AppData\\Local\\Temp\\maze_code_ch1_04_isolated_10cfcc77d55e429a9f6aa4cf3e57e988 --isolation-appdata=C:\\Users\\KSG\\AppData\\Local\\Temp\\maze_code_ch1_04_isolated_10cfcc77d55e429a9f6aa4cf3e57e988\\Roaming --report=tools\\tests\\ch1_12_evidence\\accepted\\ch1_04-report.json --output=tools\\tests\\ch1_12_evidence\\accepted\\CH1-04-tieshan-dialog.png",
+  "exit_code": 0,
+  "runner_exit_code": 0,
+  "runner_passed": true,
+  "fixture_real_save_change": false,
+  "isolation_root": "C:\\Users\\KSG\\AppData\\Local\\Temp\\maze_code_ch1_04_isolated_10cfcc77d55e429a9f6aa4cf3e57e988",
+  "isolated_appdata": "C:\\Users\\KSG\\AppData\\Local\\Temp\\maze_code_ch1_04_isolated_10cfcc77d55e429a9f6aa4cf3e57e988\\Roaming",
+  "isolated_user_dir": "C:\\Users\\KSG\\AppData\\Local\\Temp\\maze_code_ch1_04_isolated_10cfcc77d55e429a9f6aa4cf3e57e988\\Roaming\\Godot\\app_userdata\\maze_code",
+  "isolation_path_valid": true,
+  "real_save_path": "C:\\Users\\KSG\\AppData\\Roaming\\Godot\\app_userdata\\maze_code\\save.json",
+  "real_save_before": {
+    "exists": true,
+    "length": 90,
+    "sha256": "3a0978f99fdb7888c8f41b6dbfcf83a58a852ea9948dcfa1afba3da3d46a586a"
+  },
+  "real_save_after": {
+    "exists": true,
+    "length": 90,
+    "sha256": "3a0978f99fdb7888c8f41b6dbfcf83a58a852ea9948dcfa1afba3da3d46a586a"
+  },
+  "real_save_after_checked": {
+    "exists": true,
+    "length": 90,
+    "sha256": "3a0978f99fdb7888c8f41b6dbfcf83a58a852ea9948dcfa1afba3da3d46a586a"
+  },
+  "real_save_unchanged": true,
+  "isolated_save_path": "C:\\Users\\KSG\\AppData\\Local\\Temp\\maze_code_ch1_04_isolated_10cfcc77d55e429a9f6aa4cf3e57e988\\Roaming\\Godot\\app_userdata\\maze_code\\save.json",
+  "isolated_save_after": {
+    "exists": false,
+    "length": 0,
+    "sha256": ""
+  },
+  "stdout": "tools\\tests\\ch1_12_evidence\\accepted\\ch1_04.stdout.txt",
+  "stderr": "tools\\tests\\ch1_12_evidence\\accepted\\ch1_04.stderr.txt",
+  "report": "tools\\tests\\ch1_12_evidence\\accepted\\ch1_04-report.json",
+  "report_exists": true,
+  "report_valid": true,
+  "report_failures_clear": true,
+  "report_error": "",
+  "screenshot_required": true,
+  "screenshot": "tools\\tests\\ch1_12_evidence\\accepted\\CH1-04-tieshan-dialog.png",
+  "screenshot_exists": true,
+  "visible_capture_passed": true
+}

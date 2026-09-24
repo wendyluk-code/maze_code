@@ -1,14 +1,15 @@
 [gd_scene load_steps=3 format=3 uid="uid://guestplaceholder0001"]
 
 [ext_resource type="Script" path="res://scripts/guest_placeholder.gd" id="1_guest"]
-[ext_resource type="Texture2D" path="res://assets/characters/tieshan/tieshan_original.png" id="2_tieshan"]
+[ext_resource type="SpriteFrames" path="res://assets/characters/tieshan/tieshan_collapse.tres" id="2_tieshan"]
 
 [node name="TieshanGuest" type="Node2D"]
 z_index = 10
 script = ExtResource("1_guest")
 
-[node name="Portrait" type="Sprite2D" parent="."]
-position = Vector2(-57.6, -69.525)
-scale = Vector2(0.075, 0.075)
-texture = ExtResource("2_tieshan")
+[node name="Portrait" type="AnimatedSprite2D" parent="."]
+position = Vector2(-88.08, -164.416)
+scale = Vector2(0.367, 0.367)
+sprite_frames = ExtResource("2_tieshan")
+animation = &"collapse"
 centered = false
