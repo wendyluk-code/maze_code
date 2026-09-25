@@ -208,7 +208,7 @@ func _run_post_delivery_empty_warehouse() -> void:
 	_check(is_instance_valid(confirm), "地图面板存在确认按钮")
 	await _click(confirm)
 	await _advance_dialogues_until("ready_to_depart", 12000)
-	var departure := sm.departure_state()
+	var departure: Dictionary = sm.departure_state()
 	_check(sm.is_ready_to_depart() and str(departure.get("step", "")) == "ready_to_depart" and departure.get("party", []) == ["yaya", "tieshan"], "交付后地图确认推进到ready_to_depart")
 
 func _advance_dialogues_until(target_wrapup: String, timeout_ms: int) -> void:
@@ -222,7 +222,10 @@ func _advance_dialogues_until(target_wrapup: String, timeout_ms: int) -> void:
 				await _send_key(KEY_ENTER)
 		else:
 			await get_tree().process_frame
-	_check(tm.active and str(tm.steps[tm.idx].get("wrapup_id", "")) == target_wrapup, "阶段推进到" + target_wrapup)
+	if target_wrapup == "ready_to_depart":
+		_check(not tm.active and str(sm.departure_state().get("step", "")) == target_wrapup, "阶段推进到" + target_wrapup)
+	else:
+		_check(tm.active and str(tm.steps[tm.idx].get("wrapup_id", "")) == target_wrapup, "阶段推进到" + target_wrapup)
 
 func _run_cancel_and_timeout(output_dir: String) -> void:
 	await _prepare_scene()

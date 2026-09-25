@@ -17,9 +17,14 @@
 ```powershell
 $p = 'C:\Users\KSG\.codex\worktrees\6269\maze_code\output\ch1_qte_03_manual'
 New-Item -ItemType Directory -Force $p | Out-Null
-$env:APPDATA = $p; $env:LOCALAPPDATA = $p; $env:MAZE_QTE02_PROFILE = $p
-& 'F:\SteamLibrary\steamapps\common\Godot Engine\godot.windows.opt.tools.64.exe' --headless --path F:\maze_code --script res://tools/tests/ch1_qte_02_state.gd -- --mode=write --sample=before --report="$p\seed.json"
-& 'F:\SteamLibrary\steamapps\common\Godot Engine\godot.windows.opt.tools.64.exe' --path F:\maze_code --audio-driver Dummy --rendering-method gl_compatibility res://scenes/restaurant_map_2d.tscn
+$old_appdata = $env:APPDATA; $old_localappdata = $env:LOCALAPPDATA; $old_profile = $env:MAZE_QTE02_PROFILE
+try {
+    $env:APPDATA = $p; $env:LOCALAPPDATA = $p; $env:MAZE_QTE02_PROFILE = $p
+    & 'F:\SteamLibrary\steamapps\common\Godot Engine\godot.windows.opt.tools.64.exe' --headless --path F:\maze_code --script res://tools/tests/ch1_qte_02_state.gd -- --mode=write --sample=before --report="$p\seed.json"
+    & 'F:\SteamLibrary\steamapps\common\Godot Engine\godot.windows.opt.tools.64.exe' --path F:\maze_code --audio-driver Dummy --rendering-method gl_compatibility res://scenes/restaurant_map_2d.tscn
+} finally {
+    $env:APPDATA = $old_appdata; $env:LOCALAPPDATA = $old_localappdata; $env:MAZE_QTE02_PROFILE = $old_profile
+}
 ```
 
 该入口只使用隔离用户目录；关闭窗口后可直接删除 `output/ch1_qte_03_manual`，不会触碰正式 `user://save.json`。
