@@ -121,7 +121,7 @@ func _run_quality(quality: int, resolution: Vector2i, output_dir: String) -> voi
 		var salt_row: Control = warehouse.get("_selected_rows").get("rock_salt")
 		await _click(meat_row.get_child(0).get_node("Minus"))
 		await _click(salt_row.get_child(0).get_node("Minus"))
-		_check(warehouse.get("_selected").is_empty() and not warehouse.get("_claim_button").disabled, "品质1：已选区减一后清空且不改库存")
+		_check(warehouse.get("_selected").is_empty() and warehouse.get("_claim_button").disabled, "品质1：已选区减一后清空且领取保持禁用")
 		await _click(warehouse.get("_meat_slot").get("_icon_button")); await _click(warehouse.get("_salt_slot").get("_icon_button"))
 		await _click(warehouse.get("_cancel_button"))
 		_check(not warehouse.visible and sm.inventory_snapshot().rockmane_meat == 0 and tm.idx == 11, "品质1：取消仓库不改库存且停留步骤")
@@ -197,7 +197,7 @@ func _run_post_delivery_empty_warehouse() -> void:
 		else:
 			await get_tree().process_frame
 	_check(str(tm.steps[tm.idx].get("wrapup_id", "")) == "warehouse_move", "交付后继续到仓库检查步骤")
-		player.global_position = _stand(store)
+	player.global_position = _stand(store)
 	_check(await _wait_until(func(): return str(tm.steps[tm.idx].get("wrapup_id", "")) == "warehouse_inspect", 300), "交付后真实移动到空仓库")
 	await _send_key(KEY_E)
 	await get_tree().process_frame
