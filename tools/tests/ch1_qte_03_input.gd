@@ -199,6 +199,30 @@ func _run_post_delivery_empty_warehouse() -> void:
 	_check(modal.visible and bool(modal.get("_empty_stock")) and str(modal.get("_message").text) == "没有任何食物" and not modal.get("_claim_button").visible, "交付后E打开空仓库并隐藏领取")
 	await _click(modal.get("_cancel_button"))
 	_check(not modal.visible and str(tm.steps[tm.idx].get("wrapup_id", "")) == "salt_pool", "确认空仓库后推进盐池线索")
+	await _advance_dialogues_until("map_review", 12000)
+	var panel := scene.get_node("UIOverlay/DeparturePanel")
+	_check(bool(panel.get("_open")), "交付后真实对白打开地图确认面板")
+	var map_modal: Control = panel.get("_modal")
+	var rows: Control = map_modal.get_child(0).get_child(0)
+	var confirm: Button = rows.get_child(rows.get_child_count() - 1) as Button
+	_check(is_instance_valid(confirm), "地图面板存在确认按钮")
+	await _click(confirm)
+	await _advance_dialogues_until("ready_to_depart", 12000)
+	var departure := sm.departure_state()
+	_check(sm.is_ready_to_depart() and str(departure.get("step", "")) == "ready_to_depart" and departure.get("party", []) == ["yaya", "tieshan"], "交付后地图确认推进到ready_to_depart")
+
+func _advance_dialogues_until(target_wrapup: String, timeout_ms: int) -> void:
+	var guide := scene.get_node("UIOverlay/TutorialGuide")
+	var deadline := Time.get_ticks_msec() + timeout_ms
+	while tm.active and Time.get_ticks_msec() < deadline and str(tm.steps[tm.idx].get("wrapup_id", "")) != target_wrapup:
+		if tm.steps[tm.idx].get("type", "") == "dialog" and guide.dialog.visible:
+			var old_idx: int = tm.idx
+			await _send_key(KEY_SPACE)
+			if tm.idx == old_idx and guide.dialog.visible:
+				await _send_key(KEY_ENTER)
+		else:
+			await get_tree().process_frame
+	_check(tm.active and str(tm.steps[tm.idx].get("wrapup_id", "")) == target_wrapup, "阶段推进到" + target_wrapup)
 
 func _run_cancel_and_timeout(output_dir: String) -> void:
 	await _prepare_scene()
