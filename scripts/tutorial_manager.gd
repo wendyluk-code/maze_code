@@ -240,7 +240,7 @@ func chapter_1_lesson() -> Array:
 			"stage": 6,
 			"type": "interact", "target": "前台",
 			"hint": "靠近前台，按 E 交单上菜",
-			"toast": "顾客吃得很满足！ 餐厅声望 +20",
+			"toast": "顾客评价将根据料理品质结算",
 		},
 	] + departure_lesson()
 
@@ -598,7 +598,7 @@ func _on_player_interact(node: Node2D) -> void:
 		if not modal.cancelled.is_connected(_on_cooking_cancelled):
 			modal.cancelled.connect(_on_cooking_cancelled)
 		_set_player_locked(true)
-		modal.open_for_order()
+		modal.open_for_order(SaveManager.FIRST_ORDER_ITEM_ID)
 		return
 	if _chapter_1_run and int(step.get("stage", 0)) == 6 and str(step.get("target", "")) == "前台":
 		if not is_instance_valid(player) or player.interaction_distance_to(target) > 120.0:
@@ -620,7 +620,7 @@ func _on_player_interact(node: Node2D) -> void:
 		var tracker := get_tree().get_first_node_in_group("order_tracking")
 		if is_instance_valid(tracker):
 			tracker.refresh_saved_state()
-		guide.show_toast("顾客吃得很满足！ 餐厅声望 +%d" % int(result.get("reputation_awarded", 10)))
+		guide.show_toast(_quality_feedback(int(result.get("quality", 1)), int(result.get("reputation_awarded", 10))))
 		_complete_step(_run_token)
 		return
 	var toast := str(step.get("toast", ""))
@@ -663,6 +663,7 @@ func _on_warehouse_cancelled() -> void:
 func _on_cooking_finished(result: Dictionary) -> void:
 	if not active or idx < 0 or idx >= steps.size():
 		return
+	var token := _run_token
 	var step: Dictionary = steps[idx]
 	if step.get("type", "") != "interact" or int(step.get("stage", 0)) != 5:
 		return
@@ -670,11 +671,14 @@ func _on_cooking_finished(result: Dictionary) -> void:
 		return
 	# 结果短暂留在弹窗中，随后关闭并恢复教程输入，避免遮罩下推进到移动步骤。
 	await get_tree().create_timer(1.0).timeout
-	if not active:
+	if not active or token != _run_token or idx < 0 or idx >= steps.size():
+		return
+	if steps[idx].get("type", "") != "interact" or int(steps[idx].get("stage", 0)) != 5:
 		return
 	var modal := get_tree().get_first_node_in_group("cooking_modal")
-	if is_instance_valid(modal) and modal.get("_open"):
-		modal.close_modal()
+	if not is_instance_valid(modal) or not modal.get("_open"):
+		return
+	modal.close_modal()
 	_set_player_locked(false)
 	var tracker := get_tree().get_first_node_in_group("order_tracking")
 	if is_instance_valid(tracker) and tracker.has_method("refresh_saved_state"):
@@ -686,6 +690,15 @@ func _on_cooking_finished(result: Dictionary) -> void:
 func _on_cooking_cancelled() -> void:
 	if active:
 		_set_player_locked(false)
+
+func _quality_feedback(quality: int, reward: int) -> String:
+	match quality:
+		3:
+			return "顾客惊叹不已！完美料理！ 餐厅声望 +%d" % reward
+		2:
+			return "顾客吃得很满足！美味料理！ 餐厅声望 +%d" % reward
+		_:
+			return "顾客吃得很满足。普通料理。 餐厅声望 +%d" % reward
 
 func _process(_delta: float) -> void:
 	if not active or not is_instance_valid(player) or idx < 0 or idx >= steps.size():

@@ -20,6 +20,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui_overlay.tscn" id="7_ui"]
 ; 引用新手教学引导层（暗幕/高亮/提示/对话框）
 [ext_resource type="PackedScene" path="res://scenes/ui/tutorial_guide.tscn" id="8_guide"]
+[ext_resource type="PackedScene" path="res://scenes/ui/cooking_modal.tscn" id="10_cooking"]
 
 ; ↓↓↓ 子资源（SubResource）：场景内联定义的资源 ↓↓↓
 ; 定义一个圆形碰撞形状，作为主角脚底的碰撞体
@@ -155,6 +156,10 @@ target_path = NodePath("../Player")
 
 ; HUD 层：屏幕 UI 画在第一层 CanvasLayer（不随世界滚动）
 [node name="HUD" type="CanvasLayer" parent="." unique_id=1262161006]
+layer = 10
+
+; 烹饪 QTE 弹窗：挂在获准主场景 HUD，不修改通用 UIOverlay 场景
+[node name="CookingModal" parent="HUD" instance=ExtResource("10_cooking")]
 
 ; 底部提示文字（靠近交互点时提示按 E）
 [node name="HintLabel" type="Label" parent="HUD" unique_id=2052962510]

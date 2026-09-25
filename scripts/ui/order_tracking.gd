@@ -206,10 +206,7 @@ func refresh_saved_state() -> void:
 	var salt := int(sm.inventory_quantity("rock_salt")) if sm.has_method("inventory_quantity") else 0
 	_set_counter(_order_status, 1 if completed else 0)
 	_order_prefix.text = "订单完成：" if completed else "接到订单：交出"
-	var quality := int(sm.cooked_quality()) if sm.has_method("cooked_quality") else 0
 	_cook_title.text = "烹饪 · 餐厅声望 %d" % sm.reputation()
-	if quality > 0:
-		_cook_title.text += " · %d 星" % quality
 	_set_counter(_meat_status, meat)
 	_set_counter(_salt_status, salt)
 	# 材料与料理栏均显示当前库存；完成状态仅来自已提交的订单。

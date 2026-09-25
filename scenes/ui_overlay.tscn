@@ -1,9 +1,8 @@
-[gd_scene load_steps=5 format=3 uid="uid://ui_overlay_maze01"]
+[gd_scene load_steps=4 format=3 uid="uid://ui_overlay_maze01"]
 
 [ext_resource type="Script" path="res://scripts/ui_layer.gd" id="1_ui"]
 [ext_resource type="PackedScene" path="res://scenes/ui/order_tracking.tscn" id="2_order_tracking"]
 [ext_resource type="PackedScene" path="res://scenes/ui/warehouse_modal.tscn" id="3_warehouse"]
-[ext_resource type="PackedScene" path="res://scenes/ui/cooking_modal.tscn" id="4_cooking"]
 
 [node name="UIOverlay" type="CanvasLayer"]
 script = ExtResource("1_ui")
@@ -11,5 +10,3 @@ script = ExtResource("1_ui")
 [node name="OrderTracking" parent="." instance=ExtResource("2_order_tracking")]
 
 [node name="WarehouseModal" parent="." instance=ExtResource("3_warehouse")]
-
-[node name="CookingModal" parent="." instance=ExtResource("4_cooking")]
