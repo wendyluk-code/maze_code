@@ -101,6 +101,22 @@ func _run_quality(quality: int, resolution: Vector2i, output_dir: String) -> voi
 	_check(not warehouse.get("_claim_button").disabled, "品质%d：鼠标多选材料启用领取" % quality)
 	var selected_list: Control = warehouse.get("_selected_list")
 	_check(is_instance_valid(selected_list) and selected_list.get_child_count() >= 2, "品质%d：已选区显示图标名称与加减行" % quality)
+	if quality == 1:
+		await get_tree().process_frame
+		var meat_row: Control = warehouse.get("_selected_rows").get("rockmane_meat")
+		await _click(meat_row.get_child(0).get_node("Minus"))
+		await get_tree().process_frame
+		_check(not warehouse.get("_selected").has("rockmane_meat") and warehouse.get("_selected").has("rock_salt"), "品质1：减肉后仅保留盐选择", {"selected": warehouse.get("_selected")})
+		var salt_row_after: Control = warehouse.get("_selected_rows").get("rock_salt")
+		await _click(salt_row_after.get_child(0).get_node("Minus"))
+		await get_tree().process_frame
+		_check(warehouse.get("_selected").is_empty() and warehouse.get("_claim_button").disabled, "品质1：已选区减回零后领取禁用", {"selected": warehouse.get("_selected")})
+		await _click(warehouse.get("_meat_slot").get("_icon_button")); await _click(warehouse.get("_salt_slot").get("_icon_button"))
+		await _click(warehouse.get("_cancel_button")); await get_tree().process_frame
+		_check(not warehouse.visible and sm.inventory_quantity("rockmane_meat") == 0 and tm.idx == 11, "品质1：取消仓库不改库存且停留步骤", {"visible": warehouse.visible, "idx": tm.idx})
+		if not warehouse.visible:
+			await _send_key(KEY_E); await _wait_until(func(): return warehouse.visible, 60)
+			await _click(warehouse.get("_meat_slot").get("_icon_button")); await _click(warehouse.get("_salt_slot").get("_icon_button"))
 	await _click(warehouse.get("_claim_button"))
 	_check(sm.inventory_quantity("rockmane_meat") == 1 and sm.inventory_quantity("rock_salt") == 1,
 		"品质%d：真实领取只增加一份材料" % quality)
