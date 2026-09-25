@@ -9,6 +9,7 @@ var scene: Node
 var checks := 0
 var failures := 0
 var results: Array = []
+var observed_resolutions: Array = []
 
 func _ready() -> void:
 	call_deferred("_run")
@@ -38,7 +39,7 @@ func _run() -> void:
 		await _run_cancel_and_timeout(output_dir)
 		_run_component_checks()
 	var report := {"ticket": "CH1-QTE-03", "checks": checks, "failures": failures, "results": results,
-		"resolutions": ["1152x648", "1280x720"], "real_gui": true}
+		"resolutions": observed_resolutions, "real_gui": true}
 	if not report_path.is_empty():
 		var f := FileAccess.open(report_path, FileAccess.WRITE)
 		if f: f.store_string(JSON.stringify(report, "\t")); f.close()
@@ -46,18 +47,27 @@ func _run() -> void:
 	get_tree().quit(0 if failures == 0 else 1)
 
 func _run_quality(quality: int, resolution: Vector2i, output_dir: String) -> void:
+	DisplayServer.window_set_size(resolution)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var actual_viewport := get_viewport().get_visible_rect().size
+	observed_resolutions.append({"requested": str(resolution), "viewport": str(actual_viewport)})
+	_check(actual_viewport.x >= resolution.x - 4 and actual_viewport.y >= resolution.y - 4, "品质%d：窗口尺寸实际生效" % quality, {"requested": str(resolution), "viewport": str(actual_viewport)})
 	await _prepare_scene()
 	var guide := scene.get_node("UIOverlay/TutorialGuide")
 	var player := scene.get_node("Player")
 	var register := scene.get_node("InteractPoints/Register")
 	var store := scene.get_node("InteractPoints/Store")
 	var cauldron := scene.get_node("InteractPoints/Cauldron")
+	var tracker := scene.get_node("UIOverlay/OrderTracking")
 	# 从合法教学对白进入前台步骤，再使用真实 E 接单。
 	await _reach_frontdesk()
 	player.global_position = _stand(register)
 	_check(await _wait_until(func(): return tm.idx == 9, 240), "品质%d：前台教学步骤" % quality)
 	await _send_key(KEY_E)
 	_check(sm.current_order().get("status", "") == "in_progress" and tm.idx == 10, "品质%d：真实 E 接单" % quality)
+	await _click(tracker.get("_task_button"))
+	_check(bool(tracker.get("_expanded")), "品质%d：真实点击展开任务" % quality)
 	# 真实 E 打开仓库，鼠标选择两种材料并点击领取。
 	player.global_position = _stand(store)
 	_check(await _wait_until(func(): return tm.idx == 11, 240), "品质%d：仓库教学步骤" % quality)
@@ -65,10 +75,23 @@ func _run_quality(quality: int, resolution: Vector2i, output_dir: String) -> voi
 	await get_tree().process_frame
 	var warehouse := scene.get_node("UIOverlay/WarehouseModal")
 	_check(warehouse.visible and player.input_locked, "品质%d：E 打开仓库并锁定玩家" % quality)
-	_check(not scene.get_node("UIOverlay/OrderTracking").get("_details_open"), "品质%d：打开仓库前任务详情收起" % quality)
-	await _click(warehouse.get("_meat_slot"))
-	await _click(warehouse.get("_salt_slot"))
+	_check(not bool(tracker.get("_expanded")), "品质%d：打开仓库前任务详情收起" % quality)
+	var slots_grid := warehouse.get("_slots_grid")
+	var scroll := warehouse.get("_scroll")
+	_check(is_instance_valid(slots_grid) and int(slots_grid.columns) == 5 and slots_grid.get_child_count() == 30, "品质%d：仓库5列30格" % quality)
+	_check(is_instance_valid(scroll) and is_equal_approx(float(scroll.custom_minimum_size.y), 3.5 * 56.0 + 3.0 * 4.0), "品质%d：仓库可视高度3.5行" % quality)
+	var hover_region := warehouse.get("_grid_hover_region")
+	if is_instance_valid(hover_region):
+		get_viewport().warp_mouse(hover_region.get_global_rect().get_center()); await get_tree().process_frame
+		_check(float(scroll.get_v_scroll_bar().self_modulate.a) > 0.5, "品质%d：悬停显示滚动条" % quality)
+		get_viewport().warp_mouse(Vector2(4, 4)); await get_tree().process_frame
+		_check(float(scroll.get_v_scroll_bar().self_modulate.a) < 0.1, "品质%d：移出隐藏滚动条" % quality)
+	_check(is_instance_valid(warehouse.get("_meat_slot").get("_icon_button")) and is_instance_valid(warehouse.get("_salt_slot").get("_icon_button")), "品质%d：仓库图标按钮存在" % quality)
+	await _click(warehouse.get("_meat_slot").get("_icon_button"))
+	await _click(warehouse.get("_salt_slot").get("_icon_button"))
 	_check(not warehouse.get("_claim_button").disabled, "品质%d：鼠标多选材料启用领取" % quality)
+	var selected_list := warehouse.get("_selected_list")
+	_check(is_instance_valid(selected_list) and selected_list.get_child_count() >= 2, "品质%d：已选区显示图标名称与加减行" % quality)
 	await _click(warehouse.get("_claim_button"))
 	_check(sm.inventory_quantity("rockmane_meat") == 1 and sm.inventory_quantity("rock_salt") == 1,
 		"品质%d：真实领取只增加一份材料" % quality)
@@ -80,7 +103,7 @@ func _run_quality(quality: int, resolution: Vector2i, output_dir: String) -> voi
 	await get_tree().process_frame
 	var modal := scene.get_node("HUD/CookingModal")
 	_check(modal.visible and modal.z_index >= 100 and player.input_locked, "品质%d：E 打开料理弹窗高层遮罩" % quality)
-	_check(not scene.get_node("UIOverlay/OrderTracking").get("_details_open"), "品质%d：打开料理前任务详情收起" % quality)
+	_check(not bool(tracker.get("_expanded")), "品质%d：打开料理前任务详情收起" % quality)
 	await _capture(output_dir, "qte03_%d_%dx%d_open" % [quality, resolution.x, resolution.y])
 	await _click(modal.get("_start_button"))
 	_check(sm.cooking_state().status == "active" and sm.inventory_quantity("rockmane_meat") == 0 and sm.inventory_quantity("rock_salt") == 0,
@@ -106,9 +129,12 @@ func _run_quality(quality: int, resolution: Vector2i, output_dir: String) -> voi
 		"品质%d：真实 E 交付声望%d" % [quality, reward])
 	_check(_feedback_contains(guide, quality), "品质%d：顾客评价分档" % quality)
 	await _capture(output_dir, "qte03_%d_%dx%d_feedback" % [quality, resolution.x, resolution.y])
-	var before: Dictionary = sm.data.duplicate(true)
+	var before_inventory: Dictionary = sm.inventory_snapshot()
+	var before_prepared: Dictionary = sm.prepared_dishes_snapshot()
+	var before_reputation: int = sm.reputation()
+	var before_settlement: Dictionary = sm.data.get("first_order_settlement", {}).duplicate(true)
 	await _send_key(KEY_E)
-	_check(sm.data == before and not sm.deliver_first_order().success, "品质%d：重复交付不重复结算" % quality)
+	_check(sm.inventory_snapshot() == before_inventory and sm.prepared_dishes_snapshot() == before_prepared and sm.reputation() == before_reputation and sm.data.get("first_order_settlement", {}) == before_settlement and not sm.deliver_first_order().success, "品质%d：重复交付不重复结算" % quality)
 	tm._cancel_current_run()
 	if is_instance_valid(scene):
 		scene.queue_free()
@@ -121,7 +147,7 @@ func _run_cancel_and_timeout(output_dir: String) -> void:
 	player.global_position = _stand(scene.get_node("InteractPoints/Register")); await _wait_until(func(): return tm.idx == 9, 240); await _send_key(KEY_E)
 	player.global_position = _stand(scene.get_node("InteractPoints/Store")); await _wait_until(func(): return tm.idx == 11, 240); await _send_key(KEY_E)
 	var warehouse := scene.get_node("UIOverlay/WarehouseModal")
-	await _click(warehouse.get("_meat_slot")); await _click(warehouse.get("_salt_slot")); await _click(warehouse.get("_claim_button"))
+	await _click(warehouse.get("_meat_slot").get("_icon_button")); await _click(warehouse.get("_salt_slot").get("_icon_button")); await _click(warehouse.get("_claim_button"))
 	player.global_position = _stand(scene.get_node("InteractPoints/Cauldron")); await _wait_until(func(): return tm.idx == 13, 240); await _send_key(KEY_E)
 	var modal := scene.get_node("HUD/CookingModal")
 	var before: Dictionary = sm.inventory_snapshot(); await _click(modal.get("_cancel_button"))
@@ -141,8 +167,10 @@ func _run_component_checks() -> void:
 	_check(jud.stars_for_position(0.19, 0.16, 0.38) == 2 and jud.stars_for_position(-0.19, 0.16, 0.38) == 2,
 		"良好区边界±0.19包含")
 	_check(jud.stars_for_position(0.1901, 0.16, 0.38) == 1, "良好区外判定1星")
+	_check(jud.stars_for_position(0.08, 0.10, 0.38) == 2 and jud.stars_for_position(0.08, 0.16, 0.38) == 3, "判定窗口参数改变边界行为")
 	_check(is_equal_approx(jud.position_at(1.8, 3.6), 1.0) and is_equal_approx(jud.position_at(3.6, 3.6), -1.0),
 		"3.6秒自然往返端点")
+	_check(not is_equal_approx(jud.position_at(0.9, 3.6), jud.position_at(0.9, 1.8)), "时长参数改变同一时刻指针")
 	var gauge: Control = load("res://scripts/cooking/gauge.gd").new()
 	gauge.size = Vector2(560, 110); gauge.perfect_width = 0.16; gauge.good_width = 0.38
 	_check(is_equal_approx(gauge.good_width, 0.38) and is_equal_approx(gauge.perfect_width, 0.16), "火候组件参数可配置")
@@ -151,6 +179,9 @@ func _prepare_scene() -> void:
 	if is_instance_valid(scene):
 		scene.queue_free(); await get_tree().process_frame
 	sm.data = sm._defaults()
+	# 合法接单前夹具：只恢复序章已见客人，不伪造订单/库存/教程索引。
+	sm.data.prologue_done = true
+	sm.data.chapter_1_intro = "guest_arrived"
 	sm.save()
 	scene = RESTAURANT.instantiate()
 	get_tree().root.add_child(scene); get_tree().current_scene = scene
@@ -158,13 +189,13 @@ func _prepare_scene() -> void:
 	tm.start(); await get_tree().process_frame
 
 func _reach_frontdesk() -> void:
-	var guide := scene.get_node("UIOverlay/TutorialGuide")
-	for _i in 5:
-		guide.dialog._advance(); guide.dialog._advance(); await get_tree().process_frame
-	while tm.active and tm.idx == 5:
-		guide.dialog._advance(); guide.dialog._advance(); await get_tree().process_frame
-	while tm.active and tm.idx == 7:
-		guide.dialog._advance(); await get_tree().process_frame
+	_check(await _wait_until(func(): return tm.idx == 6, 180), "接单前恢复到客人对白")
+	await _send_key(KEY_SPACE)
+	await _send_key(KEY_ENTER)
+	_check(await _wait_until(func(): return tm.idx == 7, 180), "接单前完成客人对白")
+	await _send_key(KEY_SPACE)
+	await _send_key(KEY_ENTER)
+	_check(await _wait_until(func(): return tm.idx >= 8, 180), "接单前进入前台移动教学")
 
 func _send_key(keycode: Key) -> void:
 	var event := InputEventKey.new(); event.keycode = keycode; event.pressed = true
