@@ -1,8 +1,12 @@
 extends Node
 ## 存档管理器（Autoload: SaveManager）
-## 全量 JSON 存档，路径 user://save.json；维护教程兼容标记、章节完成状态与首单
+## 全量 JSON 存档；旧 save.json 与独立档共用迁移和原子保存。
 
 const SAVE_PATH := "user://save.json"
+const SLOTS_DIR := "user://saves"
+const SLOT_META_KEY := "_save_slot"
+var _active_save_path := SAVE_PATH
+var last_load_error := ""
 const PROLOGUE_DONE_KEY := "prologue_done"
 const CHAPTER_1_DONE_KEY := "chapter_1_done"
 const CURRENT_ORDER_KEY := "current_order"
@@ -277,15 +281,17 @@ func _normalize_order(value) -> Dictionary:
 func load_data() -> void:
 	if _replaying:
 		return
+	last_load_error = ""
 	migration_diagnostics.clear()
 	data = _defaults()
-	if FileAccess.file_exists(SAVE_PATH):
-		var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if FileAccess.file_exists(_active_save_path):
+		var f := FileAccess.open(_active_save_path, FileAccess.READ)
 		if f:
 			var parser := JSON.new()
 			var error := parser.parse(f.get_as_text())
 			f.close()
 			if error != OK:
+				last_load_error = "存档内容损坏：" + parser.get_error_message()
 				_diagnose("存档 JSON 损坏，回退默认状态：" + parser.get_error_message())
 				return
 			var parsed = parser.data
@@ -328,10 +334,93 @@ func load_data() -> void:
 				if not _prologue_preview:
 					_migrate_prologue(parsed)
 				return
+			last_load_error = "存档内容无效，顶层必须是字典"
 			_diagnose("存档顶层必须是字典，回退默认状态")
 		else:
+			last_load_error = "存档读取失败：" + str(FileAccess.get_open_error())
 			_diagnose("存档读取失败，回退默认状态：" + str(FileAccess.get_open_error()))
+	else:
+		last_load_error = "存档不存在或无法访问"
 	_state = _defaults()
+
+## 列表只读；坏档保留为可选条目，载入时报告错误，不当成新游戏。
+func list_save_slots() -> Dictionary:
+	var paths: Array[String] = []
+	if FileAccess.file_exists(SAVE_PATH):
+		paths.append(SAVE_PATH)
+	if FileAccess.file_exists(SLOTS_DIR):
+		return {"success": false, "message": "存档目录被同名文件占用，无法读取存档列表。", "slots": []}
+	if DirAccess.dir_exists_absolute(SLOTS_DIR):
+		var directory := DirAccess.open(SLOTS_DIR)
+		if directory == null:
+			return {"success": false, "message": "无法读取存档目录，请检查访问权限。", "slots": []}
+		for filename in directory.get_files():
+			if filename.ends_with(".json"):
+				paths.append(SLOTS_DIR.path_join(filename))
+	var slots: Array[Dictionary] = []
+	for path in paths:
+		var label := "旧存档" if path == SAVE_PATH else "冒险 " + path.get_file().get_basename()
+		var modified := FileAccess.get_modified_time(path)
+		var problem := ""
+		var file := FileAccess.open(path, FileAccess.READ)
+		if file == null:
+			problem = "读取失败"
+		else:
+			var parser := JSON.new()
+			var error := parser.parse(file.get_as_text())
+			file.close()
+			if error != OK or not parser.data is Dictionary:
+				problem = "内容损坏"
+			else:
+				var metadata = parser.data.get(SLOT_META_KEY, {})
+				if metadata is Dictionary and metadata.get("name") is String:
+					label = metadata.name
+		var local_time := modified + int(Time.get_time_zone_from_system().bias) * 60
+		slots.append({"id": path, "name": label, "saved_at": modified,
+			"time_text": Time.get_datetime_string_from_unix_time(local_time).replace("T", " ") + "（本地时间）", "problem": problem})
+	slots.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.saved_at > b.saved_at)
+	return {"success": true, "message": "", "slots": slots}
+
+func active_save_path() -> String:
+	return _active_save_path
+
+## 首次落盘成功才切换活动档；一份文件即一份档案，不依赖可失配的索引。
+func create_new_game() -> Dictionary:
+	if _replaying or _prologue_preview:
+		return {"success": false, "message": "重播期间不能创建正式存档。"}
+	if DirAccess.make_dir_recursive_absolute(SLOTS_DIR) != OK:
+		return {"success": false, "message": "无法创建存档目录，请检查磁盘和访问权限。"}
+	var id := str(Time.get_unix_time_from_system()).replace(".", "-") + "-" + Crypto.new().generate_random_bytes(8).hex_encode()
+	var path := SLOTS_DIR.path_join(id + ".json")
+	if FileAccess.file_exists(path):
+		return {"success": false, "message": "存档名称冲突，请重试。"}
+	var fresh := _defaults()
+	fresh[SLOT_META_KEY] = {"name": "新冒险 " + Time.get_datetime_string_from_system().replace("T", " ") + " · " + id.right(4).to_upper(), "id": id}
+	if not _write_atomic(path, fresh):
+		return {"success": false, "message": "新存档保存失败，原有进度已保留，请检查磁盘和访问权限。"}
+	data = fresh
+	_active_save_path = path
+	migration_diagnostics.clear()
+	last_load_error = ""
+	return {"success": true, "id": path}
+
+## 载入失败恢复内存、活动路径及迁移诊断；不会覆盖坏档或静默开新局。
+func load_save_slot(path: String) -> Dictionary:
+	if _replaying or _prologue_preview:
+		return {"success": false, "message": "重播期间不能切换正式存档。"}
+	if path != SAVE_PATH and (path.get_base_dir() != SLOTS_DIR or not path.ends_with(".json") or path.contains("..")):
+		return {"success": false, "message": "存档路径无效。"}
+	var previous := data.duplicate(true)
+	var previous_path := _active_save_path
+	var previous_diagnostics := migration_diagnostics.duplicate()
+	_active_save_path = path
+	load_data()
+	if not last_load_error.is_empty():
+		data = previous
+		_active_save_path = previous_path
+		migration_diagnostics = previous_diagnostics
+		return {"success": false, "message": last_load_error + "。原有进度已保留，请选择其他存档。"}
+	return {"success": true, "id": path}
 
 func _normalize_departure_cards(value):
 	## 旧档只在 departure 是字典且缺少 cards 字段时补齐 pending；
@@ -550,16 +639,19 @@ func _normalize_progress(value) -> Dictionary:
 func save() -> bool:
 	if _replaying:
 		return true
+	return _write_atomic(_active_save_path, _state)
+
+func _write_atomic(path: String, snapshot: Dictionary) -> bool:
 	# 先完整写入同目录临时文件，再替换正式存档；失败时保留上次提交。
-	var temporary_path := SAVE_PATH + ".tmp"
+	var temporary_path := path + ".tmp"
 	var f := FileAccess.open(temporary_path, FileAccess.WRITE)
 	if f:
-		f.store_string(JSON.stringify(_state, "\t"))
+		f.store_string(JSON.stringify(snapshot, "\t"))
 		f.flush()
 		var write_error := f.get_error()
 		f.close()
 		if write_error == OK:
-			return DirAccess.rename_absolute(temporary_path, SAVE_PATH) == OK
+			return DirAccess.rename_absolute(temporary_path, path) == OK
 	return false
 
 func is_tutorial_done() -> bool:

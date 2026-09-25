@@ -1,0 +1,15 @@
+Godot Engine v4.7.2.stable.steam.ed1daf0bf - https://godotengine.org
+OpenGL API 3.3.0 NVIDIA 576.88 - Compatibility - Using Device: NVIDIA - NVIDIA GeForce RTX 5060
+
+[godot_ai game_helper] registered mcp capture (debugger active=false, logger=true)
+START01 confirm down
+START01 confirm up
+SaveManager: 存档 JSON 损坏，回退默认状态：Expected key
+START01 confirm pressed; busy=false selected=user://saves/broken.json
+START01 confirm down
+START01 confirm up
+START01 confirm pressed; busy=true selected=user://saves/1790328294-841-7af5700016301229.json
+PROLOGUE exit_requested: already_seen position=0.0
+[WalkZone] polygons: 18  islands: 7
+PROLOGUE restaurant_entered
+START01 visual-continue-b-1152 checks=16 failures=0

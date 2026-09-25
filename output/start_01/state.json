@@ -1,0 +1,98 @@
+{
+	"active_path": "user://saves/1790328278-329-cc32b09e7922bccd.json",
+	"captures": [],
+	"checks": [
+		{
+			"description": "空目录没有伪造存档",
+			"passed": true
+		},
+		{
+			"description": "旧 save.json 迁移并保留序章规则",
+			"passed": true
+		},
+		{
+			"description": "旧档未知字段保留且迁移读取不落盘",
+			"passed": true
+		},
+		{
+			"description": "新档从序章开始",
+			"passed": true
+		},
+		{
+			"description": "档 A 通过真实接单和取料",
+			"passed": true
+		},
+		{
+			"description": "每次新建使用独立档",
+			"passed": true
+		},
+		{
+			"description": "档 B 通过真实接单",
+			"passed": true
+		},
+		{
+			"description": "新建与自动保存未改旧档 A 和 legacy",
+			"passed": true
+		},
+		{
+			"description": "选择档 A 恢复取料进度",
+			"passed": true
+		},
+		{
+			"description": "当前档 A 继续真实烹饪并保存",
+			"passed": true
+		},
+		{
+			"description": "档 A 自动保存不串写档 B",
+			"passed": true
+		},
+		{
+			"description": "选择档 B 恢复接单进度",
+			"passed": true
+		},
+		{
+			"description": "坏档返回读取失败",
+			"passed": true
+		},
+		{
+			"description": "失败载入保留内存和活动档",
+			"passed": true
+		},
+		{
+			"description": "消失的存档不当作新游戏",
+			"passed": true
+		},
+		{
+			"description": "拒绝越界存档路径",
+			"passed": true
+		},
+		{
+			"description": "保存失败事务完整回滚且旧档不变",
+			"passed": true
+		},
+		{
+			"description": "新建失败不切换内存或活动档",
+			"passed": true
+		},
+		{
+			"description": "重播拒绝切换正式档",
+			"passed": true
+		},
+		{
+			"description": "重播副本可执行经营",
+			"passed": true
+		},
+		{
+			"description": "重播不污染正式内存和磁盘",
+			"passed": true
+		},
+		{
+			"description": "退出重播仍对应原活动档",
+			"passed": true
+		}
+	],
+	"failures": 0,
+	"mode": "state",
+	"renderer": "headless",
+	"user_dir": "c:/users/ksg/appdata/local/temp/maze_start01_d8fff4948bbe4cbeb5c1d6cbc11c4359/state/roaming/godot/app_userdata/maze_code/"
+}

@@ -1,0 +1,114 @@
+{
+	"captures": [],
+	"checks": [
+		{
+			"details": {},
+			"label": "正式入口为封面，序章保持独立入口",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "保存隔离初始状态",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "制造临时文件不可写",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "写盘失败完整回滚正式状态",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "移除隔离失败夹具",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "原子提交序章完成",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "重复完成幂等",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "序章完成不补发第一章状态",
+			"passed": true
+		}
+	],
+	"data": {
+		"chapter_1_departure": {
+			"cards": {
+				"card_ids": [],
+				"status": "pending_content",
+				"unlocked": false
+			},
+			"empty_warehouse_checked": false,
+			"entrance_lit": false,
+			"map": {
+				"other_regions": "fog",
+				"unlocked_floors": [],
+				"visible_regions": []
+			},
+			"objective": "",
+			"party": [],
+			"step": "relief",
+			"tieshan_name_revealed": false
+		},
+		"chapter_1_done": false,
+		"chapter_1_intro": "not_started",
+		"current_order": {
+			"id": "",
+			"item_id": "",
+			"item_name": "",
+			"quantity": 0,
+			"status": "none"
+		},
+		"first_order_cooking": {
+			"pointer": 0.0,
+			"quality": 0,
+			"recipe_id": "",
+			"status": "idle"
+		},
+		"first_order_progress": {
+			"ingredients_claimed": false,
+			"next_step": "accept_order"
+		},
+		"first_order_settlement": {},
+		"inventory": {
+			"rock_salt": 0,
+			"rockmane_meat": 0,
+			"salt_grilled_rockmane": 0
+		},
+		"prepared_dishes": {
+			"salt_grilled_rockmane": {
+				"1": 0,
+				"2": 0,
+				"3": 0
+			}
+		},
+		"prologue_done": true,
+		"reputation": 0,
+		"tutorial_done": false
+	},
+	"failures": 0,
+	"finished_signals": 0,
+	"max_video_position": 0.0,
+	"mode": "atomic",
+	"renderer": "headless",
+	"replay_disk_after": "a9ccf0b8a80c99ec3b5d1f7aceae4adbf1b664abef868cc427e5f1cc8a79c060",
+	"replay_disk_before": "",
+	"replay_memory_after": "1c34501d090e785a0891079f82c918fc42b0f0a2abd6788edf5fb96b2b5658c0",
+	"replay_memory_before": "",
+	"restaurant_entries": 0,
+	"sample_positions": [],
+	"ticket": "PRO-01",
+	"transitions": 0,
+	"user_dir": "c:/users/ksg/appdata/local/temp/maze_start01_d8fff4948bbe4cbeb5c1d6cbc11c4359/prologue-atomic/roaming/godot/app_userdata/maze_code/"
+}

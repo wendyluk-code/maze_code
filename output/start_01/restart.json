@@ -1,0 +1,22 @@
+{
+	"active_path": "user://saves/1790328278-329-cc32b09e7922bccd.json",
+	"captures": [],
+	"checks": [
+		{
+			"description": "新进程发现两个新档、旧档及坏档",
+			"passed": true
+		},
+		{
+			"description": "重启后档 A 恢复烹饪结果",
+			"passed": true
+		},
+		{
+			"description": "重启后档 B 独立恢复接单进度",
+			"passed": true
+		}
+	],
+	"failures": 0,
+	"mode": "restart",
+	"renderer": "headless",
+	"user_dir": "c:/users/ksg/appdata/local/temp/maze_start01_d8fff4948bbe4cbeb5c1d6cbc11c4359/state/roaming/godot/app_userdata/maze_code/"
+}

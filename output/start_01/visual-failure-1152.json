@@ -1,0 +1,50 @@
+{
+	"active_path": "user://save.json",
+	"captures": [
+		"C:\\Users\\KSG\\.codex\\worktrees\\dc93\\maze_code\\output\\start_01/visual-failure-1152-cover.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\dc93\\maze_code\\output\\start_01/visual-failure-1152-save-failed.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\dc93\\maze_code\\output\\start_01/visual-failure-1152-read-failed.png"
+	],
+	"checks": [
+		{
+			"description": "真实渲染器运行",
+			"passed": true
+		},
+		{
+			"description": "旧档序章标记不会绕过封面",
+			"passed": true
+		},
+		{
+			"description": "截图 cover",
+			"passed": true
+		},
+		{
+			"description": "新建保存失败仍留在封面并显示错误",
+			"passed": true
+		},
+		{
+			"description": "界面保存失败不破坏旧档与内存",
+			"passed": true
+		},
+		{
+			"description": "截图 save-failed",
+			"passed": true
+		},
+		{
+			"description": "目录读取失败显示真实提示",
+			"passed": true
+		},
+		{
+			"description": "截图 read-failed",
+			"passed": true
+		},
+		{
+			"description": "键盘 Enter 打开继续游戏弹窗",
+			"passed": true
+		}
+	],
+	"failures": 0,
+	"mode": "visual-failure-1152",
+	"renderer": "Windows",
+	"user_dir": "c:/users/ksg/appdata/local/temp/maze_start01_d8fff4948bbe4cbeb5c1d6cbc11c4359/visual-failure-1152/roaming/godot/app_userdata/maze_code/"
+}

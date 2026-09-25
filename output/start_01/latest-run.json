@@ -1,0 +1,65 @@
+{
+  "results": [
+    {
+      "mode": "editor",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "mode": "smoke",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "mode": "state",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "mode": "restart",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "mode": "visual-new-1152",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "mode": "visual-continue-1280",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "mode": "visual-continue-b-1152",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "mode": "visual-failure-1152",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "mode": "lifecycle",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "mode": "prologue-migration",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "mode": "prologue-atomic",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "mode": "visual-prologue-replay",
+      "passed": true,
+      "exit_code": 0
+    }
+  ],
+  "isolated_root": "C:\\Users\\KSG\\AppData\\Local\\Temp\\maze_start01_d8fff4948bbe4cbeb5c1d6cbc11c4359"
+}

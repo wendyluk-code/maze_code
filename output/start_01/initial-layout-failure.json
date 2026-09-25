@@ -1,0 +1,80 @@
+{
+	"active_path": "user://save.json",
+	"captures": [
+		"C:\\Users\\KSG\\.codex\\worktrees\\dc93\\maze_code\\output\\start_01/visual-new-1152-cover.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\dc93\\maze_code\\output\\start_01/visual-new-1152-modal.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\dc93\\maze_code\\output\\start_01/visual-new-1152-focus.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\dc93\\maze_code\\output\\start_01/visual-new-1152-prologue.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\dc93\\maze_code\\output\\start_01/visual-new-1152-restaurant.png"
+	],
+	"checks": [
+		{
+			"description": "真实渲染器运行",
+			"passed": true
+		},
+		{
+			"description": "旧档序章标记不会绕过封面",
+			"passed": true
+		},
+		{
+			"description": "截图 cover",
+			"passed": true
+		},
+		{
+			"description": "真实点击继续游戏打开弹窗",
+			"passed": true
+		},
+		{
+			"description": "截图 modal",
+			"passed": true
+		},
+		{
+			"description": "遮罩阻止底层新游戏点击",
+			"passed": true
+		},
+		{
+			"description": "Esc 取消不改变存档状态",
+			"passed": true
+		},
+		{
+			"description": "取消按钮无副作用",
+			"passed": true
+		},
+		{
+			"description": "关闭按钮可关闭弹窗",
+			"passed": false
+		},
+		{
+			"description": "无档时列表为空且载入禁用",
+			"passed": true
+		},
+		{
+			"description": "截图 focus",
+			"passed": true
+		},
+		{
+			"description": "真实点击新游戏进入既有序章",
+			"passed": false
+		},
+		{
+			"description": "连续点击只创建一份独立档",
+			"passed": false
+		},
+		{
+			"description": "截图 prologue",
+			"passed": true
+		},
+		{
+			"description": "按钮流程最终进入餐厅",
+			"passed": false
+		},
+		{
+			"description": "截图 restaurant",
+			"passed": true
+		}
+	],
+	"failures": 4,
+	"mode": "visual-new-1152",
+	"renderer": "Windows",
+	"user_dir": "c:/users/ksg/appdata/local/temp/maze_start01_20151eab52654ecfba4b562de0ae5d33/visual-new-1152/roaming/godot/app_userdata/maze_code/"
+}
