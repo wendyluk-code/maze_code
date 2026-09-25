@@ -77,11 +77,11 @@ func _run_quality(quality: int, resolution: Vector2i, output_dir: String) -> voi
 	var warehouse := scene.get_node("UIOverlay/WarehouseModal")
 	_check(warehouse.visible and player.input_locked, "品质%d：E 打开仓库并锁定玩家" % quality)
 	_check(not bool(tracker.get("_expanded")), "品质%d：打开仓库前任务详情收起" % quality)
-	var slots_grid := warehouse.get("_slots_grid")
-	var scroll := warehouse.get("_scroll")
+	var slots_grid: Control = warehouse.get("_slots_grid")
+	var scroll: ScrollContainer = warehouse.get("_scroll")
 	_check(is_instance_valid(slots_grid) and int(slots_grid.columns) == 5 and slots_grid.get_child_count() == 30, "品质%d：仓库5列30格" % quality)
 	_check(is_instance_valid(scroll) and is_equal_approx(float(scroll.custom_minimum_size.y), 3.5 * 56.0 + 3.0 * 4.0), "品质%d：仓库可视高度3.5行" % quality)
-	var hover_region := warehouse.get("_grid_hover_region")
+	var hover_region: Control = warehouse.get("_grid_hover_region")
 	_check(is_instance_valid(hover_region), "品质%d：仓库悬停区域存在" % quality)
 	if not is_instance_valid(hover_region):
 		return
@@ -95,7 +95,7 @@ func _run_quality(quality: int, resolution: Vector2i, output_dir: String) -> voi
 	await _click(warehouse.get("_salt_slot").get("_icon_button"))
 	_check(int(warehouse.get("_salt_slot").get_selected_quantity()) == 1, "品质%d：盐图标一次点击只加一份" % quality)
 	_check(not warehouse.get("_claim_button").disabled, "品质%d：鼠标多选材料启用领取" % quality)
-	var selected_list := warehouse.get("_selected_list")
+	var selected_list: Control = warehouse.get("_selected_list")
 	_check(is_instance_valid(selected_list) and selected_list.get_child_count() >= 2, "品质%d：已选区显示图标名称与加减行" % quality)
 	await _click(warehouse.get("_claim_button"))
 	_check(sm.inventory_quantity("rockmane_meat") == 1 and sm.inventory_quantity("rock_salt") == 1,
@@ -200,7 +200,7 @@ func _reach_frontdesk() -> void:
 	_check(await _wait_until(func(): return tm.idx == 6, 180), "接单前恢复到客人对白")
 	var deadline := Time.get_ticks_msec() + 6000
 	while tm.active and tm.idx < 8 and Time.get_ticks_msec() < deadline:
-		var before_idx := tm.idx
+		var before_idx: int = tm.idx
 		if guide.dialog.visible:
 			await _send_key(KEY_SPACE)
 			await get_tree().process_frame
