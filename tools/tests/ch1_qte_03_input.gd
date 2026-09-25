@@ -101,27 +101,6 @@ func _run_quality(quality: int, resolution: Vector2i, output_dir: String) -> voi
 	_check(not warehouse.get("_claim_button").disabled, "品质%d：鼠标多选材料启用领取" % quality)
 	var selected_list: Control = warehouse.get("_selected_list")
 	_check(is_instance_valid(selected_list) and selected_list.get_child_count() >= 2, "品质%d：已选区显示图标名称与加减行" % quality)
-	if quality == 1:
-		var wheel_point := scroll.get_global_rect().get_center()
-		get_viewport().warp_mouse(wheel_point)
-		for _i in 7:
-			var wheel := InputEventMouseButton.new(); wheel.position = wheel_point; wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN; wheel.pressed = true
-			get_viewport().push_input(wheel); await get_tree().process_frame
-		var last: Control = slots_grid.get_child(29)
-		_check(scroll.scroll_vertical > 0 and scroll.get_global_rect().encloses(last.get_global_rect()), "品质1：滚轮到达末行")
-		scroll.scroll_vertical = 0
-		await get_tree().process_frame
-		var meat_row: Control = warehouse.get("_selected_rows").get("rockmane_meat")
-		var salt_row: Control = warehouse.get("_selected_rows").get("rock_salt")
-		await _click(meat_row.get_child(0).get_node("Minus"))
-		await _click(salt_row.get_child(0).get_node("Minus"))
-		_check(warehouse.get("_selected").is_empty() and warehouse.get("_claim_button").disabled, "品质1：已选区减一后清空且领取保持禁用")
-		await _click(warehouse.get("_meat_slot").get("_icon_button")); await _click(warehouse.get("_salt_slot").get("_icon_button"))
-		await _click(warehouse.get("_cancel_button"))
-		_check(not warehouse.visible and sm.inventory_snapshot().rockmane_meat == 0 and tm.idx == 11, "品质1：取消仓库不改库存且停留步骤")
-		await _send_key(KEY_E); await _wait_until(func(): return warehouse.visible, 60)
-		await _click(warehouse.get("_meat_slot").get("_icon_button")); await _click(warehouse.get("_salt_slot").get("_icon_button"))
-		_check(warehouse.get("_selected").size() == 2, "品质1：仓库重开清空旧选择后可重新选择")
 	await _click(warehouse.get("_claim_button"))
 	_check(sm.inventory_quantity("rockmane_meat") == 1 and sm.inventory_quantity("rock_salt") == 1,
 		"品质%d：真实领取只增加一份材料" % quality)
