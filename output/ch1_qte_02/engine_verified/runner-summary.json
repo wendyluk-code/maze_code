@@ -1,0 +1,56 @@
+{
+  "completed": true,
+  "checks": 0,
+  "failures": 0,
+  "real_save_before": "C67AE4DB9A2D2C6D6741EDB447BB59A9329AAEA60426FF5E2B45D8037BDA18F3",
+  "real_save_after": "C67AE4DB9A2D2C6D6741EDB447BB59A9329AAEA60426FF5E2B45D8037BDA18F3",
+  "real_save_unchanged": true,
+  "runs": [
+    {
+      "name": "editor",
+      "pid": 24096,
+      "exit_code": 0,
+      "checks": 0,
+      "failures": 0,
+      "script_errors": false,
+      "engine_errors": false,
+      "known_missing_prologue_video": false,
+      "arguments": [
+        "--headless",
+        "--editor",
+        "--quit"
+      ]
+    },
+    {
+      "name": "startup",
+      "pid": 17804,
+      "exit_code": 0,
+      "checks": 0,
+      "failures": 0,
+      "script_errors": false,
+      "engine_errors": false,
+      "known_missing_prologue_video": false,
+      "arguments": [
+        "--headless",
+        "--quit-after",
+        "5"
+      ]
+    },
+    {
+      "name": "restaurant_startup",
+      "pid": 48908,
+      "exit_code": 0,
+      "checks": 0,
+      "failures": 0,
+      "script_errors": false,
+      "engine_errors": false,
+      "known_missing_prologue_video": false,
+      "arguments": [
+        "--headless",
+        "res://scenes/restaurant_map_2d.tscn",
+        "--quit-after",
+        "5"
+      ]
+    }
+  ]
+}

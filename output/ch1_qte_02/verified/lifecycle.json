@@ -1,0 +1,288 @@
+{
+	"checks": 70,
+	"failures": 0,
+	"mode": "lifecycle",
+	"results": [
+		{
+			"label": "进入真实料理交互步骤",
+			"passed": true
+		},
+		{
+			"label": "真实 E 打开料理弹窗",
+			"passed": true
+		},
+		{
+			"label": "before跳过释放输入/弹窗",
+			"passed": true
+		},
+		{
+			"label": "before跳过释放提示/遮罩",
+			"passed": true
+		},
+		{
+			"label": "before跳过恢复镜头",
+			"passed": true
+		},
+		{
+			"label": "before中断不重复扣材料",
+			"passed": true
+		},
+		{
+			"label": "beforeskip旧 await 不推进新教程",
+			"passed": true
+		},
+		{
+			"label": "进入真实料理交互步骤",
+			"passed": true
+		},
+		{
+			"label": "真实 E 打开料理弹窗",
+			"passed": true
+		},
+		{
+			"label": "before场景退出立即取消旧流程",
+			"passed": true
+		},
+		{
+			"label": "before场景退出释放旧玩家锁",
+			"passed": true
+		},
+		{
+			"label": "before场景退出恢复镜头遮罩",
+			"passed": true
+		},
+		{
+			"label": "before中断不重复扣材料",
+			"passed": true
+		},
+		{
+			"label": "beforescene旧 await 不推进新教程",
+			"passed": true
+		},
+		{
+			"label": "进入真实料理交互步骤",
+			"passed": true
+		},
+		{
+			"label": "真实 E 打开料理弹窗",
+			"passed": true
+		},
+		{
+			"label": "active跳过释放输入/弹窗",
+			"passed": true
+		},
+		{
+			"label": "active跳过释放提示/遮罩",
+			"passed": true
+		},
+		{
+			"label": "active跳过恢复镜头",
+			"passed": true
+		},
+		{
+			"label": "active中断不重复扣材料",
+			"passed": true
+		},
+		{
+			"label": "activeskip旧 await 不推进新教程",
+			"passed": true
+		},
+		{
+			"label": "activeskip同进程恢复一个成品",
+			"passed": true
+		},
+		{
+			"label": "重进到真实交单步骤",
+			"passed": true
+		},
+		{
+			"label": "真实 E 交单品质奖励",
+			"passed": true
+		},
+		{
+			"label": "成品扣除一次",
+			"passed": true
+		},
+		{
+			"label": "重复 E/API 不重复结算（允许后续对白推进）",
+			"passed": true
+		},
+		{
+			"label": "进入真实料理交互步骤",
+			"passed": true
+		},
+		{
+			"label": "真实 E 打开料理弹窗",
+			"passed": true
+		},
+		{
+			"label": "active场景退出立即取消旧流程",
+			"passed": true
+		},
+		{
+			"label": "active场景退出释放旧玩家锁",
+			"passed": true
+		},
+		{
+			"label": "active场景退出恢复镜头遮罩",
+			"passed": true
+		},
+		{
+			"label": "active中断不重复扣材料",
+			"passed": true
+		},
+		{
+			"label": "activescene旧 await 不推进新教程",
+			"passed": true
+		},
+		{
+			"label": "activescene同进程恢复一个成品",
+			"passed": true
+		},
+		{
+			"label": "重进到真实交单步骤",
+			"passed": true
+		},
+		{
+			"label": "真实 E 交单品质奖励",
+			"passed": true
+		},
+		{
+			"label": "成品扣除一次",
+			"passed": true
+		},
+		{
+			"label": "重复 E/API 不重复结算（允许后续对白推进）",
+			"passed": true
+		},
+		{
+			"label": "进入真实料理交互步骤",
+			"passed": true
+		},
+		{
+			"label": "真实 E 打开料理弹窗",
+			"passed": true
+		},
+		{
+			"label": "result跳过释放输入/弹窗",
+			"passed": true
+		},
+		{
+			"label": "result跳过释放提示/遮罩",
+			"passed": true
+		},
+		{
+			"label": "result跳过恢复镜头",
+			"passed": true
+		},
+		{
+			"label": "result中断不重复扣材料",
+			"passed": true
+		},
+		{
+			"label": "resultskip旧 await 不推进新教程",
+			"passed": true
+		},
+		{
+			"label": "resultskip同进程恢复一个成品",
+			"passed": true
+		},
+		{
+			"label": "重进到真实交单步骤",
+			"passed": true
+		},
+		{
+			"label": "真实 E 交单品质奖励",
+			"passed": true
+		},
+		{
+			"label": "成品扣除一次",
+			"passed": true
+		},
+		{
+			"label": "重复 E/API 不重复结算（允许后续对白推进）",
+			"passed": true
+		},
+		{
+			"label": "进入真实料理交互步骤",
+			"passed": true
+		},
+		{
+			"label": "真实 E 打开料理弹窗",
+			"passed": true
+		},
+		{
+			"label": "result场景退出立即取消旧流程",
+			"passed": true
+		},
+		{
+			"label": "result场景退出释放旧玩家锁",
+			"passed": true
+		},
+		{
+			"label": "result场景退出恢复镜头遮罩",
+			"passed": true
+		},
+		{
+			"label": "result中断不重复扣材料",
+			"passed": true
+		},
+		{
+			"label": "resultscene旧 await 不推进新教程",
+			"passed": true
+		},
+		{
+			"label": "resultscene同进程恢复一个成品",
+			"passed": true
+		},
+		{
+			"label": "重进到真实交单步骤",
+			"passed": true
+		},
+		{
+			"label": "真实 E 交单品质奖励",
+			"passed": true
+		},
+		{
+			"label": "成品扣除一次",
+			"passed": true
+		},
+		{
+			"label": "重复 E/API 不重复结算（允许后续对白推进）",
+			"passed": true
+		},
+		{
+			"label": "进入真实料理交互步骤",
+			"passed": true
+		},
+		{
+			"label": "真实 E 打开料理弹窗",
+			"passed": true
+		},
+		{
+			"label": "skip退出重播不污染正式存档",
+			"passed": true
+		},
+		{
+			"label": "重播旧 await 不污染新流程",
+			"passed": true
+		},
+		{
+			"label": "进入真实料理交互步骤",
+			"passed": true
+		},
+		{
+			"label": "真实 E 打开料理弹窗",
+			"passed": true
+		},
+		{
+			"label": "scene退出重播不污染正式存档",
+			"passed": true
+		},
+		{
+			"label": "重播旧 await 不污染新流程",
+			"passed": true
+		}
+	],
+	"ticket": "CH1-QTE-02"
+}

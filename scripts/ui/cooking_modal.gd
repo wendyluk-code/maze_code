@@ -150,6 +150,17 @@ func open_for_order(requested_recipe_id: String = RECIPE_ID) -> void:
 	_open = true
 	visible = true
 	_set_tutorial_suppressed(true)
+	# 同进程中断恢复若仍未写盘，只允许重试固定的 1 星结果。
+	var sm := get_node_or_null("/root/SaveManager")
+	if sm != null and sm.cooking_state().status == "active":
+		_started = true
+		_locked_stars = 1
+		_locked_pointer = 0.0
+		_gauge.set_pointer(0.0)
+		_start_button.disabled = true
+		_cancel_button.disabled = true
+		_finish_button.disabled = false
+		_message.text = "上次烹饪已中断，按 1 星恢复；点击起锅保存结果。"
 
 func _format_ingredients(ingredients: Dictionary) -> String:
 	var parts: Array[String] = []

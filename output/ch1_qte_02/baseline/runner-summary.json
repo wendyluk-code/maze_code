@@ -1,0 +1,50 @@
+{
+  "real_save_before": "C67AE4DB9A2D2C6D6741EDB447BB59A9329AAEA60426FF5E2B45D8037BDA18F3",
+  "real_save_after": "C67AE4DB9A2D2C6D6741EDB447BB59A9329AAEA60426FF5E2B45D8037BDA18F3",
+  "real_save_unchanged": true,
+  "runs": [
+    {
+      "name": "editor",
+      "pid": 50272,
+      "exit_code": 0,
+      "checks": 0,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--editor",
+        "--quit"
+      ]
+    },
+    {
+      "name": "probe_stale",
+      "pid": 56724,
+      "exit_code": 1,
+      "checks": 0,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_probe.gd",
+        "--",
+        "stale"
+      ]
+    },
+    {
+      "name": "probe_progress",
+      "pid": 65084,
+      "exit_code": 1,
+      "checks": 0,
+      "failures": 0,
+      "script_errors": true,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_probe.gd",
+        "--",
+        "progress"
+      ]
+    }
+  ]
+}

@@ -77,6 +77,8 @@ func start(custom_steps: Array = []) -> void:
 	if not guide.dialog_done.is_connected(_on_dialog_done):
 		guide.dialog_done.connect(_on_dialog_done)
 	_run_token += 1
+	# 场景离树立即使等待中的结果流程失效；无需等待下一场景启动教程。
+	guide.tree_exiting.connect(_on_guide_tree_exiting.bind(_run_token), CONNECT_ONE_SHOT)
 	if guide.has_method("prepare_for_start"):
 		guide.prepare_for_start()
 	active = true
@@ -103,6 +105,7 @@ func _resume_saved_cooking() -> void:
 	var sm := get_node_or_null("/root/SaveManager")
 	if sm == null:
 		return
+	sm.recover_interrupted_cooking()
 	var stage: String = sm.lifecycle_stage()
 	if stage == "not_started":
 		return
@@ -511,6 +514,7 @@ func _cancel_current_run() -> void:
 		return
 	active = false
 	_run_token += 1
+	SaveManager.recover_interrupted_cooking()
 	_close_departure_modals()
 	_set_player_locked(false)
 	_cleanup_cutscene(true)
@@ -528,6 +532,10 @@ func _cancel_current_run() -> void:
 		var tracker := get_tree().get_first_node_in_group("order_tracking")
 		if is_instance_valid(tracker) and tracker.has_method("refresh_saved_state"):
 			tracker.refresh_saved_state()
+
+func _on_guide_tree_exiting(token: int) -> void:
+	if active and token == _run_token:
+		_cancel_current_run()
 
 func _on_dialog_done() -> void:
 	if not active:

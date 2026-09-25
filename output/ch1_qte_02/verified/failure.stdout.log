@@ -1,0 +1,15 @@
+Godot Engine v4.7.2.stable.steam.ed1daf0bf - https://godotengine.org
+OpenGL API 3.3.0 NVIDIA 576.88 - Compatibility - Using Device: NVIDIA - NVIDIA GeForce RTX 5060
+
+[godot_ai game_helper] registered mcp capture (debugger active=false, logger=true)
+[WalkZone] polygons: 18  islands: 7
+[interact] 魔法汤锅
+[interact] 前台
+[interact] 前台
+[interact] 前台
+[WalkZone] polygons: 18  islands: 7
+[interact] 魔法汤锅
+[WalkZone] polygons: 18  islands: 7
+[interact] 魔法汤锅
+[interact] 前台
+{"checks":25,"failures":0,"mode":"failure","results":[{"label":"进入真实料理交互步骤","passed":true},{"label":"真实 E 打开料理弹窗","passed":true},{"label":"开始保存失败内存磁盘一致","passed":true},{"label":"开始重试只扣一次","passed":true},{"label":"自然指针与真实鼠标锁定3星","passed":true},{"label":"起锅保存失败内存磁盘一致","passed":true},{"label":"起锅失败自然时间不改变已锁品质/指针","passed":true},{"label":"起锅重试仅提交原品质一次","passed":true},{"label":"真实 E 交单保存失败不扣成品不发奖不推进","passed":true},{"label":"重进到真实交单步骤","passed":true},{"label":"真实 E 交单品质奖励","passed":true},{"label":"成品扣除一次","passed":true},{"label":"重复 E/API 不重复结算（允许后续对白推进）","passed":true},{"label":"进入真实料理交互步骤","passed":true},{"label":"真实 E 打开料理弹窗","passed":true},{"label":"中断恢复保存失败保留已扣料active内存磁盘","passed":true},{"label":"进入真实料理交互步骤","passed":true},{"label":"真实 E 打开料理弹窗","passed":true},{"label":"恢复失败后只能重试固定1星不能再次开始","passed":true},{"label":"中断恢复重试指针保持固定","passed":true},{"label":"中断恢复重试只产生一份1星成品","passed":true},{"label":"重进到真实交单步骤","passed":true},{"label":"真实 E 交单品质奖励","passed":true},{"label":"成品扣除一次","passed":true},{"label":"重复 E/API 不重复结算（允许后续对白推进）","passed":true}],"ticket":"CH1-QTE-02"}

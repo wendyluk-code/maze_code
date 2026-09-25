@@ -1,0 +1,5 @@
+ERROR: File 'res://assets/video/prologue/prologue_opening_zh.ogv' has no video stream.
+   at: set_file (modules/theora/video_stream_theora.cpp:433)
+   GDScript backtrace (most recent call first):
+       [0] _start_video (res://scripts/prologue.gd:35)
+End of file while searching for codec headers.

@@ -1,0 +1,18 @@
+{
+	"checks": 2,
+	"failures": 0,
+	"mode": "write",
+	"pid": 74764,
+	"results": [
+		{
+			"label": "夹具接单取料",
+			"passed": true
+		},
+		{
+			"label": "夹具完整保存",
+			"passed": true
+		}
+	],
+	"sample": "before",
+	"ticket": "CH1-QTE-02"
+}

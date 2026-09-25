@@ -1,0 +1,12 @@
+ERROR: QTE02 STATE FAIL: 开始事务保留烹饪未知字段
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] check (res://tools/tests/ch1_qte_02_state.gd:23)
+       [1] _unit (res://tools/tests/ch1_qte_02_state.gd:108)
+       [2] _run (res://tools/tests/ch1_qte_02_state.gd:40)
+ERROR: QTE02 STATE FAIL: 同进程恢复在内存和磁盘保留烹饪未知字段
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] check (res://tools/tests/ch1_qte_02_state.gd:23)
+       [1] _unit (res://tools/tests/ch1_qte_02_state.gd:113)
+       [2] _run (res://tools/tests/ch1_qte_02_state.gd:40)

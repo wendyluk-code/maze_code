@@ -1,0 +1,39 @@
+{
+  "real_save_before": "C67AE4DB9A2D2C6D6741EDB447BB59A9329AAEA60426FF5E2B45D8037BDA18F3",
+  "real_save_after": "C67AE4DB9A2D2C6D6741EDB447BB59A9329AAEA60426FF5E2B45D8037BDA18F3",
+  "real_save_unchanged": true,
+  "runs": [
+    {
+      "name": "editor",
+      "pid": 45884,
+      "exit_code": 0,
+      "checks": 0,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--editor",
+        "--quit"
+      ]
+    },
+    {
+      "name": "lifecycle",
+      "pid": 28412,
+      "exit_code": 1,
+      "checks": 70,
+      "failures": 15,
+      "script_errors": false,
+      "arguments": [
+        "--rendering-method",
+        "gl_compatibility",
+        "--path",
+        "C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code",
+        "res://tools/tests/ch1_qte_02_input.tscn",
+        "--",
+        "--mode=lifecycle",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\baseline_lifecycle/lifecycle.json",
+        "--output-dir=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\baseline_lifecycle/screenshots"
+      ]
+    }
+  ]
+}

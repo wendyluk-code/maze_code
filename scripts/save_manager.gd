@@ -303,21 +303,21 @@ func load_data() -> void:
 				_state[WRAPUP_KEY] = departure_state()
 				_state[CURRENT_ORDER_KEY] = _normalize_order(_state.get(CURRENT_ORDER_KEY))
 				_state[INVENTORY_KEY] = _normalize_inventory(_state.get(INVENTORY_KEY))
-				var raw_prepared = _state.get(PREPARED_DISHES_KEY)
-				_state[PREPARED_DISHES_KEY] = _normalize_prepared_dishes(raw_prepared)
-				if not parsed.has(PREPARED_DISHES_KEY) and int(_state[INVENTORY_KEY].get(FIRST_ORDER_ITEM_ID, 0)) > 0:
-					_state[PREPARED_DISHES_KEY][FIRST_ORDER_ITEM_ID]["1"] = int(_state[INVENTORY_KEY].get(FIRST_ORDER_ITEM_ID, 0))
+				_state[FIRST_ORDER_PROGRESS_KEY] = _normalize_progress(_state.get(FIRST_ORDER_PROGRESS_KEY))
+				_state[PREPARED_DISHES_KEY] = prepared_dishes_snapshot()
 				_state[COOKING_STATE_KEY] = _normalize_cooking_state(_state.get(COOKING_STATE_KEY))
 				if _state[COOKING_STATE_KEY].status == "active":
-					# 退出/重进时未锁定结果按最低品质待领取，材料已在开始时扣除。
-					_state[COOKING_STATE_KEY].status = "locked"
-					_state[COOKING_STATE_KEY].quality = 1
-					if _state[FIRST_ORDER_PROGRESS_KEY].get("next_step", "") == "cook":
-						_state[INVENTORY_KEY][FIRST_ORDER_ITEM_ID] = int(_state[INVENTORY_KEY].get(FIRST_ORDER_ITEM_ID, 0)) + 1
-						_state[PREPARED_DISHES_KEY][FIRST_ORDER_ITEM_ID]["1"] = int(_state[PREPARED_DISHES_KEY][FIRST_ORDER_ITEM_ID].get("1", 0)) + 1
+					# 读取迁移不写盘；重复读取同一 active 档只恢复这一份料理。
+					if _can_recover_cooking():
+						_state[COOKING_STATE_KEY].status = "locked"
+						_state[COOKING_STATE_KEY].quality = 1
+						_state[COOKING_STATE_KEY].pointer = 0.0
+						_state[INVENTORY_KEY][FIRST_ORDER_ITEM_ID] = 1
+						_state[PREPARED_DISHES_KEY][FIRST_ORDER_ITEM_ID]["1"] = 1
 						_state[FIRST_ORDER_PROGRESS_KEY]["next_step"] = "deliver"
-					_diagnose("烹饪中断，按 1 星结果恢复")
-				_state[FIRST_ORDER_PROGRESS_KEY] = _normalize_progress(_state.get(FIRST_ORDER_PROGRESS_KEY))
+						_diagnose("烹饪中断，按 1 星结果恢复")
+					else:
+						_diagnose("active 烹饪与订单、配方或库存矛盾，未增加成品")
 				for key in ["tutorial_done", CHAPTER_1_DONE_KEY]:
 					if not _state[key] is bool:
 						_diagnose(key + " 类型错误，回退 false")
@@ -412,6 +412,9 @@ func lifecycle_stage() -> String:
 			return "dish_ready"
 		if progress.next_step == "cook" and progress.ingredients_claimed and inventory_quantity(ROCKMAN_MEAT_ID) >= 1 and inventory_quantity(ROCK_SALT_ID) >= 1:
 			return "ingredients_collected"
+		if _can_recover_cooking():
+			# 中断恢复写盘失败时仍可回到料理台重试，不能再次扣料或刷星。
+			return "ingredients_collected"
 		if progress.next_step == "prepare_ingredients" and not progress.ingredients_claimed:
 			return "order_accepted"
 		_diagnose("首单进度与库存矛盾，保留经营数据并回退接单引导")
@@ -423,9 +426,11 @@ func _normalize_inventory(value) -> Dictionary:
 	if not value is Dictionary:
 		_diagnose("inventory 类型错误，使用空库存视图")
 		return inventory
+	inventory = value.duplicate(true)
 	for key in [ROCKMAN_MEAT_ID, ROCK_SALT_ID, FIRST_ORDER_ITEM_ID]:
 		if typeof(value.get(key, 0)) not in [TYPE_INT, TYPE_FLOAT]:
 			_diagnose("inventory." + key + " 数量类型错误，使用 0")
+			inventory[key] = 0
 			continue
 		var quantity := int(value.get(key, 0))
 		inventory[key] = maxi(0, quantity)
@@ -434,49 +439,110 @@ func _normalize_inventory(value) -> Dictionary:
 func _normalize_prepared_dishes(value) -> Dictionary:
 	var dishes := {FIRST_ORDER_ITEM_ID: {"1": 0, "2": 0, "3": 0}}
 	if not value is Dictionary:
+		_diagnose("prepared_dishes 类型错误，按无星库存回退")
 		return dishes
+	dishes = value.duplicate(true)
 	var raw = value.get(FIRST_ORDER_ITEM_ID, {})
+	dishes[FIRST_ORDER_ITEM_ID] = raw.duplicate(true) if raw is Dictionary else {}
 	if raw is Dictionary:
 		for quality in ["1", "2", "3"]:
-			if typeof(raw.get(quality, 0)) in [TYPE_INT, TYPE_FLOAT]:
-				dishes[FIRST_ORDER_ITEM_ID][quality] = maxi(0, int(raw.get(quality, 0)))
+			var quantity = raw.get(quality, 0)
+			if _valid_count(quantity):
+				dishes[FIRST_ORDER_ITEM_ID][quality] = int(quantity)
+			else:
+				dishes[FIRST_ORDER_ITEM_ID][quality] = 0
+				_diagnose("prepared_dishes 星级数量无效，回退 0：" + quality)
+	else:
+		dishes[FIRST_ORDER_ITEM_ID] = {"1": 0, "2": 0, "3": 0}
+		_diagnose("prepared_dishes 成品缺少有效星级，按无星库存迁移")
 	# 旧档只有无星成品数量时，按兼容契约迁移为 1 星。
 	var legacy := int(dishes[FIRST_ORDER_ITEM_ID].get("1", 0))
-	if typeof(value.get(FIRST_ORDER_ITEM_ID, null)) in [TYPE_INT, TYPE_FLOAT]:
+	if _valid_count(value.get(FIRST_ORDER_ITEM_ID, null)):
 		legacy += maxi(0, int(value.get(FIRST_ORDER_ITEM_ID, 0)))
 		dishes[FIRST_ORDER_ITEM_ID]["1"] = legacy
 	return dishes
 
 func prepared_dishes_snapshot() -> Dictionary:
-	return _normalize_prepared_dishes(_state.get(PREPARED_DISHES_KEY)).duplicate(true)
+	var prepared := _normalize_prepared_dishes(_state.get(PREPARED_DISHES_KEY))
+	var counts: Dictionary = prepared[FIRST_ORDER_ITEM_ID]
+	var total := inventory_quantity(FIRST_ORDER_ITEM_ID)
+	var graded := int(counts["1"]) + int(counts["2"]) + int(counts["3"])
+	if total != graded:
+		_diagnose("成品总数与星级数不一致，缺失星级按 1 星恢复；超额星级回退")
+		if graded < total:
+			counts["1"] += total - graded
+		else:
+			counts["1"] = total
+			counts["2"] = 0
+			counts["3"] = 0
+	return prepared
+
+func _valid_count(value) -> bool:
+	return typeof(value) in [TYPE_INT, TYPE_FLOAT] and is_finite(float(value)) and value >= 0 and value == floor(float(value))
 
 func _normalize_cooking_state(value) -> Dictionary:
 	var state := {"status": "idle", "recipe_id": "", "quality": 0, "pointer": 0.0}
 	if not value is Dictionary:
+		_diagnose("first_order_cooking 类型错误，回退 idle")
 		return state
-	var status := str(value.get("status", "idle"))
-	if status not in ["idle", "active", "locked"]:
-		status = "idle"
-	state.status = status
-	state.recipe_id = str(value.get("recipe_id", ""))
-	state.quality = clampi(int(value.get("quality", 0)), 0, 3)
-	state.pointer = clampf(float(value.get("pointer", 0.0)), -1.0, 1.0)
+	state = value.duplicate(true)
+	var status = value.get("status", "idle")
+	state.status = status if status is String and status in ["idle", "active", "locked"] else "idle"
+	if not status is String or status not in ["idle", "active", "locked"]:
+		_diagnose("first_order_cooking.status 无效，回退 idle")
+	var recipe = value.get("recipe_id", "")
+	state.recipe_id = recipe if recipe is String and recipe in ["", FIRST_ORDER_ITEM_ID] else ""
+	if not recipe is String or recipe not in ["", FIRST_ORDER_ITEM_ID]:
+		_diagnose("first_order_cooking.recipe_id 无效，回退空配方")
+	var quality = value.get("quality", 0)
+	state.quality = int(quality) if _valid_count(quality) and quality <= 3 else 0
+	if not _valid_count(quality) or quality > 3:
+		_diagnose("first_order_cooking.quality 无效，回退 0")
+	var pointer = value.get("pointer", 0.0)
+	if typeof(pointer) in [TYPE_INT, TYPE_FLOAT] and is_finite(float(pointer)) and absf(float(pointer)) <= 1.0:
+		state.pointer = float(pointer)
+	else:
+		state.pointer = 0.0
+		_diagnose("first_order_cooking.pointer 无效，回退 0")
 	return state
 
 func cooking_state() -> Dictionary:
 	return _normalize_cooking_state(_state.get(COOKING_STATE_KEY)).duplicate(true)
 
+## 只有已扣料且尚未产出这一份首单，才允许中断恢复。
+func _can_recover_cooking() -> bool:
+	var cooking := cooking_state()
+	var progress := first_order_progress()
+	return cooking.status == "active" and cooking.recipe_id == FIRST_ORDER_ITEM_ID \
+		and is_canonical_first_order(current_order()) and not has_first_order_settlement() \
+		and progress.ingredients_claimed and progress.next_step == "cook" \
+		and inventory_quantity(ROCKMAN_MEAT_ID) == 0 and inventory_quantity(ROCK_SALT_ID) == 0 \
+		and inventory_quantity(FIRST_ORDER_ITEM_ID) == 0
+
+## 同进程跳过/离开场景使用同一原子起锅事务；写盘失败保留 active 可重试。
+func recover_interrupted_cooking() -> Dictionary:
+	if cooking_state().status != "active":
+		return {"success": true, "created": false}
+	if not _can_recover_cooking():
+		_diagnose("中断烹饪状态矛盾，未增加成品")
+		return {"success": false, "reason": "invalid_cooking_state"}
+	return finish_first_order_cooking(1, 0.0)
+
 func _normalize_progress(value) -> Dictionary:
 	var progress := {"ingredients_claimed": false, "next_step": "accept_order"}
 	if not value is Dictionary:
+		_diagnose("first_order_progress 类型错误，回退接单引导")
 		return progress
+	progress = value.duplicate(true)
 	var claimed = value.get("ingredients_claimed", false)
 	if claimed is bool:
 		progress["ingredients_claimed"] = claimed
 	else:
 		_diagnose("ingredients_claimed 类型错误，回退 false")
+		progress["ingredients_claimed"] = false
 	var next_step := str(value.get("next_step", "accept_order"))
 	if next_step not in ["accept_order", "prepare_ingredients", "cook", "deliver", "chapter_wrap_up"]:
+		_diagnose("first_order_progress.next_step 无效，回退接单引导")
 		next_step = "accept_order"
 	progress["next_step"] = next_step
 	return progress
@@ -614,7 +680,8 @@ func start_first_order_cooking() -> Dictionary:
 	inventory[ROCKMAN_MEAT_ID] -= 1
 	inventory[ROCK_SALT_ID] -= 1
 	_state[INVENTORY_KEY] = inventory
-	_state[COOKING_STATE_KEY] = {"status": "active", "recipe_id": FIRST_ORDER_ITEM_ID, "quality": 0, "pointer": 0.0}
+	cooking.merge({"status": "active", "recipe_id": FIRST_ORDER_ITEM_ID, "quality": 0, "pointer": 0.0}, true)
+	_state[COOKING_STATE_KEY] = cooking
 	if not save():
 		_state = previous
 		return {"success": false, "reason": "save_failed"}
@@ -629,6 +696,8 @@ func finish_first_order_cooking(quality: int, pointer := 0.0) -> Dictionary:
 		return {"success": false, "reason": "already_cooked", "quality": cooking.quality}
 	if cooking.status != "active":
 		return {"success": false, "reason": "not_started"}
+	if not _can_recover_cooking():
+		return {"success": false, "reason": "invalid_cooking_state"}
 	var stars := clampi(quality, 1, 3)
 	var prepared := prepared_dishes_snapshot()
 	prepared[FIRST_ORDER_ITEM_ID][str(stars)] = int(prepared[FIRST_ORDER_ITEM_ID].get(str(stars), 0)) + 1
@@ -640,7 +709,8 @@ func finish_first_order_cooking(quality: int, pointer := 0.0) -> Dictionary:
 	_state[INVENTORY_KEY] = inventory
 	_state[PREPARED_DISHES_KEY] = prepared
 	_state[FIRST_ORDER_PROGRESS_KEY] = progress
-	_state[COOKING_STATE_KEY] = {"status": "locked", "recipe_id": FIRST_ORDER_ITEM_ID, "quality": stars, "pointer": clampf(float(pointer), -1.0, 1.0)}
+	cooking.merge({"status": "locked", "recipe_id": FIRST_ORDER_ITEM_ID, "quality": stars, "pointer": clampf(float(pointer), -1.0, 1.0)}, true)
+	_state[COOKING_STATE_KEY] = cooking
 	if not save():
 		_state = previous
 		return {"success": false, "reason": "save_failed"}
@@ -651,17 +721,20 @@ func reputation() -> int:
 
 func has_first_order_settlement() -> bool:
 	var receipt = _state.get(FIRST_ORDER_SETTLEMENT_KEY, {})
-	return receipt is Dictionary and str(receipt.get("order_id", "")) == FIRST_ORDER_ID \
+	var canonical: bool = receipt is Dictionary and str(receipt.get("order_id", "")) == FIRST_ORDER_ID \
 		and str(receipt.get("item_id", "")) == FIRST_ORDER_ITEM_ID \
 		and typeof(receipt.get("quantity")) in [TYPE_INT, TYPE_FLOAT] \
 		and receipt.quantity == FIRST_ORDER_QUANTITY \
-		and typeof(receipt.get("reputation_awarded")) in [TYPE_INT, TYPE_FLOAT] \
-		and int(receipt.reputation_awarded) in [10, 12, 15, 20]
+		and _valid_count(receipt.get("reputation_awarded"))
+	if not canonical:
+		return false
+	if not receipt.has("quality"):
+		return receipt.reputation_awarded == 20 # 历史无星凭证保持原奖励。
+	var quality = receipt.quality
+	return _valid_count(quality) and int(quality) in [1, 2, 3] \
+		and receipt.reputation_awarded == QUALITY_REPUTATION[int(quality)]
 
 func cooked_quality() -> int:
-	var cooking := cooking_state()
-	if cooking.status == "locked" and cooking.quality > 0:
-		return cooking.quality
 	var prepared: Dictionary = prepared_dishes_snapshot().get(FIRST_ORDER_ITEM_ID, {})
 	for quality in [3, 2, 1]:
 		if int(prepared.get(str(quality), 0)) > 0:

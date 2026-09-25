@@ -1,0 +1,4 @@
+Godot Engine v4.7.2.stable.steam.ed1daf0bf - https://godotengine.org
+
+[godot_ai game_helper] registered mcp capture (debugger active=false, logger=true)
+{"checks":8,"failures":0,"mode":"read","pid":24120,"results":[{"label":"未知顶层字段保留（JSON 数字允许浮点表示）","passed":true},{"label":"未知库存字段保留","passed":true},{"label":"跨进程成品总量正确","passed":true},{"label":"跨进程分星数量与总量一致","passed":true},{"label":"跨进程材料不重复扣除","passed":true},{"label":"跨进程品质与交付进度保留","passed":true},{"label":"重进不能再次起锅刷星","passed":true},{"label":"锁定指针跨进程保持","passed":true}],"sample":"locked1","ticket":"CH1-QTE-02"}

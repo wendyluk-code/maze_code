@@ -1,0 +1,47 @@
+Godot Engine v4.7.2.stable.steam.ed1daf0bf - https://godotengine.org
+
+[godot_ai game_helper] registered mcp capture (debugger active=false, logger=true)
+SaveManager: first_order_progress 类型错误，回退接单引导
+SaveManager: active 烹饪与订单、配方或库存矛盾，未增加成品
+SaveManager: first_order_progress 类型错误，回退接单引导
+SaveManager: active 烹饪与订单、配方或库存矛盾，未增加成品
+SaveManager: first_order_progress 类型错误，回退接单引导
+SaveManager: active 烹饪与订单、配方或库存矛盾，未增加成品
+SaveManager: first_order_progress 类型错误，回退接单引导
+SaveManager: active 烹饪与订单、配方或库存矛盾，未增加成品
+SaveManager: first_order_progress 类型错误，回退接单引导
+SaveManager: active 烹饪与订单、配方或库存矛盾，未增加成品
+SaveManager: first_order_cooking.quality 无效，回退 0
+SaveManager: first_order_cooking.quality 无效，回退 0
+SaveManager: first_order_cooking.quality 无效，回退 0
+SaveManager: first_order_cooking.quality 无效，回退 0
+SaveManager: first_order_cooking.quality 无效，回退 0
+SaveManager: first_order_cooking.pointer 无效，回退 0
+SaveManager: first_order_cooking.pointer 无效，回退 0
+SaveManager: first_order_cooking.pointer 无效，回退 0
+SaveManager: first_order_cooking.pointer 无效，回退 0
+SaveManager: first_order_cooking.pointer 无效，回退 0
+SaveManager: first_order_cooking.status 无效，回退 idle
+SaveManager: first_order_cooking.status 无效，回退 idle
+SaveManager: first_order_cooking.status 无效，回退 idle
+SaveManager: first_order_cooking.status 无效，回退 idle
+SaveManager: first_order_cooking.status 无效，回退 idle
+SaveManager: first_order_cooking.recipe_id 无效，回退空配方
+SaveManager: first_order_cooking.recipe_id 无效，回退空配方
+SaveManager: first_order_cooking.recipe_id 无效，回退空配方
+SaveManager: first_order_cooking.recipe_id 无效，回退空配方
+SaveManager: first_order_cooking.recipe_id 无效，回退空配方
+SaveManager: prepared_dishes 类型错误，按无星库存回退
+SaveManager: 成品总数与星级数不一致，缺失星级按 1 星恢复；超额星级回退
+SaveManager: prepared_dishes 成品缺少有效星级，按无星库存迁移
+SaveManager: 成品总数与星级数不一致，缺失星级按 1 星恢复；超额星级回退
+SaveManager: prepared_dishes 星级数量无效，回退 0：1
+SaveManager: prepared_dishes 星级数量无效，回退 0：2
+SaveManager: prepared_dishes 星级数量无效，回退 0：3
+SaveManager: 成品总数与星级数不一致，缺失星级按 1 星恢复；超额星级回退
+SaveManager: active 烹饪与订单、配方或库存矛盾，未增加成品
+SaveManager: active 烹饪与订单、配方或库存矛盾，未增加成品
+SaveManager: first_order_cooking.recipe_id 无效，回退空配方
+SaveManager: active 烹饪与订单、配方或库存矛盾，未增加成品
+SaveManager: active 烹饪与订单、配方或库存矛盾，未增加成品
+{"checks":76,"failures":2,"mode":"unit","pid":60896,"results":[{"label":"夹具接单取料","passed":true},{"label":"开始事务保留烹饪未知字段","passed":false},{"label":"同进程恢复在内存和磁盘保留烹饪未知字段","passed":false},{"label":"夹具接单取料","passed":true},{"label":"已交付3星不会污染后续1星库存","passed":true},{"label":"缺失3星库存不会发3星奖或留下幽灵库存","passed":true},{"label":"夹具接单取料","passed":true},{"label":"损坏进度可诊断回退 []","passed":true},{"label":"损坏进度不补产物","passed":true},{"label":"夹具接单取料","passed":true},{"label":"损坏进度可诊断回退 bad","passed":true},{"label":"损坏进度不补产物","passed":true},{"label":"夹具接单取料","passed":true},{"label":"损坏进度可诊断回退 <null>","passed":true},{"label":"损坏进度不补产物","passed":true},{"label":"夹具接单取料","passed":true},{"label":"损坏进度可诊断回退 12","passed":true},{"label":"损坏进度不补产物","passed":true},{"label":"夹具接单取料","passed":true},{"label":"损坏进度可诊断回退 true","passed":true},{"label":"损坏进度不补产物","passed":true},{"label":"烹饪字段类型回退 quality:[]","passed":true},{"label":"烹饪字段类型回退 quality:{  }","passed":true},{"label":"烹饪字段类型回退 quality:true","passed":true},{"label":"烹饪字段类型回退 quality:<null>","passed":true},{"label":"烹饪字段类型回退 quality:invalid","passed":true},{"label":"烹饪字段类型回退 pointer:[]","passed":true},{"label":"烹饪字段类型回退 pointer:{  }","passed":true},{"label":"烹饪字段类型回退 pointer:true","passed":true},{"label":"烹饪字段类型回退 pointer:<null>","passed":true},{"label":"烹饪字段类型回退 pointer:invalid","passed":true},{"label":"烹饪字段类型回退 status:[]","passed":true},{"label":"烹饪字段类型回退 status:{  }","passed":true},{"label":"烹饪字段类型回退 status:true","passed":true},{"label":"烹饪字段类型回退 status:<null>","passed":true},{"label":"烹饪字段类型回退 status:invalid","passed":true},{"label":"烹饪字段类型回退 recipe_id:[]","passed":true},{"label":"烹饪字段类型回退 recipe_id:{  }","passed":true},{"label":"烹饪字段类型回退 recipe_id:true","passed":true},{"label":"烹饪字段类型回退 recipe_id:<null>","passed":true},{"label":"烹饪字段类型回退 recipe_id:invalid","passed":true},{"label":"损坏分星数量回退且与总量一致","passed":true},{"label":"损坏分星数量回退且与总量一致","passed":true},{"label":"损坏分星数量回退且与总量一致","passed":true},{"label":"夹具接单取料","passed":true},{"label":"非法 active 不直接增加成品 order","passed":true},{"label":"非法 active 有诊断 order","passed":true},{"label":"夹具接单取料","passed":true},{"label":"非法 active 不直接增加成品 claimed","passed":true},{"label":"非法 active 有诊断 claimed","passed":true},{"label":"夹具接单取料","passed":true},{"label":"非法 active 不直接增加成品 recipe","passed":true},{"label":"非法 active 有诊断 recipe","passed":true},{"label":"夹具接单取料","passed":true},{"label":"非法 active 不直接增加成品 existing","passed":true},{"label":"非法 active 有诊断 existing","passed":true},{"label":"凭证星级奖励验证 [1, 10, true]","passed":true},{"label":"凭证星级奖励验证 [2, 12, true]","passed":true},{"label":"凭证星级奖励验证 [3, 15, true]","passed":true},{"label":"凭证星级奖励验证 [1, 10.9, false]","passed":true},{"label":"凭证星级奖励验证 [3, 10, false]","passed":true},{"label":"凭证星级奖励验证 [1, 20, false]","passed":true},{"label":"凭证星级奖励验证 [0, 20, false]","passed":true},{"label":"夹具接单取料","passed":true},{"label":"保存失败原子回滚 start","passed":true},{"label":"重试恰好一次 start","passed":true},{"label":"夹具接单取料","passed":true},{"label":"保存失败原子回滚 finish","passed":true},{"label":"重试恰好一次 finish","passed":true},{"label":"夹具接单取料","passed":true},{"label":"保存失败原子回滚 deliver","passed":true},{"label":"重试恰好一次 deliver","passed":true},{"label":"夹具接单取料","passed":true},{"label":"重播保持正式 active 内存与磁盘","passed":true},{"label":"夹具接单取料","passed":true},{"label":"重播保持正式 locked 内存与磁盘","passed":true}],"sample":"","ticket":"CH1-QTE-02"}

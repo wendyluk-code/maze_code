@@ -1,0 +1,792 @@
+{
+  "completed": true,
+  "checks": 429,
+  "failures": 0,
+  "real_save_before": "C67AE4DB9A2D2C6D6741EDB447BB59A9329AAEA60426FF5E2B45D8037BDA18F3",
+  "real_save_after": "C67AE4DB9A2D2C6D6741EDB447BB59A9329AAEA60426FF5E2B45D8037BDA18F3",
+  "real_save_unchanged": true,
+  "runs": [
+    {
+      "name": "editor",
+      "pid": 81348,
+      "exit_code": 0,
+      "checks": 0,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--editor",
+        "--quit"
+      ]
+    },
+    {
+      "name": "startup",
+      "pid": 62544,
+      "exit_code": 0,
+      "checks": 0,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--quit-after",
+        "5"
+      ]
+    },
+    {
+      "name": "state_unit",
+      "pid": 43404,
+      "exit_code": 0,
+      "checks": 76,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=unit",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/state_unit.json"
+      ]
+    },
+    {
+      "name": "write_before",
+      "pid": 74764,
+      "exit_code": 0,
+      "checks": 2,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=write",
+        "--sample=before",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/write_before.json"
+      ]
+    },
+    {
+      "name": "read_before_1",
+      "pid": 56240,
+      "exit_code": 0,
+      "checks": 6,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=before",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/read_before_1.json"
+      ]
+    },
+    {
+      "name": "read_before_2",
+      "pid": 69820,
+      "exit_code": 0,
+      "checks": 6,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=before",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/read_before_2.json"
+      ]
+    },
+    {
+      "name": "write_active",
+      "pid": 84244,
+      "exit_code": 0,
+      "checks": 3,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=write",
+        "--sample=active",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/write_active.json"
+      ]
+    },
+    {
+      "name": "read_active_1",
+      "pid": 80272,
+      "exit_code": 0,
+      "checks": 7,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=active",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/read_active_1.json"
+      ]
+    },
+    {
+      "name": "read_active_2",
+      "pid": 70928,
+      "exit_code": 0,
+      "checks": 7,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=active",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/read_active_2.json"
+      ]
+    },
+    {
+      "name": "input_active",
+      "pid": 16524,
+      "exit_code": 0,
+      "checks": 4,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--rendering-method",
+        "gl_compatibility",
+        "res://tools/tests/ch1_qte_02_input.tscn",
+        "--",
+        "--mode=resume",
+        "--quality=1",
+        "--label=active",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/input_active.json",
+        "--output-dir=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/screenshots"
+      ]
+    },
+    {
+      "name": "served_active",
+      "pid": 27264,
+      "exit_code": 0,
+      "checks": 7,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=delivered1",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/served_active.json"
+      ]
+    },
+    {
+      "name": "write_locked1",
+      "pid": 67400,
+      "exit_code": 0,
+      "checks": 4,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=write",
+        "--sample=locked1",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/write_locked1.json"
+      ]
+    },
+    {
+      "name": "read_locked1_1",
+      "pid": 24120,
+      "exit_code": 0,
+      "checks": 8,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=locked1",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/read_locked1_1.json"
+      ]
+    },
+    {
+      "name": "read_locked1_2",
+      "pid": 60136,
+      "exit_code": 0,
+      "checks": 8,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=locked1",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/read_locked1_2.json"
+      ]
+    },
+    {
+      "name": "input_locked1",
+      "pid": 54344,
+      "exit_code": 0,
+      "checks": 4,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--rendering-method",
+        "gl_compatibility",
+        "res://tools/tests/ch1_qte_02_input.tscn",
+        "--",
+        "--mode=resume",
+        "--quality=1",
+        "--label=locked1",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/input_locked1.json",
+        "--output-dir=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/screenshots"
+      ]
+    },
+    {
+      "name": "served_locked1",
+      "pid": 14084,
+      "exit_code": 0,
+      "checks": 7,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=delivered1",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/served_locked1.json"
+      ]
+    },
+    {
+      "name": "write_locked2",
+      "pid": 21196,
+      "exit_code": 0,
+      "checks": 4,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=write",
+        "--sample=locked2",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/write_locked2.json"
+      ]
+    },
+    {
+      "name": "read_locked2_1",
+      "pid": 50160,
+      "exit_code": 0,
+      "checks": 8,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=locked2",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/read_locked2_1.json"
+      ]
+    },
+    {
+      "name": "read_locked2_2",
+      "pid": 24924,
+      "exit_code": 0,
+      "checks": 8,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=locked2",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/read_locked2_2.json"
+      ]
+    },
+    {
+      "name": "input_locked2",
+      "pid": 5916,
+      "exit_code": 0,
+      "checks": 4,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--rendering-method",
+        "gl_compatibility",
+        "res://tools/tests/ch1_qte_02_input.tscn",
+        "--",
+        "--mode=resume",
+        "--quality=2",
+        "--label=locked2",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/input_locked2.json",
+        "--output-dir=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/screenshots"
+      ]
+    },
+    {
+      "name": "served_locked2",
+      "pid": 41856,
+      "exit_code": 0,
+      "checks": 7,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=delivered2",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/served_locked2.json"
+      ]
+    },
+    {
+      "name": "write_locked3",
+      "pid": 81812,
+      "exit_code": 0,
+      "checks": 4,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=write",
+        "--sample=locked3",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/write_locked3.json"
+      ]
+    },
+    {
+      "name": "read_locked3_1",
+      "pid": 8624,
+      "exit_code": 0,
+      "checks": 8,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=locked3",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/read_locked3_1.json"
+      ]
+    },
+    {
+      "name": "read_locked3_2",
+      "pid": 73072,
+      "exit_code": 0,
+      "checks": 8,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=locked3",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/read_locked3_2.json"
+      ]
+    },
+    {
+      "name": "input_locked3",
+      "pid": 18776,
+      "exit_code": 0,
+      "checks": 4,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--rendering-method",
+        "gl_compatibility",
+        "res://tools/tests/ch1_qte_02_input.tscn",
+        "--",
+        "--mode=resume",
+        "--quality=3",
+        "--label=locked3",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/input_locked3.json",
+        "--output-dir=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/screenshots"
+      ]
+    },
+    {
+      "name": "served_locked3",
+      "pid": 47520,
+      "exit_code": 0,
+      "checks": 7,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=delivered3",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/served_locked3.json"
+      ]
+    },
+    {
+      "name": "write_legacy",
+      "pid": 9396,
+      "exit_code": 0,
+      "checks": 3,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=write",
+        "--sample=legacy",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/write_legacy.json"
+      ]
+    },
+    {
+      "name": "read_legacy_1",
+      "pid": 21384,
+      "exit_code": 0,
+      "checks": 7,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=legacy",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/read_legacy_1.json"
+      ]
+    },
+    {
+      "name": "read_legacy_2",
+      "pid": 40476,
+      "exit_code": 0,
+      "checks": 7,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=legacy",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/read_legacy_2.json"
+      ]
+    },
+    {
+      "name": "input_legacy",
+      "pid": 83572,
+      "exit_code": 0,
+      "checks": 4,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--rendering-method",
+        "gl_compatibility",
+        "res://tools/tests/ch1_qte_02_input.tscn",
+        "--",
+        "--mode=resume",
+        "--quality=1",
+        "--label=legacy",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/input_legacy.json",
+        "--output-dir=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/screenshots"
+      ]
+    },
+    {
+      "name": "served_legacy",
+      "pid": 25124,
+      "exit_code": 0,
+      "checks": 7,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=delivered1",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/served_legacy.json"
+      ]
+    },
+    {
+      "name": "write_settled20",
+      "pid": 76960,
+      "exit_code": 0,
+      "checks": 3,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=write",
+        "--sample=settled20",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/write_settled20.json"
+      ]
+    },
+    {
+      "name": "read_settled20_1",
+      "pid": 66228,
+      "exit_code": 0,
+      "checks": 7,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=settled20",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/read_settled20_1.json"
+      ]
+    },
+    {
+      "name": "read_settled20_2",
+      "pid": 61588,
+      "exit_code": 0,
+      "checks": 7,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=settled20",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/read_settled20_2.json"
+      ]
+    },
+    {
+      "name": "write_delivered1",
+      "pid": 58904,
+      "exit_code": 0,
+      "checks": 5,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=write",
+        "--sample=delivered1",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/write_delivered1.json"
+      ]
+    },
+    {
+      "name": "read_delivered1_1",
+      "pid": 17228,
+      "exit_code": 0,
+      "checks": 7,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=delivered1",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/read_delivered1_1.json"
+      ]
+    },
+    {
+      "name": "read_delivered1_2",
+      "pid": 25580,
+      "exit_code": 0,
+      "checks": 7,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=delivered1",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/read_delivered1_2.json"
+      ]
+    },
+    {
+      "name": "write_delivered2",
+      "pid": 84628,
+      "exit_code": 0,
+      "checks": 5,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=write",
+        "--sample=delivered2",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/write_delivered2.json"
+      ]
+    },
+    {
+      "name": "read_delivered2_1",
+      "pid": 73204,
+      "exit_code": 0,
+      "checks": 7,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=delivered2",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/read_delivered2_1.json"
+      ]
+    },
+    {
+      "name": "read_delivered2_2",
+      "pid": 83436,
+      "exit_code": 0,
+      "checks": 7,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=delivered2",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/read_delivered2_2.json"
+      ]
+    },
+    {
+      "name": "write_delivered3",
+      "pid": 13964,
+      "exit_code": 0,
+      "checks": 5,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=write",
+        "--sample=delivered3",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/write_delivered3.json"
+      ]
+    },
+    {
+      "name": "read_delivered3_1",
+      "pid": 31624,
+      "exit_code": 0,
+      "checks": 7,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=delivered3",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/read_delivered3_1.json"
+      ]
+    },
+    {
+      "name": "read_delivered3_2",
+      "pid": 75536,
+      "exit_code": 0,
+      "checks": 7,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=read",
+        "--sample=delivered3",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/read_delivered3_2.json"
+      ]
+    },
+    {
+      "name": "failure",
+      "pid": 68956,
+      "exit_code": 0,
+      "checks": 25,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--rendering-method",
+        "gl_compatibility",
+        "res://tools/tests/ch1_qte_02_input.tscn",
+        "--",
+        "--mode=failure",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/failure.json",
+        "--output-dir=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/screenshots"
+      ]
+    },
+    {
+      "name": "lifecycle",
+      "pid": 48096,
+      "exit_code": 0,
+      "checks": 70,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--rendering-method",
+        "gl_compatibility",
+        "res://tools/tests/ch1_qte_02_input.tscn",
+        "--",
+        "--mode=lifecycle",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/lifecycle.json",
+        "--output-dir=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/screenshots"
+      ]
+    },
+    {
+      "name": "qte01_input",
+      "pid": 57652,
+      "exit_code": 0,
+      "checks": 21,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--rendering-method",
+        "gl_compatibility",
+        "res://tools/tests/ch1_qte_01_input.tscn",
+        "--",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/qte01_input.json",
+        "--output-dir=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\verified/qte01_screenshots"
+      ]
+    }
+  ]
+}

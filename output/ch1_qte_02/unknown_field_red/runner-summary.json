@@ -1,0 +1,39 @@
+{
+  "completed": false,
+  "checks": null,
+  "failures": null,
+  "real_save_before": "C67AE4DB9A2D2C6D6741EDB447BB59A9329AAEA60426FF5E2B45D8037BDA18F3",
+  "real_save_after": "C67AE4DB9A2D2C6D6741EDB447BB59A9329AAEA60426FF5E2B45D8037BDA18F3",
+  "real_save_unchanged": true,
+  "runs": [
+    {
+      "name": "editor",
+      "pid": 58344,
+      "exit_code": 0,
+      "checks": 0,
+      "failures": 0,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--editor",
+        "--quit"
+      ]
+    },
+    {
+      "name": "state_unit",
+      "pid": 60896,
+      "exit_code": 1,
+      "checks": 76,
+      "failures": 2,
+      "script_errors": false,
+      "arguments": [
+        "--headless",
+        "--script",
+        "res://tools/tests/ch1_qte_02_state.gd",
+        "--",
+        "--mode=unit",
+        "--report=C:\\Users\\KSG\\.codex\\worktrees\\37f4\\maze_code\\output\\ch1_qte_02\\unknown_field_red/state_unit.json"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+SCRIPT ERROR: Invalid call to function 'get' in base 'Array'. Expected 1 argument(s).
+   at: load_data (res://scripts/save_manager.gd:315)
+   GDScript backtrace (most recent call first):
+       [0] load_data (res://scripts/save_manager.gd:315)
+       [1] _run (res://tools/tests/ch1_qte_02_probe.gd:27)

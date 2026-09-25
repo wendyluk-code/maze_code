@@ -1,0 +1,4 @@
+Godot Engine v4.7.2.stable.steam.ed1daf0bf - https://godotengine.org
+
+[godot_ai game_helper] registered mcp capture (debugger active=false, logger=true)
+{"checks":4,"failures":0,"mode":"write","pid":81812,"results":[{"label":"夹具接单取料","passed":true},{"label":"写入开始档","passed":true},{"label":"写入锁定档","passed":true},{"label":"夹具完整保存","passed":true}],"sample":"locked3","ticket":"CH1-QTE-02"}

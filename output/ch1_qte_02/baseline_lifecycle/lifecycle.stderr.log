@@ -1,0 +1,90 @@
+ERROR: QTE02 FAIL: before场景退出立即取消旧流程
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _check (res://tools/tests/ch1_qte_02_input.gd:10)
+       [1] _lifecycle (res://tools/tests/ch1_qte_02_input.gd:80)
+       [2] _open (res://tools/tests/ch1_qte_02_input.gd:58)
+       [3] _send_key (res://tools/tests/ch1_qte_01_input.gd:119)
+ERROR: QTE02 FAIL: before场景退出释放旧玩家锁
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _check (res://tools/tests/ch1_qte_02_input.gd:10)
+       [1] _lifecycle (res://tools/tests/ch1_qte_02_input.gd:81)
+       [2] _open (res://tools/tests/ch1_qte_02_input.gd:58)
+       [3] _send_key (res://tools/tests/ch1_qte_01_input.gd:119)
+ERROR: QTE02 FAIL: activeskip同进程恢复一个成品
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _check (res://tools/tests/ch1_qte_02_input.gd:10)
+       [1] _lifecycle (res://tools/tests/ch1_qte_02_input.gd:94)
+ERROR: QTE02 FAIL: 重进到真实交单步骤
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _check (res://tools/tests/ch1_qte_02_input.gd:10)
+       [1] _deliver (res://tools/tests/ch1_qte_02_input.gd:39)
+       [2] _wait_until (res://tools/tests/ch1_qte_01_input.gd:146)
+ERROR: QTE02 FAIL: 真实 E 交单品质奖励
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _check (res://tools/tests/ch1_qte_02_input.gd:10)
+       [1] _deliver (res://tools/tests/ch1_qte_02_input.gd:41)
+       [2] _send_key (res://tools/tests/ch1_qte_01_input.gd:119)
+ERROR: QTE02 FAIL: active场景退出立即取消旧流程
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _check (res://tools/tests/ch1_qte_02_input.gd:10)
+       [1] _lifecycle (res://tools/tests/ch1_qte_02_input.gd:80)
+       [2] _click (res://tools/tests/ch1_qte_01_input.gd:139)
+ERROR: QTE02 FAIL: active场景退出释放旧玩家锁
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _check (res://tools/tests/ch1_qte_02_input.gd:10)
+       [1] _lifecycle (res://tools/tests/ch1_qte_02_input.gd:81)
+       [2] _click (res://tools/tests/ch1_qte_01_input.gd:139)
+ERROR: QTE02 FAIL: activescene同进程恢复一个成品
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _check (res://tools/tests/ch1_qte_02_input.gd:10)
+       [1] _lifecycle (res://tools/tests/ch1_qte_02_input.gd:94)
+ERROR: QTE02 FAIL: 重进到真实交单步骤
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _check (res://tools/tests/ch1_qte_02_input.gd:10)
+       [1] _deliver (res://tools/tests/ch1_qte_02_input.gd:39)
+       [2] _wait_until (res://tools/tests/ch1_qte_01_input.gd:146)
+ERROR: QTE02 FAIL: 真实 E 交单品质奖励
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _check (res://tools/tests/ch1_qte_02_input.gd:10)
+       [1] _deliver (res://tools/tests/ch1_qte_02_input.gd:41)
+       [2] _send_key (res://tools/tests/ch1_qte_01_input.gd:119)
+ERROR: QTE02 FAIL: 重复 E/API 不重复结算
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _check (res://tools/tests/ch1_qte_02_input.gd:10)
+       [1] _deliver (res://tools/tests/ch1_qte_02_input.gd:45)
+       [2] _send_key (res://tools/tests/ch1_qte_01_input.gd:119)
+ERROR: QTE02 FAIL: result场景退出立即取消旧流程
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _check (res://tools/tests/ch1_qte_02_input.gd:10)
+       [1] _lifecycle (res://tools/tests/ch1_qte_02_input.gd:80)
+       [2] _click (res://tools/tests/ch1_qte_01_input.gd:139)
+ERROR: QTE02 FAIL: result场景退出释放旧玩家锁
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _check (res://tools/tests/ch1_qte_02_input.gd:10)
+       [1] _lifecycle (res://tools/tests/ch1_qte_02_input.gd:81)
+       [2] _click (res://tools/tests/ch1_qte_01_input.gd:139)
+ERROR: QTE02 FAIL: 重复 E/API 不重复结算
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _check (res://tools/tests/ch1_qte_02_input.gd:10)
+       [1] _deliver (res://tools/tests/ch1_qte_02_input.gd:45)
+       [2] _send_key (res://tools/tests/ch1_qte_01_input.gd:119)
+ERROR: QTE02 FAIL: scene退出重播不污染正式存档
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _check (res://tools/tests/ch1_qte_02_input.gd:10)
+       [1] _lifecycle (res://tools/tests/ch1_qte_02_input.gd:115)
+       [2] _click (res://tools/tests/ch1_qte_01_input.gd:139)

@@ -1,0 +1,24 @@
+{
+	"checks": 4,
+	"failures": 0,
+	"mode": "resume",
+	"results": [
+		{
+			"label": "重进到真实交单步骤",
+			"passed": true
+		},
+		{
+			"label": "真实 E 交单品质奖励",
+			"passed": true
+		},
+		{
+			"label": "成品扣除一次",
+			"passed": true
+		},
+		{
+			"label": "重复 E/API 不重复结算（允许后续对白推进）",
+			"passed": true
+		}
+	],
+	"ticket": "CH1-QTE-02"
+}

@@ -1,0 +1,38 @@
+{
+	"checks": 7,
+	"failures": 0,
+	"mode": "read",
+	"pid": 14084,
+	"results": [
+		{
+			"label": "未知顶层字段保留（JSON 数字允许浮点表示）",
+			"passed": true
+		},
+		{
+			"label": "未知库存字段保留",
+			"passed": true
+		},
+		{
+			"label": "跨进程成品总量正确",
+			"passed": true
+		},
+		{
+			"label": "跨进程分星数量与总量一致",
+			"passed": true
+		},
+		{
+			"label": "跨进程材料不重复扣除",
+			"passed": true
+		},
+		{
+			"label": "已结算合法凭证与奖励保留",
+			"passed": true
+		},
+		{
+			"label": "已交付重复 API 不扣不增",
+			"passed": true
+		}
+	],
+	"sample": "delivered1",
+	"ticket": "CH1-QTE-02"
+}

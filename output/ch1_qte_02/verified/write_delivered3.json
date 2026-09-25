@@ -1,0 +1,30 @@
+{
+	"checks": 5,
+	"failures": 0,
+	"mode": "write",
+	"pid": 13964,
+	"results": [
+		{
+			"label": "夹具接单取料",
+			"passed": true
+		},
+		{
+			"label": "写入开始档",
+			"passed": true
+		},
+		{
+			"label": "写入锁定档",
+			"passed": true
+		},
+		{
+			"label": "写入已交付档",
+			"passed": true
+		},
+		{
+			"label": "夹具完整保存",
+			"passed": true
+		}
+	],
+	"sample": "delivered3",
+	"ticket": "CH1-QTE-02"
+}
