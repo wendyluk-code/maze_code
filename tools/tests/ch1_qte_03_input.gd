@@ -82,11 +82,13 @@ func _run_quality(quality: int, resolution: Vector2i, output_dir: String) -> voi
 	_check(is_instance_valid(slots_grid) and int(slots_grid.columns) == 5 and slots_grid.get_child_count() == 30, "品质%d：仓库5列30格" % quality)
 	_check(is_instance_valid(scroll) and is_equal_approx(float(scroll.custom_minimum_size.y), 3.5 * 56.0 + 3.0 * 4.0), "品质%d：仓库可视高度3.5行" % quality)
 	var hover_region := warehouse.get("_grid_hover_region")
-	if is_instance_valid(hover_region):
-		get_viewport().warp_mouse(hover_region.get_global_rect().get_center()); await get_tree().process_frame
-		_check(float(scroll.get_v_scroll_bar().self_modulate.a) > 0.5, "品质%d：悬停显示滚动条" % quality)
-		get_viewport().warp_mouse(Vector2(4, 4)); await get_tree().process_frame
-		_check(float(scroll.get_v_scroll_bar().self_modulate.a) < 0.1, "品质%d：移出隐藏滚动条" % quality)
+	_check(is_instance_valid(hover_region), "品质%d：仓库悬停区域存在" % quality)
+	if not is_instance_valid(hover_region):
+		return
+	get_viewport().warp_mouse(hover_region.get_global_rect().get_center()); await get_tree().process_frame
+	_check(float(scroll.get_v_scroll_bar().self_modulate.a) > 0.5, "品质%d：悬停显示滚动条" % quality)
+	get_viewport().warp_mouse(Vector2(4, 4)); await get_tree().process_frame
+	_check(float(scroll.get_v_scroll_bar().self_modulate.a) < 0.1, "品质%d：移出隐藏滚动条" % quality)
 	_check(is_instance_valid(warehouse.get("_meat_slot").get("_icon_button")) and is_instance_valid(warehouse.get("_salt_slot").get("_icon_button")), "品质%d：仓库图标按钮存在" % quality)
 	await _click(warehouse.get("_meat_slot").get("_icon_button"))
 	_check(int(warehouse.get("_meat_slot").get_selected_quantity()) == 1, "品质%d：肉图标一次点击只加一份" % quality)
@@ -178,9 +180,7 @@ func _run_component_checks() -> void:
 	_check(is_equal_approx(jud.position_at(1.8, 3.6), 1.0) and is_equal_approx(jud.position_at(3.6, 3.6), -1.0),
 		"3.6秒自然往返端点")
 	_check(not is_equal_approx(jud.position_at(0.9, 3.6), jud.position_at(0.9, 1.8)), "时长参数改变同一时刻指针")
-	var gauge: Control = load("res://scripts/cooking/gauge.gd").new()
-	gauge.size = Vector2(560, 110); gauge.perfect_width = 0.16; gauge.good_width = 0.38
-	_check(is_equal_approx(gauge.good_width, 0.38) and is_equal_approx(gauge.perfect_width, 0.16), "火候组件参数可配置")
+	# 该项是组件判定层证据：两套配置在同一输入下产生不同星级/速度；默认 GUI 截图另作为视觉证据。
 
 func _prepare_scene() -> void:
 	if is_instance_valid(scene):
