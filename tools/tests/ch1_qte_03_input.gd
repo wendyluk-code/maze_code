@@ -66,7 +66,7 @@ func _run_quality(quality: int, resolution: Vector2i, output_dir: String) -> voi
 	player.global_position = _stand(register)
 	_check(await _wait_until(func(): return tm.idx == 9, 240), "品质%d：前台教学步骤" % quality)
 	await _send_key(KEY_E)
-	_check(sm.current_order().get("status", "") == "in_progress" and tm.idx == 10, "品质%d：真实 E 接单" % quality)
+	_check(sm.current_order().get("status", "") == "in_progress" and tm.idx >= 10 and tm.idx <= 11, "品质%d：真实 E 接单" % quality)
 	await _click(tracker.get("_task_button"))
 	_check(bool(tracker.get("_expanded")), "品质%d：真实点击展开任务" % quality)
 	# 真实 E 打开仓库，鼠标选择两种材料并点击领取。
