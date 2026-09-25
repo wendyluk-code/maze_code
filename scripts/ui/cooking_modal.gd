@@ -22,6 +22,7 @@ var _round_duration := 3.6
 var _perfect_width := 0.16
 var _good_width := 0.38
 var _gauge: Control
+var _panel: PanelContainer
 var _start_button: Button
 var _finish_button: Button
 var _cancel_button: Button
@@ -32,11 +33,14 @@ var _recipe_label: Label
 
 func _ready() -> void:
 	add_to_group("cooking_modal")
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	set_anchors_preset(Control.PRESET_TOP_LEFT)
+	size = get_viewport().get_visible_rect().size
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	z_index = 100
 	visible = false
 	_build()
+	get_viewport().size_changed.connect(_layout_panel)
+	call_deferred("_layout_panel")
 
 func _build() -> void:
 	var overlay := ColorRect.new()
@@ -45,10 +49,11 @@ func _build() -> void:
 	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(overlay)
 	var panel := PanelContainer.new()
+	_panel = panel
 	panel.theme = SproutTheme.make_theme()
 	panel.add_theme_stylebox_override("panel", SproutTheme.panel_style(Color("#fff2d4")))
-	panel.set_anchors_preset(Control.PRESET_CENTER)
-	panel.position = Vector2(-360, -290)
+	panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	panel.position = Vector2.ZERO
 	panel.size = Vector2(720, 580)
 	add_child(panel)
 	var outer := VBoxContainer.new()
@@ -107,6 +112,12 @@ func _build() -> void:
 	_finish_button.disabled = true
 	_finish_button.pressed.connect(_on_finish_pressed)
 	actions.add_child(_finish_button)
+
+func _layout_panel() -> void:
+	var viewport_size := get_viewport().get_visible_rect().size
+	size = viewport_size
+	if is_instance_valid(_panel):
+		_panel.position = Vector2((viewport_size.x - _panel.size.x) * 0.5, (viewport_size.y - _panel.size.y) * 0.5)
 
 func open_for_order(requested_recipe_id: String = RECIPE_ID) -> void:
 	var tracker := get_tree().get_first_node_in_group("order_tracking")
@@ -204,7 +215,7 @@ func _finish_result(stars: int, pointer := -2.0) -> void:
 		_finish_button.disabled = false
 		return
 	_quality_label.text = "品质：%d 星" % stars
-	_message.text = "【盐烤岩鬃肉】已完成，请前往前台交付"
+	_message.text = "【%s】已完成，请前往前台交付" % str(recipe.get("name", recipe_id))
 	_finish_button.disabled = true
 	cooking_finished.emit(result)
 

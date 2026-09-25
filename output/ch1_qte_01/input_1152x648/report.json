@@ -1,0 +1,9 @@
+{
+	"checks": 21,
+	"failures": 0,
+	"resolutions": [
+		"1152x648",
+		"1280x720"
+	],
+	"ticket": "CH1-QTE-01"
+}
