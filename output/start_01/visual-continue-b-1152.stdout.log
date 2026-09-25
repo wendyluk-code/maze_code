@@ -8,7 +8,7 @@ SaveManager: 存档 JSON 损坏，回退默认状态：Expected key
 START01 confirm pressed; busy=false selected=user://saves/broken.json
 START01 confirm down
 START01 confirm up
-START01 confirm pressed; busy=true selected=user://saves/1790328294-841-7af5700016301229.json
+START01 confirm pressed; busy=true selected=user://saves/1790329071-74-aab34fa064a8790f.json
 PROLOGUE exit_requested: already_seen position=0.0
 [WalkZone] polygons: 18  islands: 7
 PROLOGUE restaurant_entered

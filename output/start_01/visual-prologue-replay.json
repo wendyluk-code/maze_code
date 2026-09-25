@@ -1,8 +1,8 @@
 {
 	"captures": [
-		"C:\\Users\\KSG\\.codex\\worktrees\\dc93\\maze_code\\output\\start_01/replay-playing.png",
-		"C:\\Users\\KSG\\.codex\\worktrees\\dc93\\maze_code\\output\\start_01/replay-black.png",
-		"C:\\Users\\KSG\\.codex\\worktrees\\dc93\\maze_code\\output\\start_01/replay-restaurant.png"
+		"F:\\maze_code\\output\\start_01/replay-playing.png",
+		"F:\\maze_code\\output\\start_01/replay-black.png",
+		"F:\\maze_code\\output\\start_01/replay-restaurant.png"
 	],
 	"checks": [
 		{
@@ -17,7 +17,7 @@
 		},
 		{
 			"details": {
-				"position": 1.86666666666666
+				"position": 1.86860966666667
 			},
 			"label": "新档实际读取并播放视频",
 			"passed": true
@@ -181,7 +181,7 @@
 	},
 	"failures": 0,
 	"finished_signals": 0,
-	"max_video_position": 3.58954599999999,
+	"max_video_position": 3.58893399999999,
 	"mode": "replay",
 	"renderer": "Windows",
 	"replay_disk_after": "5ad38304b535c2987dbd24657c1a11b884984ff600d9f389deb0d4e634fee792",
@@ -190,10 +190,10 @@
 	"replay_memory_before": "5b7031e72049bcd0efade0d30e78a9354f2901055d89e88a8fff1cbecb6a5be8",
 	"restaurant_entries": 1,
 	"sample_positions": [
-		1.86666666666666,
-		3.07290133333333
+		1.86860966666667,
+		3.072295
 	],
 	"ticket": "PRO-01",
 	"transitions": 1,
-	"user_dir": "c:/users/ksg/appdata/local/temp/maze_start01_d8fff4948bbe4cbeb5c1d6cbc11c4359/visual-prologue-replay/roaming/godot/app_userdata/maze_code/"
+	"user_dir": "c:/users/ksg/appdata/local/temp/maze_start01_d6f9d6c7b6d1471b95bd4c08c787c73a/visual-prologue-replay/roaming/godot/app_userdata/maze_code/"
 }

@@ -1,9 +1,9 @@
 {
 	"active_path": "user://save.json",
 	"captures": [
-		"C:\\Users\\KSG\\.codex\\worktrees\\dc93\\maze_code\\output\\start_01/visual-failure-1152-cover.png",
-		"C:\\Users\\KSG\\.codex\\worktrees\\dc93\\maze_code\\output\\start_01/visual-failure-1152-save-failed.png",
-		"C:\\Users\\KSG\\.codex\\worktrees\\dc93\\maze_code\\output\\start_01/visual-failure-1152-read-failed.png"
+		"F:\\maze_code\\output\\start_01/visual-failure-1152-cover.png",
+		"F:\\maze_code\\output\\start_01/visual-failure-1152-save-failed.png",
+		"F:\\maze_code\\output\\start_01/visual-failure-1152-read-failed.png"
 	],
 	"checks": [
 		{
@@ -46,5 +46,5 @@
 	"failures": 0,
 	"mode": "visual-failure-1152",
 	"renderer": "Windows",
-	"user_dir": "c:/users/ksg/appdata/local/temp/maze_start01_d8fff4948bbe4cbeb5c1d6cbc11c4359/visual-failure-1152/roaming/godot/app_userdata/maze_code/"
+	"user_dir": "c:/users/ksg/appdata/local/temp/maze_start01_d6f9d6c7b6d1471b95bd4c08c787c73a/visual-failure-1152/roaming/godot/app_userdata/maze_code/"
 }

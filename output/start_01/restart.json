@@ -1,5 +1,5 @@
 {
-	"active_path": "user://saves/1790328278-329-cc32b09e7922bccd.json",
+	"active_path": "user://saves/1790329051-145-21e8e13a76db83b7.json",
 	"captures": [],
 	"checks": [
 		{
@@ -18,5 +18,5 @@
 	"failures": 0,
 	"mode": "restart",
 	"renderer": "headless",
-	"user_dir": "c:/users/ksg/appdata/local/temp/maze_start01_d8fff4948bbe4cbeb5c1d6cbc11c4359/state/roaming/godot/app_userdata/maze_code/"
+	"user_dir": "c:/users/ksg/appdata/local/temp/maze_start01_d6f9d6c7b6d1471b95bd4c08c787c73a/state/roaming/godot/app_userdata/maze_code/"
 }

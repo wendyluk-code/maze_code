@@ -1,11 +1,11 @@
 {
-	"active_path": "user://saves/1790328287-9-923874a3d420adee.json",
+	"active_path": "user://saves/1790329064-642-dc50ff8fb1472796.json",
 	"captures": [
-		"C:\\Users\\KSG\\.codex\\worktrees\\dc93\\maze_code\\output\\start_01/visual-continue-1280-cover.png",
-		"C:\\Users\\KSG\\.codex\\worktrees\\dc93\\maze_code\\output\\start_01/visual-continue-1280-modal.png",
-		"C:\\Users\\KSG\\.codex\\worktrees\\dc93\\maze_code\\output\\start_01/visual-continue-1280-broken.png",
-		"C:\\Users\\KSG\\.codex\\worktrees\\dc93\\maze_code\\output\\start_01/visual-continue-1280-selected.png",
-		"C:\\Users\\KSG\\.codex\\worktrees\\dc93\\maze_code\\output\\start_01/visual-continue-1280-restaurant.png"
+		"F:\\maze_code\\output\\start_01/visual-continue-1280-cover.png",
+		"F:\\maze_code\\output\\start_01/visual-continue-1280-modal.png",
+		"F:\\maze_code\\output\\start_01/visual-continue-1280-broken.png",
+		"F:\\maze_code\\output\\start_01/visual-continue-1280-selected.png",
+		"F:\\maze_code\\output\\start_01/visual-continue-1280-restaurant.png"
 	],
 	"checks": [
 		{
@@ -76,5 +76,5 @@
 	"failures": 0,
 	"mode": "visual-continue-1280",
 	"renderer": "Windows",
-	"user_dir": "c:/users/ksg/appdata/local/temp/maze_start01_d8fff4948bbe4cbeb5c1d6cbc11c4359/visual-continue-1280/roaming/godot/app_userdata/maze_code/"
+	"user_dir": "c:/users/ksg/appdata/local/temp/maze_start01_d6f9d6c7b6d1471b95bd4c08c787c73a/visual-continue-1280/roaming/godot/app_userdata/maze_code/"
 }
