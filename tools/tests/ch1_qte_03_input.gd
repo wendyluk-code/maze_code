@@ -51,8 +51,9 @@ func _run_quality(quality: int, resolution: Vector2i, output_dir: String) -> voi
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var actual_viewport := get_viewport().get_visible_rect().size
-	observed_resolutions.append({"requested": str(resolution), "viewport": str(actual_viewport)})
-	_check(actual_viewport.x >= resolution.x - 4 and actual_viewport.y >= resolution.y - 4, "品质%d：窗口尺寸实际生效" % quality, {"requested": str(resolution), "viewport": str(actual_viewport)})
+	var actual_window := DisplayServer.window_get_size()
+	observed_resolutions.append({"requested": str(resolution), "window": str(actual_window), "viewport": str(actual_viewport)})
+	_check(absf(float(actual_window.x - resolution.x)) <= 4.0 and absf(float(actual_window.y - resolution.y)) <= 4.0, "品质%d：窗口尺寸实际生效" % quality, {"requested": str(resolution), "window": str(actual_window), "viewport": str(actual_viewport)})
 	await _prepare_scene()
 	var guide := scene.get_node("UIOverlay/TutorialGuide")
 	var player := scene.get_node("Player")
@@ -88,7 +89,9 @@ func _run_quality(quality: int, resolution: Vector2i, output_dir: String) -> voi
 		_check(float(scroll.get_v_scroll_bar().self_modulate.a) < 0.1, "品质%d：移出隐藏滚动条" % quality)
 	_check(is_instance_valid(warehouse.get("_meat_slot").get("_icon_button")) and is_instance_valid(warehouse.get("_salt_slot").get("_icon_button")), "品质%d：仓库图标按钮存在" % quality)
 	await _click(warehouse.get("_meat_slot").get("_icon_button"))
+	_check(int(warehouse.get("_meat_slot").get_selected_quantity()) == 1, "品质%d：肉图标一次点击只加一份" % quality)
 	await _click(warehouse.get("_salt_slot").get("_icon_button"))
+	_check(int(warehouse.get("_salt_slot").get_selected_quantity()) == 1, "品质%d：盐图标一次点击只加一份" % quality)
 	_check(not warehouse.get("_claim_button").disabled, "品质%d：鼠标多选材料启用领取" % quality)
 	var selected_list := warehouse.get("_selected_list")
 	_check(is_instance_valid(selected_list) and selected_list.get_child_count() >= 2, "品质%d：已选区显示图标名称与加减行" % quality)
@@ -97,6 +100,8 @@ func _run_quality(quality: int, resolution: Vector2i, output_dir: String) -> voi
 		"品质%d：真实领取只增加一份材料" % quality)
 	_check(not warehouse.visible and not player.input_locked, "品质%d：领取后关闭弹窗恢复输入" % quality)
 	# 真实 E 打开料理台，鼠标开始/起锅；指针由自然 _process 推进。
+	await _click(tracker.get("_task_button"))
+	_check(bool(tracker.get("_expanded")), "品质%d：料理前再次展开任务" % quality)
 	player.global_position = _stand(cauldron)
 	_check(await _wait_until(func(): return tm.idx == 13, 240), "品质%d：料理教学步骤" % quality)
 	await _send_key(KEY_E)
@@ -156,7 +161,9 @@ func _run_cancel_and_timeout(output_dir: String) -> void:
 	_check(sm.cooking_state().status == "active", "超时场景开始成功")
 	await get_tree().create_timer(3.9).timeout
 	_check(bool(modal.get("_finished")) and sm.cooked_quality() == 1, "自然超时往返产1星")
-	_check(not modal.get("_start_button").disabled or true, "超时完成不重启")
+	var timeout_state: Dictionary = sm.data.duplicate(true)
+	await _click(modal.get("_start_button"))
+	_check(sm.data == timeout_state and bool(modal.get("_finished")), "超时完成后重复开始不改状态")
 	await _capture(output_dir, "qte03_timeout_result")
 	tm._cancel_current_run(); scene.queue_free(); await get_tree().process_frame
 
@@ -189,27 +196,34 @@ func _prepare_scene() -> void:
 	tm.start(); await get_tree().process_frame
 
 func _reach_frontdesk() -> void:
+	var guide := scene.get_node("UIOverlay/TutorialGuide")
 	_check(await _wait_until(func(): return tm.idx == 6, 180), "接单前恢复到客人对白")
-	await _send_key(KEY_SPACE)
-	await _send_key(KEY_ENTER)
-	_check(await _wait_until(func(): return tm.idx == 7, 180), "接单前完成客人对白")
-	await _send_key(KEY_SPACE)
-	await _send_key(KEY_ENTER)
-	_check(await _wait_until(func(): return tm.idx >= 8, 180), "接单前进入前台移动教学")
+	var deadline := Time.get_ticks_msec() + 6000
+	while tm.active and tm.idx < 8 and Time.get_ticks_msec() < deadline:
+		var before_idx := tm.idx
+		if guide.dialog.visible:
+			await _send_key(KEY_SPACE)
+			await get_tree().process_frame
+			# 若空格未推进当前可见行，再用 Enter 继续；仍由实际输入驱动。
+			if tm.idx == before_idx and guide.dialog.visible:
+				await _send_key(KEY_ENTER)
+		else:
+			await get_tree().process_frame
+	_check(tm.idx >= 8, "接单前进入前台移动教学")
 
 func _send_key(keycode: Key) -> void:
 	var event := InputEventKey.new(); event.keycode = keycode; event.pressed = true
-	get_viewport().push_input(event); Input.parse_input_event(event); await get_tree().process_frame
+	get_viewport().push_input(event); await get_tree().process_frame
 	event = InputEventKey.new(); event.keycode = keycode; event.pressed = false
-	get_viewport().push_input(event); Input.parse_input_event(event); await get_tree().process_frame
+	get_viewport().push_input(event); await get_tree().process_frame
 
 func _click(control: Control) -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	var center := control.get_global_rect().get_center(); get_viewport().warp_mouse(center)
 	var event := InputEventMouseButton.new(); event.button_index = MOUSE_BUTTON_LEFT; event.button_mask = MOUSE_BUTTON_MASK_LEFT; event.position = center; event.pressed = true
-	get_viewport().push_input(event); Input.parse_input_event(event); await get_tree().process_frame
+	get_viewport().push_input(event); await get_tree().process_frame
 	event = InputEventMouseButton.new(); event.button_index = MOUSE_BUTTON_LEFT; event.position = center; event.pressed = false
-	get_viewport().push_input(event); Input.parse_input_event(event); await get_tree().process_frame
+	get_viewport().push_input(event); await get_tree().process_frame
 
 func _wait_until(predicate: Callable, frames: int) -> bool:
 	for _i in frames:

@@ -12,13 +12,13 @@
 
 ## 手动体验入口
 
-保持正式存档不动，用 QTE02 的隔离状态夹具写入“已取料、烹饪进行中”后打开餐厅场景；玩家自行靠近料理台按 `E`，再点击“起锅”，随后到前台按 `E` 交付：
+保持正式存档不动，用 QTE02 的隔离状态夹具写入“已接单、已取料、尚未开始烹饪”后打开餐厅场景；玩家自行靠近料理台按 `E`，点击“开始烹饪”，让指针自然往返后点击“起锅”，随后到前台按 `E` 交付：
 
 ```powershell
 $p = 'C:\Users\KSG\.codex\worktrees\6269\maze_code\output\ch1_qte_03_manual'
 New-Item -ItemType Directory -Force $p | Out-Null
 $env:APPDATA = $p; $env:LOCALAPPDATA = $p; $env:MAZE_QTE02_PROFILE = $p
-& 'F:\SteamLibrary\steamapps\common\Godot Engine\godot.windows.opt.tools.64.exe' --headless --path F:\maze_code --script res://tools/tests/ch1_qte_02_state.gd -- --mode=write --sample=active --report="$p\seed.json"
+& 'F:\SteamLibrary\steamapps\common\Godot Engine\godot.windows.opt.tools.64.exe' --headless --path F:\maze_code --script res://tools/tests/ch1_qte_02_state.gd -- --mode=write --sample=before --report="$p\seed.json"
 & 'F:\SteamLibrary\steamapps\common\Godot Engine\godot.windows.opt.tools.64.exe' --path F:\maze_code --audio-driver Dummy --rendering-method gl_compatibility res://scenes/restaurant_map_2d.tscn
 ```
 

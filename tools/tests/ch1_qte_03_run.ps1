@@ -33,12 +33,13 @@ if ($timedOut) { $p.Kill($true); $p.WaitForExit() }
 $out = $outTask.GetAwaiter().GetResult(); $err = $errTask.GetAwaiter().GetResult()
 [IO.File]::WriteAllText($stdoutPath, $out); [IO.File]::WriteAllText($stderrPath, $err)
 $after = Fingerprint
-$summary = [ordered]@{ project=$ProjectRoot; script=$scriptRoot; exit_code=$p.ExitCode; timed_out=$timedOut; report_exists=(Test-Path $report); real_save_before=$before; real_save_after=$after; real_save_unchanged=($before -eq $after); stdout=$stdoutPath; stderr=$stderrPath }
+$engineErrors = ($out + "`n" + $err) -match '(?m)^(ERROR:|SCRIPT ERROR:|.*Parse Error:)'
+$summary = [ordered]@{ project=$ProjectRoot; scene=$sceneArg; exit_code=$p.ExitCode; timed_out=$timedOut; report_exists=(Test-Path $report); engine_errors=$engineErrors; real_save_before=$before; real_save_after=$after; real_save_unchanged=($before -eq $after); stdout=$stdoutPath; stderr=$stderrPath }
 if (Test-Path $report) { $r = Get-Content -Raw $report | ConvertFrom-Json; $summary.checks=$r.checks; $summary.failures=$r.failures }
 $summary | ConvertTo-Json -Depth 12 | Set-Content -Encoding utf8 (Join-Path $OutputRoot 'runner-summary.json')
 if ($timedOut) { throw 'QTE03 timed out; logs preserved' }
 if (!(Test-Path $report)) { throw 'QTE03 report missing' }
 if ($summary.checks -le 0) { throw 'QTE03 report has no checks' }
-if ($summary.failures -ne 0 -or $p.ExitCode -ne 0) { throw "QTE03 failed: checks=$($summary.checks), failures=$($summary.failures), exit=$($p.ExitCode)" }
+if ($summary.failures -ne 0 -or $p.ExitCode -ne 0 -or $engineErrors) { throw "QTE03 failed: checks=$($summary.checks), failures=$($summary.failures), exit=$($p.ExitCode), engine_errors=$engineErrors" }
 if ($before -ne $after) { throw 'Real save fingerprint changed' }
 Write-Host ($summary | ConvertTo-Json -Compress)
