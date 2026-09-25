@@ -1,0 +1,12 @@
+﻿{
+    "project":  "C:\\Users\\KSG\\.codex\\worktrees\\6269\\maze_code",
+    "script":  "C:\\Users\\KSG\\.codex\\worktrees\\6269\\maze_code\\tools\\tests\\ch1_qte_03_input.gd",
+    "exit_code":  1,
+    "timed_out":  false,
+    "report_exists":  false,
+    "real_save_before":  "C67AE4DB9A2D2C6D6741EDB447BB59A9329AAEA60426FF5E2B45D8037BDA18F3",
+    "real_save_after":  "C67AE4DB9A2D2C6D6741EDB447BB59A9329AAEA60426FF5E2B45D8037BDA18F3",
+    "real_save_unchanged":  true,
+    "stdout":  "C:\\Users\\KSG\\.codex\\worktrees\\6269\\maze_code\\output\\ch1_qte_03\\run_20260925_133632\\qte03.stdout.log",
+    "stderr":  "C:\\Users\\KSG\\.codex\\worktrees\\6269\\maze_code\\output\\ch1_qte_03\\run_20260925_133632\\qte03.stderr.log"
+}

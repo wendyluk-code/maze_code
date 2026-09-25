@@ -1,0 +1,230 @@
+WARNING: res://scenes/restaurant_map_2d.tscn:6 - ext_resource, invalid UID: uid://dyvbtyx8scrij - using text path instead: res://assets/maps/restaurant_map.png
+   at: load (scene/resources/resource_format_text.cpp:501)
+ERROR: Unable to open file: res://.godot/imported/restaurant_map.png-09a9d49dd84588e93509d35e3a511da9.ctex.
+   at: _load_data (scene/resources/compressed_texture.cpp:45)
+ERROR: Failed loading resource: res://.godot/imported/restaurant_map.png-09a9d49dd84588e93509d35e3a511da9.ctex.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Failed loading resource: res://assets/maps/restaurant_map.png.
+   at: _load (core/io/resource_loader.cpp:317)
+WARNING: res://scenes/restaurant_map_2d.tscn:8 - ext_resource, invalid UID: uid://bqkbmauc8k6wq - using text path instead: res://scripts/player_map.gd
+   at: load (scene/resources/resource_format_text.cpp:501)
+ERROR: Unable to open file: res://.godot/imported/hero_front.png-f3e2e6d1dd39befff4455c7b5ec2198e.ctex.
+   at: _load_data (scene/resources/compressed_texture.cpp:45)
+ERROR: Failed loading resource: res://.godot/imported/hero_front.png-f3e2e6d1dd39befff4455c7b5ec2198e.ctex.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Failed loading resource: res://assets/characters/hero/hero_front.png.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Unable to open file: res://.godot/imported/hero_back.png-7363ee8d17f83e92b400d421c46fc8b4.ctex.
+   at: _load_data (scene/resources/compressed_texture.cpp:45)
+ERROR: Failed loading resource: res://.godot/imported/hero_back.png-7363ee8d17f83e92b400d421c46fc8b4.ctex.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Failed loading resource: res://assets/characters/hero/hero_back.png.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Unable to open file: res://.godot/imported/hero_side.png-d1de855fa7ef9866e99483b48e72731b.ctex.
+   at: _load_data (scene/resources/compressed_texture.cpp:45)
+ERROR: Failed loading resource: res://.godot/imported/hero_side.png-d1de855fa7ef9866e99483b48e72731b.ctex.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Failed loading resource: res://assets/characters/hero/hero_side.png.
+   at: _load (core/io/resource_loader.cpp:317)
+SCRIPT ERROR: Parse Error: Could not preload resource file "res://assets/characters/hero/hero_front.png".
+   at: GDScript::reload (res://scripts/player_map.gd:14)
+SCRIPT ERROR: Parse Error: Cannot infer the type of "TEX_FRONT" constant because the value doesn't have a set type.
+   at: GDScript::reload (res://scripts/player_map.gd:14)
+SCRIPT ERROR: Parse Error: Could not preload resource file "res://assets/characters/hero/hero_back.png".
+   at: GDScript::reload (res://scripts/player_map.gd:15)
+SCRIPT ERROR: Parse Error: Cannot infer the type of "TEX_BACK" constant because the value doesn't have a set type.
+   at: GDScript::reload (res://scripts/player_map.gd:15)
+SCRIPT ERROR: Parse Error: Could not preload resource file "res://assets/characters/hero/hero_side.png".
+   at: GDScript::reload (res://scripts/player_map.gd:16)
+SCRIPT ERROR: Parse Error: Cannot infer the type of "TEX_SIDE" constant because the value doesn't have a set type.
+   at: GDScript::reload (res://scripts/player_map.gd:16)
+ERROR: Failed to load script "res://scripts/player_map.gd" with error "Parse error".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
+WARNING: res://scenes/restaurant_map_2d.tscn:10 - ext_resource, invalid UID: uid://djbs06hp6urr7 - using text path instead: res://scripts/camera_map.gd
+   at: load (scene/resources/resource_format_text.cpp:501)
+WARNING: res://scenes/restaurant_map_2d.tscn:12 - ext_resource, invalid UID: uid://cwknmyb7fega - using text path instead: res://assets/characters/hero/hero_front.png
+   at: load (scene/resources/resource_format_text.cpp:501)
+ERROR: Unable to open file: res://.godot/imported/hero_front.png-f3e2e6d1dd39befff4455c7b5ec2198e.ctex.
+   at: _load_data (scene/resources/compressed_texture.cpp:45)
+ERROR: Failed loading resource: res://.godot/imported/hero_front.png-f3e2e6d1dd39befff4455c7b5ec2198e.ctex.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Failed loading resource: res://assets/characters/hero/hero_front.png.
+   at: _load (core/io/resource_loader.cpp:317)
+WARNING: res://scenes/restaurant_map_2d.tscn:14 - ext_resource, invalid UID: uid://bram1gv7aihmr - using text path instead: res://scripts/walk_zone.gd
+   at: load (scene/resources/resource_format_text.cpp:501)
+ERROR: Unable to open file: res://.godot/imported/ui_big_play_blank.png-facaee1ee2a98426a7d91404c3ca783e.ctex.
+   at: _load_data (scene/resources/compressed_texture.cpp:45)
+ERROR: Failed loading resource: res://.godot/imported/ui_big_play_blank.png-facaee1ee2a98426a7d91404c3ca783e.ctex.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Failed loading resource: res://assets/ui/ui_big_play_blank.png.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Unable to open file: res://.godot/imported/key_square26_frame0.png-10bb43890070e0308a89979a61d1655e.ctex.
+   at: _load_data (scene/resources/compressed_texture.cpp:45)
+ERROR: Failed loading resource: res://.godot/imported/key_square26_frame0.png-10bb43890070e0308a89979a61d1655e.ctex.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Failed loading resource: res://assets/ui/key_square26_frame0.png.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Cannot open file 'res://.godot/imported/sprout_lands.ttf-01769e44acd9b83f18fc5e2dc7e3878d.fontdata'.
+   at: load (core/io/resource_format_binary.cpp:1156)
+ERROR: Failed loading resource: res://.godot/imported/sprout_lands.ttf-01769e44acd9b83f18fc5e2dc7e3878d.fontdata.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Failed loading resource: res://assets/ui/sprout_lands.ttf.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: res://scenes/ui/key_button.tscn:7 - Parse Error: [ext_resource] referenced non-existent resource at: res://assets/ui/sprout_lands.ttf.
+   at: _printerr (scene/resources/resource_format_text.cpp:41)
+ERROR: res://scenes/ui/key_button.tscn:7 - Parse Error: [ext_resource] referenced non-existent resource at: res://assets/ui/sprout_lands.ttf.
+   at: _printerr (scene/resources/resource_format_text.cpp:41)
+ERROR: Failed loading resource: res://scenes/ui/key_button.tscn.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Cannot open file 'res://.godot/imported/zcool_kuail.ttf-032820fb5b45d9544e8b15363a34852a.fontdata'.
+   at: load (core/io/resource_format_binary.cpp:1156)
+ERROR: Failed loading resource: res://.godot/imported/zcool_kuail.ttf-032820fb5b45d9544e8b15363a34852a.fontdata.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Failed loading resource: res://assets/ui/zcool_kuail.ttf.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: res://scenes/ui/interact_button.tscn:20 - Parse Error: [ext_resource] referenced non-existent resource at: res://assets/ui/ui_big_play_blank.png.
+   at: _printerr (scene/resources/resource_format_text.cpp:41)
+ERROR: res://scenes/ui/interact_button.tscn:39 - Parse Error: [ext_resource] referenced non-existent resource at: res://scenes/ui/key_button.tscn.
+   at: _printerr (scene/resources/resource_format_text.cpp:41)
+ERROR: res://scenes/ui/interact_button.tscn:48 - Parse Error: [ext_resource] referenced non-existent resource at: res://assets/ui/zcool_kuail.ttf.
+   at: _printerr (scene/resources/resource_format_text.cpp:41)
+SCRIPT ERROR: Compile Error: Identifier not found: SaveManager
+   at: GDScript::reload (res://scripts/ui_layer.gd:136)
+ERROR: Failed to load script "res://scripts/ui_layer.gd" with error "Compilation failed".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/order_tracking.gd:73)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/order_tracking.gd:74)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/order_tracking.gd:97)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/order_tracking.gd:101)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/order_tracking.gd:117)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/order_tracking.gd:120)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/order_tracking.gd:137)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/order_tracking.gd:143)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/order_tracking.gd:156)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/order_tracking.gd:180)
+SCRIPT ERROR: Parse Error: Cannot infer the type of "style" variable because the value doesn't have a set type.
+   at: GDScript::reload (res://scripts/ui/order_tracking.gd:180)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/order_tracking.gd:188)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/order_tracking.gd:189)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/order_tracking.gd:190)
+ERROR: Failed to load script "res://scripts/ui/order_tracking.gd" with error "Parse error".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
+SCRIPT ERROR: Parse Error: Could not find type "SproutItemSlot" in the current scope.
+   at: GDScript::reload (res://scripts/ui/warehouse_modal.gd:10)
+SCRIPT ERROR: Parse Error: Could not find type "SproutItemSlot" in the current scope.
+   at: GDScript::reload (res://scripts/ui/warehouse_modal.gd:11)
+SCRIPT ERROR: Parse Error: Could not find type "SproutButton" in the current scope.
+   at: GDScript::reload (res://scripts/ui/warehouse_modal.gd:14)
+SCRIPT ERROR: Parse Error: Could not find type "SproutButton" in the current scope.
+   at: GDScript::reload (res://scripts/ui/warehouse_modal.gd:15)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/warehouse_modal.gd:37)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/warehouse_modal.gd:38)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/warehouse_modal.gd:50)
+SCRIPT ERROR: Parse Error: Identifier "SproutItemSlot" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/warehouse_modal.gd:68)
+SCRIPT ERROR: Parse Error: Identifier "SproutItemSlot" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/warehouse_modal.gd:74)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/warehouse_modal.gd:92)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/warehouse_modal.gd:105)
+SCRIPT ERROR: Parse Error: Identifier "SproutButton" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/warehouse_modal.gd:111)
+SCRIPT ERROR: Parse Error: Identifier "SproutButton" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/warehouse_modal.gd:118)
+ERROR: Failed to load script "res://scripts/ui/warehouse_modal.gd" with error "Parse error".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
+SCRIPT ERROR: Compile Error: Identifier not found: TutorialManager
+   at: GDScript::reload (res://scripts/tutorial_guide.gd:37)
+ERROR: Failed to load script "res://scripts/tutorial_guide.gd" with error "Compilation failed".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
+ERROR: Cannot open file 'res://.godot/imported/zcool_kuail.ttf-032820fb5b45d9544e8b15363a34852a.fontdata'.
+   at: load (core/io/resource_format_binary.cpp:1156)
+ERROR: Failed loading resource: res://.godot/imported/zcool_kuail.ttf-032820fb5b45d9544e8b15363a34852a.fontdata.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Failed loading resource: res://assets/ui/zcool_kuail.ttf.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Unable to open file: res://.godot/imported/ui_big_play_blank.png-facaee1ee2a98426a7d91404c3ca783e.ctex.
+   at: _load_data (scene/resources/compressed_texture.cpp:45)
+ERROR: Failed loading resource: res://.godot/imported/ui_big_play_blank.png-facaee1ee2a98426a7d91404c3ca783e.ctex.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Failed loading resource: res://assets/ui/ui_big_play_blank.png.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Unable to open file: res://.godot/imported/key_square26_frame0.png-10bb43890070e0308a89979a61d1655e.ctex.
+   at: _load_data (scene/resources/compressed_texture.cpp:45)
+ERROR: Failed loading resource: res://.godot/imported/key_square26_frame0.png-10bb43890070e0308a89979a61d1655e.ctex.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Failed loading resource: res://assets/ui/key_square26_frame0.png.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Cannot open file 'res://.godot/imported/sprout_lands.ttf-01769e44acd9b83f18fc5e2dc7e3878d.fontdata'.
+   at: load (core/io/resource_format_binary.cpp:1156)
+ERROR: Failed loading resource: res://.godot/imported/sprout_lands.ttf-01769e44acd9b83f18fc5e2dc7e3878d.fontdata.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Failed loading resource: res://assets/ui/sprout_lands.ttf.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: res://scenes/ui/key_button.tscn:7 - Parse Error: [ext_resource] referenced non-existent resource at: res://assets/ui/sprout_lands.ttf.
+   at: _printerr (scene/resources/resource_format_text.cpp:41)
+ERROR: res://scenes/ui/key_button.tscn:7 - Parse Error: [ext_resource] referenced non-existent resource at: res://assets/ui/sprout_lands.ttf.
+   at: _printerr (scene/resources/resource_format_text.cpp:41)
+ERROR: Failed loading resource: res://scenes/ui/key_button.tscn.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: res://scenes/ui/dialog_box.tscn:9 - Parse Error: [ext_resource] referenced non-existent resource at: res://assets/ui/ui_big_play_blank.png.
+   at: _printerr (scene/resources/resource_format_text.cpp:41)
+ERROR: res://scenes/ui/dialog_box.tscn:9 - Parse Error: [ext_resource] referenced non-existent resource at: res://assets/ui/ui_big_play_blank.png.
+   at: _printerr (scene/resources/resource_format_text.cpp:41)
+ERROR: Failed loading resource: res://scenes/ui/dialog_box.tscn.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Cannot open file 'res://.godot/imported/zcool_kuail.ttf-032820fb5b45d9544e8b15363a34852a.fontdata'.
+   at: load (core/io/resource_format_binary.cpp:1156)
+ERROR: Failed loading resource: res://.godot/imported/zcool_kuail.ttf-032820fb5b45d9544e8b15363a34852a.fontdata.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Failed loading resource: res://assets/ui/zcool_kuail.ttf.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: res://scenes/ui/tutorial_guide.tscn:64 - Parse Error: [ext_resource] referenced non-existent resource at: res://assets/ui/zcool_kuail.ttf.
+   at: _printerr (scene/resources/resource_format_text.cpp:41)
+ERROR: res://scenes/ui/tutorial_guide.tscn:84 - Parse Error: [ext_resource] referenced non-existent resource at: res://assets/ui/zcool_kuail.ttf.
+   at: _printerr (scene/resources/resource_format_text.cpp:41)
+ERROR: res://scenes/ui/tutorial_guide.tscn:102 - Parse Error: [ext_resource] referenced non-existent resource at: res://assets/ui/zcool_kuail.ttf.
+   at: _printerr (scene/resources/resource_format_text.cpp:41)
+ERROR: res://scenes/ui/tutorial_guide.tscn:129 - Parse Error: [ext_resource] referenced non-existent resource at: res://assets/ui/zcool_kuail.ttf.
+   at: _printerr (scene/resources/resource_format_text.cpp:41)
+ERROR: res://scenes/ui/tutorial_guide.tscn:153 - Parse Error: [ext_resource] referenced non-existent resource at: res://assets/ui/zcool_kuail.ttf.
+   at: _printerr (scene/resources/resource_format_text.cpp:41)
+ERROR: res://scenes/ui/tutorial_guide.tscn:160 - Parse Error: [ext_resource] referenced non-existent resource at: res://scenes/ui/dialog_box.tscn.
+   at: _printerr (scene/resources/resource_format_text.cpp:41)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/cooking_modal.gd:53)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/cooking_modal.gd:54)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/cooking_modal.gd:67)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/cooking_modal.gd:73)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/cooking_modal.gd:82)
+SCRIPT ERROR: Parse Error: Identifier "SproutTheme" not declared in the current scope.
+   at: GDScript::reload (res://scripts/ui/cooking_modal.gd:88)
+ERROR: Failed to load script "res://scripts/ui/cooking_modal.gd" with error "Parse error".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
+ERROR: res://scenes/restaurant_map_2d.tscn:38 - Parse Error: [ext_resource] referenced non-existent resource at: res://assets/maps/restaurant_map.png.
+   at: _printerr (scene/resources/resource_format_text.cpp:41)
+ERROR: res://scenes/restaurant_map_2d.tscn:146 - Parse Error: [ext_resource] referenced non-existent resource at: res://assets/characters/hero/hero_front.png.
+   at: _printerr (scene/resources/resource_format_text.cpp:41)
+ERROR: Can't load script: res://tools/tests/ch1_qte_03_input.tscn
+   at: start (main/main.cpp:4370)
