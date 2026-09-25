@@ -81,6 +81,10 @@ func _run_quality(quality: int, resolution: Vector2i, output_dir: String) -> voi
 	var scroll: ScrollContainer = warehouse.get("_scroll")
 	_check(is_instance_valid(slots_grid) and int(slots_grid.columns) == 5 and slots_grid.get_child_count() == 30, "品质%d：仓库5列30格" % quality)
 	_check(is_instance_valid(scroll) and is_equal_approx(float(scroll.custom_minimum_size.y), 3.5 * 56.0 + 3.0 * 4.0), "品质%d：仓库可视高度3.5行" % quality)
+	for slot in slots_grid.get_children():
+		_check(slot.size == Vector2(56, 56), "品质%d：仓库格子正方形" % quality)
+	var stock_badge: Label = warehouse.get("_meat_slot").get("_stock_badge")
+	_check(stock_badge.text == "1" and stock_badge.get_theme_stylebox("normal") is StyleBoxEmpty and stock_badge.get_theme_constant("outline_size") > 0, "品质%d：库存数字仅描边无底色" % quality)
 	var hover_region: Control = warehouse.get("_grid_hover_region")
 	_check(is_instance_valid(hover_region), "品质%d：仓库悬停区域存在" % quality)
 	if not is_instance_valid(hover_region):
@@ -97,6 +101,33 @@ func _run_quality(quality: int, resolution: Vector2i, output_dir: String) -> voi
 	_check(not warehouse.get("_claim_button").disabled, "品质%d：鼠标多选材料启用领取" % quality)
 	var selected_list: Control = warehouse.get("_selected_list")
 	_check(is_instance_valid(selected_list) and selected_list.get_child_count() >= 2, "品质%d：已选区显示图标名称与加减行" % quality)
+	if quality == 1:
+		var last: SproutItemSlot = slots_grid.get_child(29) as SproutItemSlot
+		last.configure(last.item_id, "末行食材", 10, 0, false)
+		var wheel_point := scroll.get_global_rect().get_center()
+		get_viewport().warp_mouse(wheel_point)
+		for _i in 7:
+			var wheel := InputEventMouseButton.new(); wheel.position = wheel_point; wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN; wheel.pressed = true
+			get_viewport().push_input(wheel); await get_tree().process_frame
+		_check(scroll.scroll_vertical > 0 and scroll.get_global_rect().encloses(last.get_global_rect()), "品质1：滚轮到达末行")
+		await _click(last.get("_icon_button")); await _click(last.get("_icon_button"))
+		_check(int(last.get_selected_quantity()) == 2, "品质1：末行图标点击两次加两份")
+		var last_row: Control = warehouse.get("_selected_rows").get(last.item_id)
+		await _click(last_row.get_child(0).get_node("Minus")); await _click(last_row.get_child(0).get_node("Minus"))
+		_check(not warehouse.get("_selected").has(last.item_id), "品质1：末行减回零移除选择")
+		scroll.scroll_vertical = 0
+		await get_tree().process_frame
+		var meat_row: Control = warehouse.get("_selected_rows").get("rockmane_meat")
+		var salt_row: Control = warehouse.get("_selected_rows").get("rock_salt")
+		await _click(meat_row.get_child(0).get_node("Minus"))
+		await _click(salt_row.get_child(0).get_node("Minus"))
+		_check(warehouse.get("_selected").is_empty() and not warehouse.get("_claim_button").disabled, "品质1：已选区减一后清空且不改库存")
+		await _click(warehouse.get("_meat_slot").get("_icon_button")); await _click(warehouse.get("_salt_slot").get("_icon_button"))
+		await _click(warehouse.get("_cancel_button"))
+		_check(not warehouse.visible and sm.inventory_snapshot().rockmane_meat == 0 and tm.idx == 11, "品质1：取消仓库不改库存且停留步骤")
+		await _send_key(KEY_E); await _wait_until(func(): return warehouse.visible, 60)
+		await _click(warehouse.get("_meat_slot").get("_icon_button")); await _click(warehouse.get("_salt_slot").get("_icon_button"))
+		_check(warehouse.get("_selected").size() == 2, "品质1：仓库重开清空旧选择后可重新选择")
 	await _click(warehouse.get("_claim_button"))
 	_check(sm.inventory_quantity("rockmane_meat") == 1 and sm.inventory_quantity("rock_salt") == 1,
 		"品质%d：真实领取只增加一份材料" % quality)
@@ -142,10 +173,38 @@ func _run_quality(quality: int, resolution: Vector2i, output_dir: String) -> voi
 	var before_settlement: Dictionary = sm.data.get("first_order_settlement", {}).duplicate(true)
 	await _send_key(KEY_E)
 	_check(sm.inventory_snapshot() == before_inventory and sm.prepared_dishes_snapshot() == before_prepared and sm.reputation() == before_reputation and sm.data.get("first_order_settlement", {}) == before_settlement and not sm.deliver_first_order().success, "品质%d：重复交付不重复结算" % quality)
+	if quality == 3:
+		await _run_post_delivery_empty_warehouse()
 	tm._cancel_current_run()
 	if is_instance_valid(scene):
 		scene.queue_free()
 	await get_tree().process_frame
+
+func _run_post_delivery_empty_warehouse() -> void:
+	var guide := scene.get_node("UIOverlay/TutorialGuide")
+	var player := scene.get_node("Player")
+	var store := scene.get_node("InteractPoints/Store")
+	var deadline := Time.get_ticks_msec() + 12000
+	while tm.active and Time.get_ticks_msec() < deadline:
+		var wrapup := str(tm.steps[tm.idx].get("wrapup_id", ""))
+		if wrapup == "warehouse_move":
+			break
+		if tm.steps[tm.idx].get("type", "") == "dialog" and guide.dialog.visible:
+			var old_idx: int = tm.idx
+			await _send_key(KEY_SPACE)
+			if tm.idx == old_idx and guide.dialog.visible:
+				await _send_key(KEY_ENTER)
+		else:
+			await get_tree().process_frame
+	_check(str(tm.steps[tm.idx].get("wrapup_id", "")) == "warehouse_move", "交付后继续到仓库检查步骤")
+		player.global_position = _stand(store)
+	_check(await _wait_until(func(): return str(tm.steps[tm.idx].get("wrapup_id", "")) == "warehouse_inspect", 300), "交付后真实移动到空仓库")
+	await _send_key(KEY_E)
+	await get_tree().process_frame
+	var modal := scene.get_node("UIOverlay/WarehouseModal")
+	_check(modal.visible and bool(modal.get("_empty_stock")) and str(modal.get("_message").text) == "没有任何食物" and not modal.get("_claim_button").visible, "交付后E打开空仓库并隐藏领取")
+	await _click(modal.get("_cancel_button"))
+	_check(not modal.visible and str(tm.steps[tm.idx].get("wrapup_id", "")) == "salt_pool", "确认空仓库后推进盐池线索")
 
 func _run_cancel_and_timeout(output_dir: String) -> void:
 	await _prepare_scene()

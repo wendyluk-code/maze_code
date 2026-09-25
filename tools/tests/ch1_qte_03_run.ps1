@@ -24,8 +24,9 @@ $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true
 $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
 $psi.Environment['APPDATA'] = $profile; $psi.Environment['LOCALAPPDATA'] = $profile; $psi.Environment['MAZE_QTE03_PROFILE'] = $profile
 $sceneArg = if (Test-Path -LiteralPath (Join-Path $ProjectRoot 'tools/tests/ch1_qte_03_input.tscn')) { 'res://tools/tests/ch1_qte_03_input.tscn' } else { throw '主项目缺少已集成的 ch1_qte_03_input.tscn；请先集成本票测试文件' }
-$args = @('--path', $ProjectRoot, '--audio-driver', 'Dummy', '--rendering-method', 'gl_compatibility', $sceneArg, '--', '--report=' + $report, '--output-dir=' + (Join-Path $OutputRoot 'screenshots'))
-$psi.Arguments = (($args | ForEach-Object { '"' + $_.Replace('"', '\"') + '"' }) -join ' ')
+foreach ($engineArg in @('--path', $ProjectRoot, '--audio-driver', 'Dummy', '--rendering-method', 'gl_compatibility', $sceneArg, '--', ('--report=' + $report), ('--output-dir=' + (Join-Path $OutputRoot 'screenshots')))) {
+	$psi.ArgumentList.Add([string]$engineArg)
+}
 $p = [Diagnostics.Process]::new(); $p.StartInfo = $psi; $null = $p.Start()
 $outTask = $p.StandardOutput.ReadToEndAsync(); $errTask = $p.StandardError.ReadToEndAsync()
 $timedOut = !$p.WaitForExit(120000)
