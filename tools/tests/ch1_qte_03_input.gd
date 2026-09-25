@@ -102,6 +102,19 @@ func _run_quality(quality: int, resolution: Vector2i, output_dir: String) -> voi
 	var selected_list: Control = warehouse.get("_selected_list")
 	_check(is_instance_valid(selected_list) and selected_list.get_child_count() >= 2, "品质%d：已选区显示图标名称与加减行" % quality)
 	if quality == 1:
+		var wheel_point := scroll.get_global_rect().get_center()
+		get_viewport().warp_mouse(wheel_point)
+		await get_tree().process_frame
+		for _i in 7:
+			var wheel_down := InputEventMouseButton.new(); wheel_down.position = wheel_point; wheel_down.button_index = MOUSE_BUTTON_WHEEL_DOWN; wheel_down.pressed = true
+			get_viewport().push_input(wheel_down); await get_tree().process_frame
+			var wheel_up := InputEventMouseButton.new(); wheel_up.position = wheel_point; wheel_up.button_index = MOUSE_BUTTON_WHEEL_DOWN; wheel_up.pressed = false
+			get_viewport().push_input(wheel_up)
+			for _j in 4: await get_tree().process_frame
+		var last: Control = slots_grid.get_child(29)
+		_check(scroll.scroll_vertical > 0 and scroll.get_global_rect().encloses(last.get_global_rect()), "品质1：滚轮到达末行")
+		scroll.scroll_vertical = 0
+		for _j in 4: await get_tree().process_frame
 		await get_tree().process_frame
 		var meat_row: Control = warehouse.get("_selected_rows").get("rockmane_meat")
 		await _click(meat_row.get_child(0).get_node("Minus"))
