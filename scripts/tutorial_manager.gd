@@ -590,25 +590,15 @@ func _on_player_interact(node: Node2D) -> void:
 		warehouse_modal.open_for_order()
 		return
 	if _chapter_1_run and int(step.get("stage", 0)) == 5 and str(step.get("target", "")) == "魔法汤锅":
-		var sm := get_node_or_null("/root/SaveManager")
-		if sm == null:
+		var modal := get_tree().get_first_node_in_group("cooking_modal")
+		if not is_instance_valid(modal) or modal.get("_open"):
 			return
-		var result: Dictionary = sm.cook_first_order()
-		if not bool(result.get("success", false)):
-			var messages := {
-				"no_canonical_order": "请先到前台接下首单。",
-				"ingredients_not_claimed": "请先到仓库领取首单食材。",
-				"insufficient_ingredients": "食材不足，需要岩鬃肉 ×1、岩盐 ×1。",
-				"already_cooked": "料理已做好，请前往前台交付。",
-				"save_failed": "保存失败，本次未制作，请重试。",
-			}
-			guide.show_toast(str(messages.get(result.get("reason", ""), "暂时无法制作。")))
-			return
-		var tracker := get_tree().get_first_node_in_group("order_tracking")
-		if is_instance_valid(tracker):
-			tracker.refresh_saved_state()
-		guide.show_toast(str(step.get("toast", "")))
-		_complete_step(_run_token)
+		if not modal.cooking_finished.is_connected(_on_cooking_finished):
+			modal.cooking_finished.connect(_on_cooking_finished)
+		if not modal.cancelled.is_connected(_on_cooking_cancelled):
+			modal.cancelled.connect(_on_cooking_cancelled)
+		_set_player_locked(true)
+		modal.open_for_order()
 		return
 	if _chapter_1_run and int(step.get("stage", 0)) == 6 and str(step.get("target", "")) == "前台":
 		if not is_instance_valid(player) or player.interaction_distance_to(target) > 120.0:
@@ -630,7 +620,7 @@ func _on_player_interact(node: Node2D) -> void:
 		var tracker := get_tree().get_first_node_in_group("order_tracking")
 		if is_instance_valid(tracker):
 			tracker.refresh_saved_state()
-		guide.show_toast("顾客吃得很满足！ 餐厅声望 +20")
+		guide.show_toast("顾客吃得很满足！ 餐厅声望 +%d" % int(result.get("reputation_awarded", 10)))
 		_complete_step(_run_token)
 		return
 	var toast := str(step.get("toast", ""))
@@ -667,6 +657,33 @@ func _on_warehouse_claimed(result: Dictionary) -> void:
 	_complete_step(_run_token)
 
 func _on_warehouse_cancelled() -> void:
+	if active:
+		_set_player_locked(false)
+
+func _on_cooking_finished(result: Dictionary) -> void:
+	if not active or idx < 0 or idx >= steps.size():
+		return
+	var step: Dictionary = steps[idx]
+	if step.get("type", "") != "interact" or int(step.get("stage", 0)) != 5:
+		return
+	if not bool(result.get("success", false)):
+		return
+	# 结果短暂留在弹窗中，随后关闭并恢复教程输入，避免遮罩下推进到移动步骤。
+	await get_tree().create_timer(1.0).timeout
+	if not active:
+		return
+	var modal := get_tree().get_first_node_in_group("cooking_modal")
+	if is_instance_valid(modal) and modal.get("_open"):
+		modal.close_modal()
+	_set_player_locked(false)
+	var tracker := get_tree().get_first_node_in_group("order_tracking")
+	if is_instance_valid(tracker) and tracker.has_method("refresh_saved_state"):
+		tracker.refresh_saved_state()
+	if is_instance_valid(guide):
+		guide.show_toast("【盐烤岩鬃肉】完成：%d 星" % int(result.get("quality", 1)))
+	_complete_step(_run_token)
+
+func _on_cooking_cancelled() -> void:
 	if active:
 		_set_player_locked(false)
 
@@ -742,6 +759,9 @@ func _close_departure_modals() -> void:
 	var panel := get_tree().get_first_node_in_group("departure_panel")
 	if is_instance_valid(panel) and panel._open:
 		panel.close_map()
+	var cooking := get_tree().get_first_node_in_group("cooking_modal")
+	if is_instance_valid(cooking) and cooking.get("_open"):
+		cooking.close_modal()
 
 ## 无论正常结束还是跳过：解除镜头驻留；跳过时同时移除未完成的占位演出
 func _cleanup_cutscene(remove_guest := false) -> void:

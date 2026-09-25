@@ -107,7 +107,12 @@ func _flow() -> void:
 	var temporary := ProjectSettings.globalize_path("user://save.json.tmp")
 	DirAccess.make_dir_absolute(temporary)
 	_press_e()
+	var cooking_modal := scene.get_node("UIOverlay/CookingModal")
+	if cooking_modal.visible:
+		cooking_modal._on_start_pressed()
 	_check(sm.data == before and _disk() == disk and tm.idx == 13, "保存失败内存和正式存档均不变")
+	if cooking_modal.visible:
+		cooking_modal.close_modal()
 	DirAccess.remove_absolute(temporary)
 	# 暂存制作前状态供下个独立进程启动。
 	_check(sm.save(), "保存制作前检查点")
@@ -120,8 +125,13 @@ func _resume_cook() -> void:
 	await _walk_to("Cauldron", 13)
 	var order: Dictionary = sm.current_order()
 	_press_e()
+	var cooking_modal := scene.get_node("UIOverlay/CookingModal")
+	if cooking_modal.visible:
+		cooking_modal._on_start_pressed()
+		cooking_modal._finish_result(1)
+		await get_tree().process_frame
 	_check(tm.idx == 14 and tm.current_stage == 6, "汤锅 E 成功后推进到前台交付")
-	_check(sm.inventory_quantity("rockmane_meat") == 0 and sm.inventory_quantity("rock_salt") == 0 and sm.inventory_quantity("salt_grilled_rockmane") == 1, "原子扣肉盐各一、增加料理一")
+	_check(sm.inventory_quantity("rockmane_meat") == 0 and sm.inventory_quantity("rock_salt") == 0 and sm.inventory_quantity("salt_grilled_rockmane") == 1 and sm.cooked_quality() == 1, "原子扣肉盐各一、增加 1 星料理")
 	_check(sm.first_order_progress().next_step == "deliver" and sm.first_order_progress().ingredients_claimed, "首单状态为可交付")
 	_check(sm.current_order() == order and not sm.is_chapter_1_done(), "未交单且未完成章节")
 	_check(tracker.get("_cook_status").text == "1/1" and tracker.get("_meat_status").text == "0/1" and tracker.get("_salt_status").text == "0/1" and tracker.get("_order_status").text == "0/1", "HUD 反映消耗和成品，交付仍 0/1")

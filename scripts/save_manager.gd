@@ -11,7 +11,10 @@ const ORDER_STATUS_IN_PROGRESS := "in_progress"
 const ORDER_STATUS_COMPLETED := "completed"
 const FIRST_ORDER_SETTLEMENT_KEY := "first_order_settlement"
 const REPUTATION_KEY := "reputation"
-const FIRST_ORDER_REPUTATION := 20
+const FIRST_ORDER_REPUTATION := 10
+const COOKING_STATE_KEY := "first_order_cooking"
+const PREPARED_DISHES_KEY := "prepared_dishes"
+const QUALITY_REPUTATION := {1: 10, 2: 12, 3: 15}
 const FIRST_ORDER_ID := "chapter_1_first_order"
 const FIRST_ORDER_ITEM_ID := "salt_grilled_rockmane"
 const FIRST_ORDER_ITEM_NAME := "盐烤岩鬃肉"
@@ -59,6 +62,8 @@ func _defaults() -> Dictionary:
 		CHAPTER_1_DONE_KEY: false,
 		CURRENT_ORDER_KEY: _empty_order(),
 		INVENTORY_KEY: {ROCKMAN_MEAT_ID: 0, ROCK_SALT_ID: 0, FIRST_ORDER_ITEM_ID: 0},
+		PREPARED_DISHES_KEY: {FIRST_ORDER_ITEM_ID: {"1": 0, "2": 0, "3": 0}},
+		COOKING_STATE_KEY: {"status": "idle", "recipe_id": "", "quality": 0, "pointer": 0.0},
 		FIRST_ORDER_PROGRESS_KEY: {"ingredients_claimed": false, "next_step": "accept_order"},
 		FIRST_ORDER_SETTLEMENT_KEY: {},
 		REPUTATION_KEY: 0,
@@ -298,6 +303,20 @@ func load_data() -> void:
 				_state[WRAPUP_KEY] = departure_state()
 				_state[CURRENT_ORDER_KEY] = _normalize_order(_state.get(CURRENT_ORDER_KEY))
 				_state[INVENTORY_KEY] = _normalize_inventory(_state.get(INVENTORY_KEY))
+				var raw_prepared = _state.get(PREPARED_DISHES_KEY)
+				_state[PREPARED_DISHES_KEY] = _normalize_prepared_dishes(raw_prepared)
+				if not parsed.has(PREPARED_DISHES_KEY) and int(_state[INVENTORY_KEY].get(FIRST_ORDER_ITEM_ID, 0)) > 0:
+					_state[PREPARED_DISHES_KEY][FIRST_ORDER_ITEM_ID]["1"] = int(_state[INVENTORY_KEY].get(FIRST_ORDER_ITEM_ID, 0))
+				_state[COOKING_STATE_KEY] = _normalize_cooking_state(_state.get(COOKING_STATE_KEY))
+				if _state[COOKING_STATE_KEY].status == "active":
+					# 退出/重进时未锁定结果按最低品质待领取，材料已在开始时扣除。
+					_state[COOKING_STATE_KEY].status = "locked"
+					_state[COOKING_STATE_KEY].quality = 1
+					if _state[FIRST_ORDER_PROGRESS_KEY].get("next_step", "") == "cook":
+						_state[INVENTORY_KEY][FIRST_ORDER_ITEM_ID] = int(_state[INVENTORY_KEY].get(FIRST_ORDER_ITEM_ID, 0)) + 1
+						_state[PREPARED_DISHES_KEY][FIRST_ORDER_ITEM_ID]["1"] = int(_state[PREPARED_DISHES_KEY][FIRST_ORDER_ITEM_ID].get("1", 0)) + 1
+						_state[FIRST_ORDER_PROGRESS_KEY]["next_step"] = "deliver"
+					_diagnose("烹饪中断，按 1 星结果恢复")
 				_state[FIRST_ORDER_PROGRESS_KEY] = _normalize_progress(_state.get(FIRST_ORDER_PROGRESS_KEY))
 				for key in ["tutorial_done", CHAPTER_1_DONE_KEY]:
 					if not _state[key] is bool:
@@ -411,6 +430,41 @@ func _normalize_inventory(value) -> Dictionary:
 		var quantity := int(value.get(key, 0))
 		inventory[key] = maxi(0, quantity)
 	return inventory
+
+func _normalize_prepared_dishes(value) -> Dictionary:
+	var dishes := {FIRST_ORDER_ITEM_ID: {"1": 0, "2": 0, "3": 0}}
+	if not value is Dictionary:
+		return dishes
+	var raw = value.get(FIRST_ORDER_ITEM_ID, {})
+	if raw is Dictionary:
+		for quality in ["1", "2", "3"]:
+			if typeof(raw.get(quality, 0)) in [TYPE_INT, TYPE_FLOAT]:
+				dishes[FIRST_ORDER_ITEM_ID][quality] = maxi(0, int(raw.get(quality, 0)))
+	# 旧档只有无星成品数量时，按兼容契约迁移为 1 星。
+	var legacy := int(dishes[FIRST_ORDER_ITEM_ID].get("1", 0))
+	if typeof(value.get(FIRST_ORDER_ITEM_ID, null)) in [TYPE_INT, TYPE_FLOAT]:
+		legacy += maxi(0, int(value.get(FIRST_ORDER_ITEM_ID, 0)))
+		dishes[FIRST_ORDER_ITEM_ID]["1"] = legacy
+	return dishes
+
+func prepared_dishes_snapshot() -> Dictionary:
+	return _normalize_prepared_dishes(_state.get(PREPARED_DISHES_KEY)).duplicate(true)
+
+func _normalize_cooking_state(value) -> Dictionary:
+	var state := {"status": "idle", "recipe_id": "", "quality": 0, "pointer": 0.0}
+	if not value is Dictionary:
+		return state
+	var status := str(value.get("status", "idle"))
+	if status not in ["idle", "active", "locked"]:
+		status = "idle"
+	state.status = status
+	state.recipe_id = str(value.get("recipe_id", ""))
+	state.quality = clampi(int(value.get("quality", 0)), 0, 3)
+	state.pointer = clampf(float(value.get("pointer", 0.0)), -1.0, 1.0)
+	return state
+
+func cooking_state() -> Dictionary:
+	return _normalize_cooking_state(_state.get(COOKING_STATE_KEY)).duplicate(true)
 
 func _normalize_progress(value) -> Dictionary:
 	var progress := {"ingredients_claimed": false, "next_step": "accept_order"}
@@ -535,9 +589,20 @@ func claim_first_order_ingredients() -> Dictionary:
 ## 首单制作是一次提交：扣除两种材料、增加成品、保存交付进度。
 ## 只有成功写盘才能推进教程；重复制作失败且不改变库存或进度。
 func cook_first_order() -> Dictionary:
+	# 旧调用方兼容：直接制作等价于一次普通（1 星）起锅。
+	var started := start_first_order_cooking()
+	if not bool(started.get("success", false)) and str(started.get("reason", "")) != "already_started":
+		return started
+	return finish_first_order_cooking(1)
+
+## 开始烹饪只扣材料一次，结果在 finish_first_order_cooking 中提交。
+func start_first_order_cooking() -> Dictionary:
 	if not is_canonical_first_order(current_order()):
 		return {"success": false, "reason": "no_canonical_order"}
 	var progress := first_order_progress()
+	var cooking := cooking_state()
+	if cooking.status in ["active", "locked"]:
+		return {"success": false, "reason": "already_started", "cooking": cooking}
 	if str(progress.get("next_step", "")) == "deliver":
 		return {"success": false, "reason": "already_cooked"}
 	if not bool(progress.get("ingredients_claimed", false)) or str(progress.get("next_step", "")) != "cook":
@@ -548,14 +613,38 @@ func cook_first_order() -> Dictionary:
 	var previous := _state.duplicate(true)
 	inventory[ROCKMAN_MEAT_ID] -= 1
 	inventory[ROCK_SALT_ID] -= 1
-	inventory[FIRST_ORDER_ITEM_ID] += 1
-	progress["next_step"] = "deliver"
 	_state[INVENTORY_KEY] = inventory
-	_state[FIRST_ORDER_PROGRESS_KEY] = progress
+	_state[COOKING_STATE_KEY] = {"status": "active", "recipe_id": FIRST_ORDER_ITEM_ID, "quality": 0, "pointer": 0.0}
 	if not save():
 		_state = previous
 		return {"success": false, "reason": "save_failed"}
-	return {"success": true, "reason": "cooked", "inventory": inventory_snapshot()}
+	return {"success": true, "reason": "started", "inventory": inventory_snapshot(), "cooking": cooking_state()}
+
+## 锁定品质并保存成品；同名料理按星级分别计数。
+func finish_first_order_cooking(quality: int, pointer := 0.0) -> Dictionary:
+	if not is_canonical_first_order(current_order()):
+		return {"success": false, "reason": "no_canonical_order"}
+	var cooking := cooking_state()
+	if cooking.status == "locked":
+		return {"success": false, "reason": "already_cooked", "quality": cooking.quality}
+	if cooking.status != "active":
+		return {"success": false, "reason": "not_started"}
+	var stars := clampi(quality, 1, 3)
+	var prepared := prepared_dishes_snapshot()
+	prepared[FIRST_ORDER_ITEM_ID][str(stars)] = int(prepared[FIRST_ORDER_ITEM_ID].get(str(stars), 0)) + 1
+	var inventory := inventory_snapshot()
+	inventory[FIRST_ORDER_ITEM_ID] += 1
+	var progress := first_order_progress()
+	progress["next_step"] = "deliver"
+	var previous := _state.duplicate(true)
+	_state[INVENTORY_KEY] = inventory
+	_state[PREPARED_DISHES_KEY] = prepared
+	_state[FIRST_ORDER_PROGRESS_KEY] = progress
+	_state[COOKING_STATE_KEY] = {"status": "locked", "recipe_id": FIRST_ORDER_ITEM_ID, "quality": stars, "pointer": clampf(float(pointer), -1.0, 1.0)}
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed"}
+	return {"success": true, "reason": "cooked", "quality": stars, "inventory": inventory_snapshot(), "cooking": cooking_state()}
 
 func reputation() -> int:
 	return int(_state.get(REPUTATION_KEY, 0))
@@ -567,7 +656,17 @@ func has_first_order_settlement() -> bool:
 		and typeof(receipt.get("quantity")) in [TYPE_INT, TYPE_FLOAT] \
 		and receipt.quantity == FIRST_ORDER_QUANTITY \
 		and typeof(receipt.get("reputation_awarded")) in [TYPE_INT, TYPE_FLOAT] \
-		and receipt.reputation_awarded == FIRST_ORDER_REPUTATION
+		and int(receipt.reputation_awarded) in [10, 12, 15, 20]
+
+func cooked_quality() -> int:
+	var cooking := cooking_state()
+	if cooking.status == "locked" and cooking.quality > 0:
+		return cooking.quality
+	var prepared: Dictionary = prepared_dishes_snapshot().get(FIRST_ORDER_ITEM_ID, {})
+	for quality in [3, 2, 1]:
+		if int(prepared.get(str(quality), 0)) > 0:
+			return quality
+	return 0
 
 ## 交付、订单完成、声望与凭证在同一存档提交；失败恢复完整内存快照。
 ## 地点与距离由 TutorialManager/Player 的同一交互选择器校验。
@@ -584,18 +683,25 @@ func deliver_first_order() -> Dictionary:
 		return {"success": false, "reason": "missing_dish"}
 	var previous := _state.duplicate(true)
 	var order := current_order()
+	var quality := cooked_quality()
+	if quality <= 0:
+		quality = 1 # 旧无星成品兼容为普通品质
+	var prepared := prepared_dishes_snapshot()
 	inventory[FIRST_ORDER_ITEM_ID] -= FIRST_ORDER_QUANTITY
+	prepared[FIRST_ORDER_ITEM_ID][str(quality)] = maxi(0, int(prepared[FIRST_ORDER_ITEM_ID].get(str(quality), 0)) - 1)
 	order["status"] = ORDER_STATUS_COMPLETED
 	progress["next_step"] = "chapter_wrap_up"
 	_state[INVENTORY_KEY] = inventory
 	_state[CURRENT_ORDER_KEY] = order
 	_state[FIRST_ORDER_PROGRESS_KEY] = progress
-	_state[REPUTATION_KEY] = reputation() + FIRST_ORDER_REPUTATION
+	var reward := int(QUALITY_REPUTATION.get(quality, FIRST_ORDER_REPUTATION))
+	_state[PREPARED_DISHES_KEY] = prepared
+	_state[REPUTATION_KEY] = reputation() + reward
 	_state[FIRST_ORDER_SETTLEMENT_KEY] = {
 		"order_id": FIRST_ORDER_ID, "item_id": FIRST_ORDER_ITEM_ID,
-		"quantity": FIRST_ORDER_QUANTITY, "reputation_awarded": FIRST_ORDER_REPUTATION,
+		"quantity": FIRST_ORDER_QUANTITY, "quality": quality, "reputation_awarded": reward,
 	}
 	if not save():
 		_state = previous
 		return {"success": false, "reason": "save_failed"}
-	return {"success": true, "reason": "delivered", "order": current_order(), "reputation": reputation()}
+	return {"success": true, "reason": "delivered", "quality": quality, "reputation_awarded": reward, "order": current_order(), "reputation": reputation()}

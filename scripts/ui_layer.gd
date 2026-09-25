@@ -70,7 +70,8 @@ func _process(_delta: float) -> void:
 	var selected: Node2D = player.nearest_interactable() if is_instance_valid(player) else null
 	var warehouse_modal := get_tree().get_first_node_in_group("warehouse_modal")
 	var departure_panel := get_tree().get_first_node_in_group("departure_panel")
-	if (is_instance_valid(warehouse_modal) and warehouse_modal.visible) or (is_instance_valid(departure_panel) and departure_panel._open):
+	var cooking_modal := get_tree().get_first_node_in_group("cooking_modal")
+	if (is_instance_valid(warehouse_modal) and warehouse_modal.visible) or (is_instance_valid(departure_panel) and departure_panel._open) or (is_instance_valid(cooking_modal) and cooking_modal.visible):
 		_hiding = true
 		for b in _buttons.values():
 			if is_instance_valid(b):

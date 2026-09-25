@@ -98,7 +98,7 @@ func _serving_run() -> void:
 		player.last_valid = stand
 		_press_e()
 		_check(tm.current_stage == 7 and tm.idx == 16, "真实 E 提交成功后推进阶段7")
-		_check(guide.toast.text == "顾客吃得很满足！ 餐厅声望 +20", "成功反馈文案")
+		_check(guide.toast.text == "顾客吃得很满足！ 餐厅声望 +10", "成功反馈文案")
 		_check(sm.inventory_quantity("salt_grilled_rockmane") == 0 and sm.inventory_quantity("rockmane_meat") == 0
 			and sm.inventory_quantity("rock_salt") == 0, "正常首单全部材料和成品归零")
 		_assert_completed()
@@ -133,20 +133,20 @@ func _migration_checks() -> void:
 	_check(sm.migration_diagnostics.size() == 2 and sm.reputation() == 0 and not sm.has_first_order_settlement(), "旧档默认值有诊断且不补发奖励")
 	_check(sm.first_order_progress().next_step == "deliver" and sm.inventory_quantity("salt_grilled_rockmane") == 1
 		and sm.data.custom_legacy_field == "保留" and _disk() == legacy_disk, "迁移保留CH1-07进度、未知字段且读取不写盘")
-	# 声望为累计值：从已有声望加20，重复调用不再加。
+	# 1 星声望为累计值：从已有声望加10，重复调用不再加。
 	sm.data[sm.REPUTATION_KEY] = 45
 	var result: Dictionary = sm.deliver_first_order()
-	_check(result.success and sm.reputation() == 65, "交付在已有声望上累加20")
+	_check(result.success and sm.reputation() == 55, "交付在已有声望上累加10")
 	_reject_delivery("already_completed", "非零起点重复API")
 
 func _assert_completed() -> void:
 	_check(sm.current_order().status == "completed" and not sm.has_active_order(), "订单完成状态持久化")
-	_check(sm.has_first_order_settlement() and sm.reputation() == 20, "凭证存在且声望恰好20")
+	_check(sm.has_first_order_settlement() and sm.reputation() == 10, "凭证存在且声望恰好10")
 	_check(sm.first_order_progress().next_step == "chapter_wrap_up" and sm.inventory_quantity("salt_grilled_rockmane") == 0,
 		"已交付进度与成品零库存一致")
 	_check(tm.current_stage == 7 and tm.idx == 16 and not sm.is_chapter_1_done(), "阶段7可继续且章节尚未完成")
 	_check(tracker.visible and tracker.get("_order_status").text == "1/1" and tracker.get("_cook_status").text == "0/1"
-		and tracker.get("_order_prefix").text == "订单完成：" and tracker.get("_cook_title").text == "烹饪 · 餐厅声望 20", "订单卡同步完成、零成品、声望20")
+		and tracker.get("_order_prefix").text == "订单完成：" and tracker.get("_cook_title").text == "烹饪 · 餐厅声望 10 · 1 星", "订单卡同步完成、零成品、声望10")
 	_check(get_tree().get_nodes_in_group("guest").size() == 1, "恢复只有一个客人")
 
 func _repeat_checks() -> void:
