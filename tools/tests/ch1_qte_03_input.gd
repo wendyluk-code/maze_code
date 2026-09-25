@@ -295,6 +295,9 @@ func _send_key(keycode: Key) -> void:
 func _click(control: Control) -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	var center := control.get_global_rect().get_center(); get_viewport().warp_mouse(center)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	center = control.get_global_rect().get_center()
 	var event := InputEventMouseButton.new(); event.button_index = MOUSE_BUTTON_LEFT; event.button_mask = MOUSE_BUTTON_MASK_LEFT; event.position = center; event.pressed = true
 	get_viewport().push_input(event); await get_tree().process_frame
 	event = InputEventMouseButton.new(); event.button_index = MOUSE_BUTTON_LEFT; event.position = center; event.pressed = false
