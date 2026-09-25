@@ -26,4 +26,4 @@ $env:APPDATA = $p; $env:LOCALAPPDATA = $p; $env:MAZE_QTE02_PROFILE = $p
 
 ## 当前检查点
 
-本票测试文件和 runner 已在 `codex/ch1-qte-03` 完成；主工作区复跑需先集成 `.gd`、`.tscn` 与本票 runner。runner 将 `.tscn` 作为 Godot 场景位置参数启动，测试参数放在 `--` 之后。工作树运行只能做资源/解析检查，因旧工作树缺少导入纹理而未形成可用 GUI 证据。第三票验收在主工作区集成前未完成。
+本票测试文件和 runner 已在 `codex/ch1-qte-03` 完成；主工作区复跑需先集成 `.gd`、`.tscn` 与本票 runner。runner 将 `.tscn` 作为 Godot 场景位置参数启动，测试参数放在 `--` 之后。当前脚本覆盖真实首单三档、两种尺寸、仓库布局/滚动条/取消重开、空仓库确认与盐池线索起点；末格多份和拖拽释放的专门视觉证据继续复用主工作区 `output/warehouse_hover_check/check.gd`，不在本脚本重复注入生产库存。工作树运行只能做资源/解析检查，因旧工作树缺少导入纹理而未形成可用 GUI 证据。

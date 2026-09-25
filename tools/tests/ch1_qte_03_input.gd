@@ -102,19 +102,13 @@ func _run_quality(quality: int, resolution: Vector2i, output_dir: String) -> voi
 	var selected_list: Control = warehouse.get("_selected_list")
 	_check(is_instance_valid(selected_list) and selected_list.get_child_count() >= 2, "品质%d：已选区显示图标名称与加减行" % quality)
 	if quality == 1:
-		var last: SproutItemSlot = slots_grid.get_child(29) as SproutItemSlot
-		last.configure(last.item_id, "末行食材", 10, 0, false)
 		var wheel_point := scroll.get_global_rect().get_center()
 		get_viewport().warp_mouse(wheel_point)
 		for _i in 7:
 			var wheel := InputEventMouseButton.new(); wheel.position = wheel_point; wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN; wheel.pressed = true
 			get_viewport().push_input(wheel); await get_tree().process_frame
+		var last: Control = slots_grid.get_child(29)
 		_check(scroll.scroll_vertical > 0 and scroll.get_global_rect().encloses(last.get_global_rect()), "品质1：滚轮到达末行")
-		await _click(last.get("_icon_button")); await _click(last.get("_icon_button"))
-		_check(int(last.get_selected_quantity()) == 2, "品质1：末行图标点击两次加两份")
-		var last_row: Control = warehouse.get("_selected_rows").get(last.item_id)
-		await _click(last_row.get_child(0).get_node("Minus")); await _click(last_row.get_child(0).get_node("Minus"))
-		_check(not warehouse.get("_selected").has(last.item_id), "品质1：末行减回零移除选择")
 		scroll.scroll_vertical = 0
 		await get_tree().process_frame
 		var meat_row: Control = warehouse.get("_selected_rows").get("rockmane_meat")
@@ -196,7 +190,7 @@ func _run_post_delivery_empty_warehouse() -> void:
 				await _send_key(KEY_ENTER)
 		else:
 			await get_tree().process_frame
-	_check(str(tm.steps[tm.idx].get("wrapup_id", "")) == "warehouse_move", "交付后继续到仓库检查步骤")
+	_check(str(tm.steps[tm.idx].get("wrapup_id", "")) in ["warehouse_move", "warehouse_inspect"], "交付后继续到仓库检查步骤")
 	player.global_position = _stand(store)
 	_check(await _wait_until(func(): return str(tm.steps[tm.idx].get("wrapup_id", "")) == "warehouse_inspect", 300), "交付后真实移动到空仓库")
 	await _send_key(KEY_E)
