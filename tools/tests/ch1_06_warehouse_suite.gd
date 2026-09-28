@@ -93,8 +93,9 @@ func run_suite() -> void:
 		"failed_claim_does_not_fake_warehouse_feedback", {"toast": guide.toast.text, "visible": guide.toast.visible})
 	modal._on_slot_selected("rockmane_meat")
 	modal._on_slot_selected("rockmane_meat")
-	_check(modal.get("_claim_button").disabled and str(modal.get("_selection_label").text).contains("0 / 2"),
-		"reclick_material_cancels_selection", {"selection": modal.get("_selection_label").text})
+	_check(modal.get("_claim_button").disabled and modal.get("_selected").get("rockmane_meat", 0) == 1
+		and modal.get("_meat_slot").get_selected_quantity() == 1,
+		"reclick_material_keeps_selection_with_stock_cap", {"selection": modal.get("_selection_label").text})
 	modal._on_cancel_pressed()
 	await get_tree().process_frame
 	_check(not modal.visible and not player.input_locked and tm.idx == before_idx

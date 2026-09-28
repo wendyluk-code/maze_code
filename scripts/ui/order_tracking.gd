@@ -1,128 +1,146 @@
 extends Control
-## 首单状态卡片：只展示 SaveManager 已提交的订单与库存状态。
+## 首单任务入口：进度读取已提交的任务状态，不等同于库存。
 
-const PANEL_SIZE := Vector2(380, 260)
-const TOP_OFFSET := 94.0
-const STATUS_PENDING := Color("#d8b77d")
-const STATUS_DONE := Color("#9fca86")
-
+const PANEL_WIDTH := 260.0
+const PANEL_POSITION := Vector2(16, 66)
+const EXPAND_DURATION := 0.25
+const DISH_ICON: Texture2D = preload("res://assets/ui/ingredients/salt_grilled_rockmane.png")
+const MEAT_ICON: Texture2D = preload("res://assets/ui/ingredients/rockmane_meat.png")
+const SALT_ICON: Texture2D = preload("res://assets/ui/ingredients/rock_salt.png")
 var _panel: PanelContainer
+var _task_button: Button
+var _notification: Label
 var _order_status: Button
 var _meat_status: Button
 var _salt_status: Button
 var _cook_status: Button
-var _order_prefix: Label
+var _ingredients_title: Label
 var _cook_title: Label
+var _expanded := false
+var _expand_tween: Tween
+var _known_order_id := ""
+var _subtask_panels: Array[PanelContainer] = []
+var _explanation_highlight := false
 
 func _ready() -> void:
 	add_to_group("order_tracking")
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	theme = SproutTheme.make_theme()
 	visible = false
 	_build()
+	visibility_changed.connect(_on_visibility_changed)
 	call_deferred("refresh_saved_state")
 
+func _exit_tree() -> void:
+	collapse_details()
+
+func _on_visibility_changed() -> void:
+	if not is_visible_in_tree():
+		collapse_details()
+
 func _process(_delta: float) -> void:
-	if visible:
-		_position_away_from_gameplay()
+	if not _expanded:
+		return
+	var warehouse := get_tree().get_first_node_in_group("warehouse_modal")
+	var cooking := get_tree().get_first_node_in_group("cooking_modal")
+	var departure := get_tree().get_first_node_in_group("departure_panel")
+	var other_ui_open: bool = is_instance_valid(warehouse) and warehouse.visible
+	other_ui_open = other_ui_open or (is_instance_valid(cooking) and cooking.visible)
+	other_ui_open = other_ui_open or (is_instance_valid(departure) and bool(departure.get("_open")))
+	other_ui_open = other_ui_open or (is_instance_valid(departure) and departure.has_method("_cards_open") and departure._cards_open())
+	if other_ui_open:
+		collapse_details()
 
 func get_layout_side() -> String:
-	return "left" if _panel.offset_left < get_viewport_rect().size.x * 0.5 else "right"
-
-func _position_away_from_gameplay() -> void:
-	var viewport_size := get_viewport_rect().size
-	var left_rect := Rect2(20.0, TOP_OFFSET, PANEL_SIZE.x, PANEL_SIZE.y)
-	var right_rect := Rect2(viewport_size.x - PANEL_SIZE.x - 20.0, TOP_OFFSET, PANEL_SIZE.x, PANEL_SIZE.y)
-	var obstacles: Array[Rect2] = []
-	var player := get_tree().get_first_node_in_group("player") as Node2D
-	if is_instance_valid(player):
-		var player_screen := get_viewport().get_canvas_transform() * player.global_position
-		obstacles.append(Rect2(player_screen + Vector2(-55.0, -155.0), Vector2(110.0, 180.0)))
-	var tm := get_node_or_null("/root/TutorialManager")
-	if tm != null and tm.active and tm.idx >= 0 and tm.idx < tm.steps.size():
-		var step: Dictionary = tm.steps[tm.idx]
-		var target: Node2D = tm.resolve_target(step.get("target")) if tm.has_method("resolve_target") else null
-		if is_instance_valid(target):
-			var target_screen := get_viewport().get_canvas_transform() * target.global_position
-			obstacles.append(Rect2(target_screen + Vector2(-130.0, -165.0), Vector2(260.0, 210.0)))
-	var ui := get_tree().get_first_node_in_group("ui_layer")
-	if is_instance_valid(ui):
-		for button in ui.get("_buttons").values():
-			if is_instance_valid(button) and button.visible:
-				obstacles.append(button.get_global_rect())
-	var left_score := _overlap_score(left_rect, obstacles)
-	var right_score := _overlap_score(right_rect, obstacles)
-	var place_left := left_score < right_score
-	if left_score == right_score and left_score > 0.0 and is_instance_valid(player):
-		var player_screen := get_viewport().get_canvas_transform() * player.global_position
-		place_left = player_screen.x >= viewport_size.x * 0.5
-	var left := 20.0 if place_left else viewport_size.x - PANEL_SIZE.x - 20.0
-	_panel.offset_left = left
-	_panel.offset_right = left + PANEL_SIZE.x
-
-func _overlap_score(rect: Rect2, obstacles: Array[Rect2]) -> float:
-	var score := 0.0
-	for obstacle in obstacles:
-		if rect.intersects(obstacle):
-			var overlap := rect.intersection(obstacle)
-			score += overlap.size.x * overlap.size.y
-	return score
+	return "left"
 
 func _build() -> void:
+	_task_button = Button.new()
+	_task_button.name = "TaskButton"
+	_task_button.position = Vector2(16, 16)
+	_task_button.custom_minimum_size = Vector2(154, 42)
+	_task_button.focus_mode = Control.FOCUS_NONE
+	_task_button.icon = SproutTheme.icon(21)
+	_task_button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_task_button.expand_icon = true
+	_task_button.pressed.connect(_toggle_tasks)
+	add_child(_task_button)
+	_notification = _make_label("●", 14, Color("#c85d36"))
+	_notification.position = Vector2(157, 13)
+	add_child(_notification)
+	_notification.visible = false
 	_panel = PanelContainer.new()
-	_panel.theme = SproutTheme.make_theme()
-	_panel.add_theme_stylebox_override("panel", SproutTheme.panel_style(Color("#fff2d4")))
-	_panel.custom_minimum_size = PANEL_SIZE
-	_panel.anchor_left = 0.0
-	_panel.anchor_right = 0.0
-	_panel.anchor_top = 0.0
-	_panel.anchor_bottom = 0.0
-	_panel.offset_left = 20.0
-	_panel.offset_right = 20.0 + PANEL_SIZE.x
-	_panel.offset_top = TOP_OFFSET
-	_panel.offset_bottom = TOP_OFFSET + PANEL_SIZE.y
-	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_panel.name = "TaskPanel"
+	_panel.position = PANEL_POSITION
+	_panel.size = Vector2(PANEL_WIDTH, 276.0)
+	_panel.custom_minimum_size = _panel.size
+	_panel.add_theme_stylebox_override("panel", _box(Color("#fff2d4"), Color("#b99055"), 1, 12))
+	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(_panel)
-
+	_panel.visible = false
 	var outer := VBoxContainer.new()
-	outer.add_theme_constant_override("separation", 7)
-	outer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	outer.add_theme_constant_override("separation", 10)
 	_panel.add_child(outer)
-
-	var order_row := HBoxContainer.new()
-	order_row.add_theme_constant_override("separation", 4)
-	order_row.custom_minimum_size.y = 34
-	order_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	outer.add_child(order_row)
-	var order_prefix := _make_label("接到订单：交出", 16, SproutTheme.INK)
-	_order_prefix = order_prefix
-	order_row.add_child(order_prefix)
-	order_row.add_child(_make_icon(4))
-	var dish_name := _make_label("盐烤岩鬃肉", 16, SproutTheme.INK)
-	dish_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	order_row.add_child(dish_name)
+	var main := PanelContainer.new()
+	main.name = "OrderTask"
+	main.add_theme_stylebox_override("panel", _box(Color("#d8b16c"), Color("#987039"), 2, 10))
+	outer.add_child(main)
+	var main_content := VBoxContainer.new()
+	main_content.add_theme_constant_override("separation", 6)
+	main.add_child(main_content)
+	var heading := HBoxContainer.new()
+	main_content.add_child(heading)
+	var title := _make_label("订单任务", 19, SproutTheme.INK)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	heading.add_child(title)
 	_order_status = _make_status_button()
-	order_row.add_child(_order_status)
+	heading.add_child(_order_status)
+	var dish_row := HBoxContainer.new()
+	dish_row.add_theme_constant_override("separation", 8)
+	main_content.add_child(dish_row)
+	dish_row.add_child(_make_item_icon("salt_grilled_rockmane"))
+	dish_row.add_child(_make_label("交出盐烤岩鬃肉", 18, SproutTheme.INK))
+	var indent := MarginContainer.new()
+	indent.add_theme_constant_override("margin_left", 12)
+	outer.add_child(indent)
+	var subtasks := VBoxContainer.new()
+	subtasks.name = "Subtasks"
+	subtasks.add_theme_constant_override("separation", 8)
+	indent.add_child(subtasks)
+	var ingredients := _make_subtask(subtasks, "IngredientsTask")
+	_ingredients_title = _make_label("领取食材", 16, SproutTheme.INK)
+	ingredients.add_child(_ingredients_title)
+	_meat_status = _add_item_row(ingredients, "岩鬃肉", "rockmane_meat")
+	_salt_status = _add_item_row(ingredients, "岩盐", "rock_salt")
+	var cooking := _make_subtask(subtasks, "CookingTask")
+	_cook_title = _make_label("制作料理", 16, SproutTheme.INK)
+	cooking.add_child(_cook_title)
+	_cook_status = _add_item_row(cooking, "盐烤岩鬃肉", "salt_grilled_rockmane")
+	_update_entry()
 
-	outer.add_child(_make_section_title("取货"))
-	outer.add_child(_make_item_row(0, "岩鬃肉", "meat"))
-	outer.add_child(_make_item_row(1, "岩盐", "salt"))
+func _box(fill: Color, border: Color, border_width: int, padding: int) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = fill
+	style.border_color = border
+	style.set_border_width_all(border_width)
+	style.set_corner_radius_all(8)
+	style.content_margin_left = padding
+	style.content_margin_right = padding
+	style.content_margin_top = padding
+	style.content_margin_bottom = padding
+	return style
 
-	_cook_title = _make_section_title("烹饪")
-	outer.add_child(_cook_title)
-	var cook_row := HBoxContainer.new()
-	cook_row.add_theme_constant_override("separation", 7)
-	cook_row.custom_minimum_size.y = 34
-	cook_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var make_label := _make_label("制作", 16, SproutTheme.INK)
-	cook_row.add_child(make_label)
-	cook_row.add_child(_make_icon(4))
-	var cook_name := _make_label("盐烤岩鬃肉", 16, SproutTheme.INK)
-	cook_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cook_row.add_child(cook_name)
-	_cook_status = _make_status_button()
-	cook_row.add_child(_cook_status)
-	outer.add_child(cook_row)
+func _make_subtask(parent: Node, node_name: String) -> VBoxContainer:
+	var panel := PanelContainer.new()
+	panel.name = node_name
+	panel.add_theme_stylebox_override("panel", _box(Color("#fff8e8"), Color("#dfcaa5"), 1, 10))
+	_subtask_panels.append(panel)
+	parent.add_child(panel)
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 4)
+	panel.add_child(content)
+	return content
 
 func _make_label(value: String, font_size: int, color: Color) -> Label:
 	var label := Label.new()
@@ -133,98 +151,156 @@ func _make_label(value: String, font_size: int, color: Color) -> Label:
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label
 
-func _make_section_title(value: String) -> Label:
-	var label := _make_label(value, 18, SproutTheme.INK)
-	label.custom_minimum_size.y = 23
-	return label
-
-func _make_icon(index: int) -> TextureRect:
+func _make_item_icon(item_id: String) -> TextureRect:
+	var texture := AtlasTexture.new()
+	# 收紧透明留白，仅调整显示区域，保留用户提供的原图。
+	match item_id:
+		"rockmane_meat":
+			texture.atlas = MEAT_ICON
+			texture.region = Rect2(77, 83, 106, 95)
+		"rock_salt":
+			texture.atlas = SALT_ICON
+			texture.region = Rect2(83, 88, 97, 90)
+		"salt_grilled_rockmane":
+			texture.atlas = DISH_ICON
+			texture.region = Rect2(279, 424, 696, 505)
 	var icon := TextureRect.new()
-	icon.texture = SproutTheme.icon(index)
-	icon.custom_minimum_size = Vector2(24, 24)
+	icon.name = item_id + "Icon"
+	icon.texture = texture
+	icon.custom_minimum_size = Vector2(28, 28)
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return icon
 
-func _make_item_row(icon_index: int, item_name: String, which: String) -> HBoxContainer:
+func _add_item_row(parent: Node, item_name: String, item_id: String) -> Button:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
-	row.custom_minimum_size.y = 30
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(_make_icon(icon_index))
+	parent.add_child(row)
+	row.add_child(_make_item_icon(item_id))
 	var label := _make_label(item_name, 16, SproutTheme.INK_MUTED)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(label)
-	var state := _make_status_button()
-	row.add_child(state)
-	if which == "meat":
-		_meat_status = state
-	else:
-		_salt_status = state
-	return row
+	var status := _make_status_button()
+	row.add_child(status)
+	return status
 
 func _make_status_button() -> Button:
 	var button := Button.new()
-	button.text = "0/1"
-	button.custom_minimum_size = Vector2(50, 28)
+	button.custom_minimum_size = Vector2(44, 24)
 	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	button.focus_mode = Control.FOCUS_NONE
 	button.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	button.add_theme_font_size_override("font_size", 15)
-	_set_status_style(button, false)
+	button.add_theme_font_size_override("font_size", 14)
+	_set_counter(button, 0)
 	return button
 
-func _set_status_style(button: Button, complete: bool) -> void:
-	var color := STATUS_DONE if complete else STATUS_PENDING
-	var style := SproutTheme.button_style(color)
-	style.content_margin_left = 5.0
-	style.content_margin_right = 5.0
-	style.content_margin_top = 2.0
-	style.content_margin_bottom = 2.0
-	button.add_theme_stylebox_override("normal", style)
-	button.add_theme_stylebox_override("hover", style)
-	button.add_theme_stylebox_override("pressed", style)
+func _set_counter(button: Button, count: int) -> void:
+	var complete := count >= 1
+	button.text = "1/1" if complete else "0/1"
+	var style := _box(Color("#dce8c6") if complete else Color("#f4e2bd"), Color("#b7a17b"), 1, 3)
+	for state in ["normal", "hover", "pressed"]:
+		button.add_theme_stylebox_override(state, style)
 	button.add_theme_color_override("font_color", SproutTheme.INK)
-	button.add_theme_color_override("font_hover_color", SproutTheme.INK)
-	button.add_theme_color_override("font_pressed_color", SproutTheme.INK)
+
+func _toggle_tasks() -> void:
+	if _explanation_highlight:
+		return
+	_expanded = not _expanded
+	if _expanded:
+		_notification.visible = false
+	_update_entry()
+	if _expanded:
+		_animate_expansion()
+
+func collapse_details() -> void:
+	set_explanation_highlight(false)
+	_expanded = false
+	_update_entry()
+
+## 接单说明只强调两个子任务；显式内边距保持框条与文字位置不变。
+func set_explanation_highlight(enabled: bool) -> void:
+	if enabled == _explanation_highlight:
+		return
+	_explanation_highlight = enabled
+	if enabled and not _expanded:
+		_expanded = true
+		_update_entry()
+		_animate_expansion()
+	for panel in _subtask_panels:
+		panel.add_theme_stylebox_override("panel", _box(Color("#fff8e8"),
+			Color("#4c83ff") if enabled else Color("#dfcaa5"), 3 if enabled else 1, 10))
+
+func _update_entry() -> void:
+	_stop_expansion()
+	_task_button.text = "当前任务  ▴" if _expanded else "当前任务  ▾"
+	_panel.visible = _expanded
+
+func _stop_expansion() -> void:
+	if _expand_tween != null:
+		_expand_tween.kill()
+		_expand_tween = null
+	_panel.position = PANEL_POSITION
+	_panel.modulate.a = 1.0
+
+func _animate_expansion() -> void:
+	# 整块轻移并淡入，不缩放文字；关闭时直接取消，无延迟重新显示回调。
+	_panel.position = PANEL_POSITION - Vector2(0, 10)
+	_panel.modulate.a = 0.0
+	_expand_tween = create_tween().set_parallel(true)
+	_expand_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_expand_tween.tween_property(_panel, "position", PANEL_POSITION, EXPAND_DURATION)
+	_expand_tween.tween_property(_panel, "modulate:a", 1.0, EXPAND_DURATION)
+
+## 中央指引据此限制长文案宽度，避免与展开的任务面板重叠。
+func expanded_panel_rect() -> Rect2:
+	return _panel.get_global_rect() if visible and _expanded else Rect2()
 
 func _restore_saved_order() -> void:
 	refresh_saved_state()
 
 func refresh_saved_state() -> void:
 	var sm := get_node_or_null("/root/SaveManager")
-	if sm == null or not sm.has_method("current_order"):
-		visible = false
+	if sm == null:
+		_known_order_id = ""
+		hide_tracking()
 		return
 	var order: Dictionary = sm.current_order()
 	var completed := str(order.get("status", "none")) == "completed"
 	if str(order.get("status", "none")) != "in_progress" and not completed:
-		visible = false
+		_known_order_id = ""
+		hide_tracking()
 		return
-	var meat := int(sm.inventory_quantity("rockmane_meat")) if sm.has_method("inventory_quantity") else 0
-	var salt := int(sm.inventory_quantity("rock_salt")) if sm.has_method("inventory_quantity") else 0
-	_set_counter(_order_status, 1 if completed else 0)
-	_order_prefix.text = "订单完成：" if completed else "接到订单：交出"
-	_cook_title.text = "烹饪 · 餐厅声望 %d" % sm.reputation()
-	_set_counter(_meat_status, meat)
-	_set_counter(_salt_status, salt)
-	# 材料与料理栏均显示当前库存；完成状态仅来自已提交的订单。
-	_set_counter(_cook_status, int(sm.inventory_quantity("salt_grilled_rockmane")))
+	# 恢复已有订单仅刷新内容；同一回执或读档不再次触发展开。
+	_known_order_id = str(order.get("id", ""))
+	var progress: Dictionary = sm.first_order_progress()
+	var claimed := bool(progress.get("ingredients_claimed", false)) or completed
+	var cooked := str(progress.get("next_step", "")) in ["deliver", "chapter_wrap_up"] or completed
+	_set_counter(_order_status, int(completed))
+	_set_counter(_meat_status, int(claimed))
+	_set_counter(_salt_status, int(claimed))
+	_set_counter(_cook_status, int(cooked))
+	_ingredients_title.text = "✓ 领取食材" if claimed else "领取食材"
+	_cook_title.text = "✓ 制作料理" if cooked else "制作料理"
 	visible = true
 
 func show_order_receipt(order) -> void:
-	# 兼容既有 TutorialManager 调用；回执已并入唯一订单卡片，不再弹第二份确认。
 	if order is Dictionary:
+		var order_id := str(order.get("id", ""))
+		var is_new_receipt := not order_id.is_empty() and order_id != _known_order_id
 		refresh_saved_state()
+		if not is_new_receipt or not visible or order_id != _known_order_id:
+			return
+		_expanded = true
+		_notification.visible = false
+		_update_entry()
+		_animate_expansion()
 
 func hide_tracking() -> void:
-	# Skip hides the tutorial's temporary HUD presentation; saved order state is untouched.
+	set_explanation_highlight(false)
 	visible = false
-
-func _set_counter(button: Button, count: int) -> void:
-	if not is_instance_valid(button):
-		return
-	var complete := count >= 1
-	button.text = "1/1" if complete else "0/1"
-	_set_status_style(button, complete)
+	_expanded = false
+	_notification.visible = false
+	_update_entry()

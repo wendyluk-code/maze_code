@@ -108,61 +108,48 @@ func _process(_delta: float) -> void:
 func _position_toast() -> void:
 	if not toast.visible:
 		return
-	# Toast 与阶段提示共用屏幕中央的提示槽位；同时出现时向下错开。
-	var viewport_size := get_viewport_rect().size
-	var margin := 24.0
-	var width := minf(720.0, maxf(320.0, viewport_size.x - margin * 2.0))
-	var left := (viewport_size.x - width) * 0.5
+	var box_size := _compact_hint_size(toast)
 	toast.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	toast.offset_left = left
-	toast.offset_right = left + width
-	toast.offset_top = 174.0 if hint_panel.visible else 98.0
-	toast.offset_bottom = toast.offset_top + 54.0
-	toast.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	toast.size = box_size
+	toast.position = Vector2((get_viewport_rect().size.x - box_size.x) * 0.5,
+		hint_panel.get_rect().end.y + 8.0 if hint_panel.visible else 98.0)
 
 func _position_hint_panel() -> void:
 	if not hint_panel.visible:
 		return
-	# 阶段标题下方的固定中央槽位，宽度随视口收缩，保证长提示换行而不裁切。
-	var viewport_size := get_viewport_rect().size
-	var margin := 24.0
-	var width := minf(720.0, maxf(320.0, viewport_size.x - margin * 2.0))
-	var left := (viewport_size.x - width) * 0.5
-	hint_panel.anchor_left = 0.0
-	hint_panel.anchor_right = 0.0
-	hint_panel.anchor_top = 0.0
-	hint_panel.anchor_bottom = 0.0
-	hint_panel.offset_left = left
-	hint_panel.offset_right = left + width
-	hint_panel.offset_top = 96.0
-	hint_panel.offset_bottom = 166.0
-	hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var box_size := _compact_hint_size(hint_label)
+	hint_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	hint_panel.size = box_size
+	hint_panel.position = Vector2((get_viewport_rect().size.x - box_size.x) * 0.5, 96.0)
+
+func _compact_hint_size(label: Label) -> Vector2:
+	var viewport_width := get_viewport_rect().size.x
+	var max_width := minf(640.0, viewport_width - 48.0)
+	var tracker := get_tree().get_first_node_in_group("order_tracking")
+	if is_instance_valid(tracker) and tracker.has_method("expanded_panel_rect"):
+		var task_rect: Rect2 = tracker.expanded_panel_rect()
+		if task_rect.has_area():
+			max_width = minf(max_width, maxf(120.0, viewport_width - 2.0 * (task_rect.end.x + 16.0)))
+	var font := label.get_theme_font("font")
+	var font_size := label.get_theme_font_size("font_size")
+	var natural_width := 0.0
+	for line in label.text.split("\n"):
+		natural_width = maxf(natural_width, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
+	var width := minf(max_width, ceilf(natural_width) + 40.0)
+	var text_size := font.get_multiline_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, width - 40.0, font_size)
+	return Vector2(width, ceilf(text_size.y) + 20.0)
 
 func _position_skip_button() -> void:
 	var viewport_width := get_viewport_rect().size.x
-	var left_rect := Rect2(12.0, 12.0, 118.0, 44.0)
-	var right_rect := Rect2(viewport_width - 130.0, 12.0, 118.0, 44.0)
-	var left_score := 0.0
-	var right_score := 0.0
-	var ui := get_tree().get_first_node_in_group("ui_layer")
-	if is_instance_valid(ui):
-		for button in ui.get("_buttons").values():
-			if not is_instance_valid(button) or not button.visible:
-				continue
-			var button_rect: Rect2 = button.get_global_rect()
-			if left_rect.intersects(button_rect):
-				left_score += left_rect.intersection(button_rect).get_area()
-			if right_rect.intersects(button_rect):
-				right_score += right_rect.intersection(button_rect).get_area()
-	var left := 12.0 if left_score <= right_score else viewport_width - 130.0
+	var left := viewport_width - 134.0
 	skip_button.anchor_left = 0.0
 	skip_button.anchor_right = 0.0
 	skip_button.anchor_top = 0.0
 	skip_button.anchor_bottom = 0.0
 	skip_button.offset_left = left
 	skip_button.offset_right = left + 118.0
-	skip_button.offset_top = 12.0
-	skip_button.offset_bottom = 56.0
+	skip_button.offset_top = 16.0
+	skip_button.offset_bottom = 58.0
 
 func _sync_dialog_mask() -> void:
 	if is_instance_valid(dim):

@@ -40,6 +40,9 @@ var _player_lock_owned := false
 var _player_input_locked_before := false
 var _player_physics_before := true
 var _chapter_1_run := false
+var _order_explanation_pending := false
+var _dialog_done_callback: Callable
+var _guide_exit_callback: Callable
 
 func _ready() -> void:
 	process_mode = PROCESS_MODE_ALWAYS
@@ -74,11 +77,12 @@ func start(custom_steps: Array = []) -> void:
 	if not is_instance_valid(guide) or not guide.has_method("setup"):
 		push_warning("TutorialManager: 找不到 tutorial_guide 引导层")
 		return
-	if not guide.dialog_done.is_connected(_on_dialog_done):
-		guide.dialog_done.connect(_on_dialog_done)
 	_run_token += 1
+	_dialog_done_callback = _on_dialog_done.bind(_run_token)
+	guide.dialog_done.connect(_dialog_done_callback)
 	# 场景离树立即使等待中的结果流程失效；无需等待下一场景启动教程。
-	guide.tree_exiting.connect(_on_guide_tree_exiting.bind(_run_token), CONNECT_ONE_SHOT)
+	_guide_exit_callback = _on_guide_tree_exiting.bind(_run_token)
+	guide.tree_exiting.connect(_guide_exit_callback, CONNECT_ONE_SHOT)
 	if guide.has_method("prepare_for_start"):
 		guide.prepare_for_start()
 	active = true
@@ -89,6 +93,7 @@ func start(custom_steps: Array = []) -> void:
 	idx = 0
 	current_stage = 0
 	_player_lock_owned = false
+	_order_explanation_pending = false
 	player = get_tree().get_first_node_in_group("player") as Node2D
 	if player and player.has_signal("interacted") and not player.interacted.is_connected(_on_player_interact):
 		player.interacted.connect(_on_player_interact)
@@ -339,6 +344,7 @@ func _run_step(token: int) -> void:
 		return
 	var step: Dictionary = steps[idx]
 	var st_type := str(step.get("type", ""))
+	_set_order_explanation_highlight(bool(step.get("order_explanation", false)))
 	var stage := int(step.get("stage", 0))
 	if _chapter_1_run and stage > 0 and stage != current_stage:
 		current_stage = stage
@@ -514,10 +520,16 @@ func _cancel_current_run() -> void:
 		return
 	active = false
 	_run_token += 1
+	_order_explanation_pending = false
+	_set_order_explanation_highlight(false)
 	SaveManager.recover_interrupted_cooking()
 	_close_departure_modals()
 	_set_player_locked(false)
 	_cleanup_cutscene(true)
+	if is_instance_valid(guide) and guide.dialog_done.is_connected(_dialog_done_callback):
+		guide.dialog_done.disconnect(_dialog_done_callback)
+	if is_instance_valid(guide) and guide.tree_exiting.is_connected(_guide_exit_callback):
+		guide.tree_exiting.disconnect(_guide_exit_callback)
 	if is_instance_valid(guide) and guide.has_method("finish_all"):
 		guide.finish_all()
 	guide = null
@@ -537,11 +549,24 @@ func _on_guide_tree_exiting(token: int) -> void:
 	if active and token == _run_token:
 		_cancel_current_run()
 
-func _on_dialog_done() -> void:
-	if not active:
+func _on_dialog_done(token: int) -> void:
+	if not _run_is_valid(token) or idx < 0 or idx >= steps.size() or steps[idx].get("type", "") != "dialog":
+		return
+	if bool(steps[idx].get("order_explanation", false)):
+		if not _order_explanation_pending:
+			return
+		_order_explanation_pending = false
+		_set_order_explanation_highlight(false)
+		_set_player_locked(false)
+		_complete_step(_run_token)
 		return
 	_set_player_locked(false)
 	_complete_step(_run_token)
+
+func _set_order_explanation_highlight(enabled: bool) -> void:
+	var tracker := get_tree().get_first_node_in_group("order_tracking")
+	if is_instance_valid(tracker) and tracker.has_method("set_explanation_highlight"):
+		tracker.set_explanation_highlight(enabled)
 
 func _on_player_interact(node: Node2D) -> void:
 	if not active or not is_instance_valid(guide) or idx < 0 or idx >= steps.size():
@@ -570,6 +595,17 @@ func _on_player_interact(node: Node2D) -> void:
 		var tracker := get_tree().get_first_node_in_group("order_tracking")
 		if is_instance_valid(tracker) and tracker.has_method("show_order_receipt"):
 			tracker.show_order_receipt(result.get("order", {}))
+		if bool(result.get("created", false)):
+			# 仅替换本轮已成功的接单步骤，后续编号和存档恢复入口保持不变。
+			# 已接单重进按真实订单恢复到阶段4，不重播这段瞬时说明。
+			steps[idx] = {
+				"stage": 3, "type": "dialog", "order_explanation": true,
+				"speaker": "芽芽", "portrait": "res://assets/characters/yaya_portrait.png",
+				"lines": ["订单制作会分成【领取食材】和【制作料理】两部分，先去仓库领取食材吧。"],
+			}
+			_order_explanation_pending = true
+			_run_step(_run_token)
+			return
 		_complete_step(_run_token)
 		return
 	if _chapter_1_run and step.get("wrapup_id", "") == "warehouse_inspect":
