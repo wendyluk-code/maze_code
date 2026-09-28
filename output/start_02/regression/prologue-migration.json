@@ -1,0 +1,1597 @@
+{
+	"captures": [],
+	"checks": [
+		{
+			"details": {},
+			"label": "正式入口为封面，序章保持独立入口",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具通过真实事务 accept_first_order",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具通过真实事务 claim_first_order_ingredients",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具通过真实事务 cook_first_order",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具通过真实事务 deliver_first_order",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具推进 relief",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具推进 meat",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具推进 yaya_past",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具推进 hero_past",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具推进 yaya_yes",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具推进 second_serving",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具推进 check_store",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具推进 warehouse_move",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具推进 warehouse_inspect",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具推进 salt_pool",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具推进 map_review",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具推进 introduction",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具推进 offer",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具推进 no",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具推进 memory",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具推进 cooking",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具推进 ingredients",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具推进 yaya_join",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具推进 stay_shallow",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移夹具推进 agreement",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "旧档序章判定 not_started",
+			"passed": true
+		},
+		{
+			"details": {
+				"after": {
+					"chapter_1_departure": {
+						"cards": {
+							"card_ids": [],
+							"status": "pending_content",
+							"unlocked": false
+						},
+						"empty_warehouse_checked": false,
+						"entrance_lit": false,
+						"map": {
+							"other_regions": "fog",
+							"unlocked_floors": [],
+							"visible_regions": []
+						},
+						"objective": "",
+						"party": [],
+						"step": "relief",
+						"tieshan_name_revealed": false
+					},
+					"chapter_1_done": false,
+					"chapter_1_intro": "not_started",
+					"current_order": {
+						"id": "",
+						"item_id": "",
+						"item_name": "",
+						"quantity": 0,
+						"status": "none"
+					},
+					"custom_preserved": {
+						"value": 42.0
+					},
+					"first_order_cooking": {
+						"pointer": 0.0,
+						"quality": 0,
+						"recipe_id": "",
+						"status": "idle"
+					},
+					"first_order_progress": {
+						"ingredients_claimed": false,
+						"next_step": "accept_order"
+					},
+					"first_order_settlement": {},
+					"inventory": {
+						"rock_salt": 0,
+						"rockmane_meat": 0,
+						"salt_grilled_rockmane": 0
+					},
+					"prepared_dishes": {
+						"salt_grilled_rockmane": {
+							"1": 0,
+							"2": 0,
+							"3": 0
+						}
+					},
+					"reputation": 0.0,
+					"tutorial_done": false
+				},
+				"before": {
+					"chapter_1_departure": {
+						"cards": {
+							"card_ids": [],
+							"status": "pending_content",
+							"unlocked": false
+						},
+						"empty_warehouse_checked": false,
+						"entrance_lit": false,
+						"map": {
+							"other_regions": "fog",
+							"unlocked_floors": [],
+							"visible_regions": []
+						},
+						"objective": "",
+						"party": [],
+						"step": "relief",
+						"tieshan_name_revealed": false
+					},
+					"chapter_1_done": false,
+					"chapter_1_intro": "not_started",
+					"current_order": {
+						"id": "",
+						"item_id": "",
+						"item_name": "",
+						"quantity": 0,
+						"status": "none"
+					},
+					"custom_preserved": {
+						"value": 42
+					},
+					"first_order_cooking": {
+						"pointer": 0.0,
+						"quality": 0,
+						"recipe_id": "",
+						"status": "idle"
+					},
+					"first_order_progress": {
+						"ingredients_claimed": false,
+						"next_step": "accept_order"
+					},
+					"first_order_settlement": {},
+					"inventory": {
+						"rock_salt": 0,
+						"rockmane_meat": 0,
+						"salt_grilled_rockmane": 0
+					},
+					"prepared_dishes": {
+						"salt_grilled_rockmane": {
+							"1": 0,
+							"2": 0,
+							"3": 0
+						}
+					},
+					"reputation": 0,
+					"tutorial_done": false
+				}
+			},
+			"label": "只补序章标记，不改经营/未知字段且读档不落盘 not_started",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "原子保存迁移 not_started",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移保存后重进 not_started",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "旧档序章判定 awakened",
+			"passed": true
+		},
+		{
+			"details": {
+				"after": {
+					"chapter_1_departure": {
+						"cards": {
+							"card_ids": [],
+							"status": "pending_content",
+							"unlocked": false
+						},
+						"empty_warehouse_checked": false,
+						"entrance_lit": false,
+						"map": {
+							"other_regions": "fog",
+							"unlocked_floors": [],
+							"visible_regions": []
+						},
+						"objective": "",
+						"party": [],
+						"step": "relief",
+						"tieshan_name_revealed": false
+					},
+					"chapter_1_done": false,
+					"chapter_1_intro": "awakened",
+					"current_order": {
+						"id": "",
+						"item_id": "",
+						"item_name": "",
+						"quantity": 0,
+						"status": "none"
+					},
+					"custom_preserved": {
+						"value": 42.0
+					},
+					"first_order_cooking": {
+						"pointer": 0.0,
+						"quality": 0,
+						"recipe_id": "",
+						"status": "idle"
+					},
+					"first_order_progress": {
+						"ingredients_claimed": false,
+						"next_step": "accept_order"
+					},
+					"first_order_settlement": {},
+					"inventory": {
+						"rock_salt": 0,
+						"rockmane_meat": 0,
+						"salt_grilled_rockmane": 0
+					},
+					"prepared_dishes": {
+						"salt_grilled_rockmane": {
+							"1": 0,
+							"2": 0,
+							"3": 0
+						}
+					},
+					"reputation": 0.0,
+					"tutorial_done": false
+				},
+				"before": {
+					"chapter_1_departure": {
+						"cards": {
+							"card_ids": [],
+							"status": "pending_content",
+							"unlocked": false
+						},
+						"empty_warehouse_checked": false,
+						"entrance_lit": false,
+						"map": {
+							"other_regions": "fog",
+							"unlocked_floors": [],
+							"visible_regions": []
+						},
+						"objective": "",
+						"party": [],
+						"step": "relief",
+						"tieshan_name_revealed": false
+					},
+					"chapter_1_done": false,
+					"chapter_1_intro": "awakened",
+					"current_order": {
+						"id": "",
+						"item_id": "",
+						"item_name": "",
+						"quantity": 0,
+						"status": "none"
+					},
+					"custom_preserved": {
+						"value": 42
+					},
+					"first_order_cooking": {
+						"pointer": 0.0,
+						"quality": 0,
+						"recipe_id": "",
+						"status": "idle"
+					},
+					"first_order_progress": {
+						"ingredients_claimed": false,
+						"next_step": "accept_order"
+					},
+					"first_order_settlement": {},
+					"inventory": {
+						"rock_salt": 0,
+						"rockmane_meat": 0,
+						"salt_grilled_rockmane": 0
+					},
+					"prepared_dishes": {
+						"salt_grilled_rockmane": {
+							"1": 0,
+							"2": 0,
+							"3": 0
+						}
+					},
+					"reputation": 0,
+					"tutorial_done": false
+				}
+			},
+			"label": "只补序章标记，不改经营/未知字段且读档不落盘 awakened",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "原子保存迁移 awakened",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移保存后重进 awakened",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "旧档序章判定 guest_arrived",
+			"passed": true
+		},
+		{
+			"details": {
+				"after": {
+					"chapter_1_departure": {
+						"cards": {
+							"card_ids": [],
+							"status": "pending_content",
+							"unlocked": false
+						},
+						"empty_warehouse_checked": false,
+						"entrance_lit": false,
+						"map": {
+							"other_regions": "fog",
+							"unlocked_floors": [],
+							"visible_regions": []
+						},
+						"objective": "",
+						"party": [],
+						"step": "relief",
+						"tieshan_name_revealed": false
+					},
+					"chapter_1_done": false,
+					"chapter_1_intro": "guest_arrived",
+					"current_order": {
+						"id": "",
+						"item_id": "",
+						"item_name": "",
+						"quantity": 0,
+						"status": "none"
+					},
+					"custom_preserved": {
+						"value": 42.0
+					},
+					"first_order_cooking": {
+						"pointer": 0.0,
+						"quality": 0,
+						"recipe_id": "",
+						"status": "idle"
+					},
+					"first_order_progress": {
+						"ingredients_claimed": false,
+						"next_step": "accept_order"
+					},
+					"first_order_settlement": {},
+					"inventory": {
+						"rock_salt": 0,
+						"rockmane_meat": 0,
+						"salt_grilled_rockmane": 0
+					},
+					"prepared_dishes": {
+						"salt_grilled_rockmane": {
+							"1": 0,
+							"2": 0,
+							"3": 0
+						}
+					},
+					"reputation": 0.0,
+					"tutorial_done": false
+				},
+				"before": {
+					"chapter_1_departure": {
+						"cards": {
+							"card_ids": [],
+							"status": "pending_content",
+							"unlocked": false
+						},
+						"empty_warehouse_checked": false,
+						"entrance_lit": false,
+						"map": {
+							"other_regions": "fog",
+							"unlocked_floors": [],
+							"visible_regions": []
+						},
+						"objective": "",
+						"party": [],
+						"step": "relief",
+						"tieshan_name_revealed": false
+					},
+					"chapter_1_done": false,
+					"chapter_1_intro": "guest_arrived",
+					"current_order": {
+						"id": "",
+						"item_id": "",
+						"item_name": "",
+						"quantity": 0,
+						"status": "none"
+					},
+					"custom_preserved": {
+						"value": 42
+					},
+					"first_order_cooking": {
+						"pointer": 0.0,
+						"quality": 0,
+						"recipe_id": "",
+						"status": "idle"
+					},
+					"first_order_progress": {
+						"ingredients_claimed": false,
+						"next_step": "accept_order"
+					},
+					"first_order_settlement": {},
+					"inventory": {
+						"rock_salt": 0,
+						"rockmane_meat": 0,
+						"salt_grilled_rockmane": 0
+					},
+					"prepared_dishes": {
+						"salt_grilled_rockmane": {
+							"1": 0,
+							"2": 0,
+							"3": 0
+						}
+					},
+					"reputation": 0,
+					"tutorial_done": false
+				}
+			},
+			"label": "只补序章标记，不改经营/未知字段且读档不落盘 guest_arrived",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "原子保存迁移 guest_arrived",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移保存后重进 guest_arrived",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "旧档序章判定 accept_first_order",
+			"passed": true
+		},
+		{
+			"details": {
+				"after": {
+					"chapter_1_departure": {
+						"cards": {
+							"card_ids": [],
+							"status": "pending_content",
+							"unlocked": false
+						},
+						"empty_warehouse_checked": false,
+						"entrance_lit": false,
+						"map": {
+							"other_regions": "fog",
+							"unlocked_floors": [],
+							"visible_regions": []
+						},
+						"objective": "",
+						"party": [],
+						"step": "relief",
+						"tieshan_name_revealed": false
+					},
+					"chapter_1_done": false,
+					"chapter_1_intro": "not_started",
+					"current_order": {
+						"id": "chapter_1_first_order",
+						"item_id": "salt_grilled_rockmane",
+						"item_name": "盐烤岩鬃肉",
+						"quantity": 1.0,
+						"status": "in_progress"
+					},
+					"custom_preserved": {
+						"value": 42.0
+					},
+					"first_order_cooking": {
+						"pointer": 0.0,
+						"quality": 0,
+						"recipe_id": "",
+						"status": "idle"
+					},
+					"first_order_progress": {
+						"ingredients_claimed": false,
+						"next_step": "prepare_ingredients"
+					},
+					"first_order_settlement": {},
+					"inventory": {
+						"rock_salt": 0,
+						"rockmane_meat": 0,
+						"salt_grilled_rockmane": 0
+					},
+					"prepared_dishes": {
+						"salt_grilled_rockmane": {
+							"1": 0,
+							"2": 0,
+							"3": 0
+						}
+					},
+					"reputation": 0.0,
+					"tutorial_done": false
+				},
+				"before": {
+					"chapter_1_departure": {
+						"cards": {
+							"card_ids": [],
+							"status": "pending_content",
+							"unlocked": false
+						},
+						"empty_warehouse_checked": false,
+						"entrance_lit": false,
+						"map": {
+							"other_regions": "fog",
+							"unlocked_floors": [],
+							"visible_regions": []
+						},
+						"objective": "",
+						"party": [],
+						"step": "relief",
+						"tieshan_name_revealed": false
+					},
+					"chapter_1_done": false,
+					"chapter_1_intro": "not_started",
+					"current_order": {
+						"id": "chapter_1_first_order",
+						"item_id": "salt_grilled_rockmane",
+						"item_name": "盐烤岩鬃肉",
+						"quantity": 1,
+						"status": "in_progress"
+					},
+					"custom_preserved": {
+						"value": 42
+					},
+					"first_order_cooking": {
+						"pointer": 0.0,
+						"quality": 0,
+						"recipe_id": "",
+						"status": "idle"
+					},
+					"first_order_progress": {
+						"ingredients_claimed": false,
+						"next_step": "prepare_ingredients"
+					},
+					"first_order_settlement": {},
+					"inventory": {
+						"rock_salt": 0,
+						"rockmane_meat": 0,
+						"salt_grilled_rockmane": 0
+					},
+					"prepared_dishes": {
+						"salt_grilled_rockmane": {
+							"1": 0,
+							"2": 0,
+							"3": 0
+						}
+					},
+					"reputation": 0,
+					"tutorial_done": false
+				}
+			},
+			"label": "只补序章标记，不改经营/未知字段且读档不落盘 accept_first_order",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "原子保存迁移 accept_first_order",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移保存后重进 accept_first_order",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "旧档序章判定 claim_first_order_ingredients",
+			"passed": true
+		},
+		{
+			"details": {
+				"after": {
+					"chapter_1_departure": {
+						"cards": {
+							"card_ids": [],
+							"status": "pending_content",
+							"unlocked": false
+						},
+						"empty_warehouse_checked": false,
+						"entrance_lit": false,
+						"map": {
+							"other_regions": "fog",
+							"unlocked_floors": [],
+							"visible_regions": []
+						},
+						"objective": "",
+						"party": [],
+						"step": "relief",
+						"tieshan_name_revealed": false
+					},
+					"chapter_1_done": false,
+					"chapter_1_intro": "not_started",
+					"current_order": {
+						"id": "chapter_1_first_order",
+						"item_id": "salt_grilled_rockmane",
+						"item_name": "盐烤岩鬃肉",
+						"quantity": 1.0,
+						"status": "in_progress"
+					},
+					"custom_preserved": {
+						"value": 42.0
+					},
+					"first_order_cooking": {
+						"pointer": 0.0,
+						"quality": 0,
+						"recipe_id": "",
+						"status": "idle"
+					},
+					"first_order_progress": {
+						"ingredients_claimed": true,
+						"next_step": "cook"
+					},
+					"first_order_settlement": {},
+					"inventory": {
+						"rock_salt": 1,
+						"rockmane_meat": 1,
+						"salt_grilled_rockmane": 0
+					},
+					"prepared_dishes": {
+						"salt_grilled_rockmane": {
+							"1": 0,
+							"2": 0,
+							"3": 0
+						}
+					},
+					"reputation": 0.0,
+					"tutorial_done": false
+				},
+				"before": {
+					"chapter_1_departure": {
+						"cards": {
+							"card_ids": [],
+							"status": "pending_content",
+							"unlocked": false
+						},
+						"empty_warehouse_checked": false,
+						"entrance_lit": false,
+						"map": {
+							"other_regions": "fog",
+							"unlocked_floors": [],
+							"visible_regions": []
+						},
+						"objective": "",
+						"party": [],
+						"step": "relief",
+						"tieshan_name_revealed": false
+					},
+					"chapter_1_done": false,
+					"chapter_1_intro": "not_started",
+					"current_order": {
+						"id": "chapter_1_first_order",
+						"item_id": "salt_grilled_rockmane",
+						"item_name": "盐烤岩鬃肉",
+						"quantity": 1,
+						"status": "in_progress"
+					},
+					"custom_preserved": {
+						"value": 42
+					},
+					"first_order_cooking": {
+						"pointer": 0.0,
+						"quality": 0,
+						"recipe_id": "",
+						"status": "idle"
+					},
+					"first_order_progress": {
+						"ingredients_claimed": true,
+						"next_step": "cook"
+					},
+					"first_order_settlement": {},
+					"inventory": {
+						"rock_salt": 1,
+						"rockmane_meat": 1,
+						"salt_grilled_rockmane": 0
+					},
+					"prepared_dishes": {
+						"salt_grilled_rockmane": {
+							"1": 0,
+							"2": 0,
+							"3": 0
+						}
+					},
+					"reputation": 0,
+					"tutorial_done": false
+				}
+			},
+			"label": "只补序章标记，不改经营/未知字段且读档不落盘 claim_first_order_ingredients",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "原子保存迁移 claim_first_order_ingredients",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移保存后重进 claim_first_order_ingredients",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "旧档序章判定 cook_first_order",
+			"passed": true
+		},
+		{
+			"details": {
+				"after": {
+					"chapter_1_departure": {
+						"cards": {
+							"card_ids": [],
+							"status": "pending_content",
+							"unlocked": false
+						},
+						"empty_warehouse_checked": false,
+						"entrance_lit": false,
+						"map": {
+							"other_regions": "fog",
+							"unlocked_floors": [],
+							"visible_regions": []
+						},
+						"objective": "",
+						"party": [],
+						"step": "relief",
+						"tieshan_name_revealed": false
+					},
+					"chapter_1_done": false,
+					"chapter_1_intro": "not_started",
+					"current_order": {
+						"id": "chapter_1_first_order",
+						"item_id": "salt_grilled_rockmane",
+						"item_name": "盐烤岩鬃肉",
+						"quantity": 1.0,
+						"status": "in_progress"
+					},
+					"custom_preserved": {
+						"value": 42.0
+					},
+					"first_order_cooking": {
+						"pointer": 0.0,
+						"quality": 1,
+						"recipe_id": "salt_grilled_rockmane",
+						"status": "locked"
+					},
+					"first_order_progress": {
+						"ingredients_claimed": true,
+						"next_step": "deliver"
+					},
+					"first_order_settlement": {},
+					"inventory": {
+						"rock_salt": 0,
+						"rockmane_meat": 0,
+						"salt_grilled_rockmane": 1
+					},
+					"prepared_dishes": {
+						"salt_grilled_rockmane": {
+							"1": 1,
+							"2": 0,
+							"3": 0
+						}
+					},
+					"reputation": 0.0,
+					"tutorial_done": false
+				},
+				"before": {
+					"chapter_1_departure": {
+						"cards": {
+							"card_ids": [],
+							"status": "pending_content",
+							"unlocked": false
+						},
+						"empty_warehouse_checked": false,
+						"entrance_lit": false,
+						"map": {
+							"other_regions": "fog",
+							"unlocked_floors": [],
+							"visible_regions": []
+						},
+						"objective": "",
+						"party": [],
+						"step": "relief",
+						"tieshan_name_revealed": false
+					},
+					"chapter_1_done": false,
+					"chapter_1_intro": "not_started",
+					"current_order": {
+						"id": "chapter_1_first_order",
+						"item_id": "salt_grilled_rockmane",
+						"item_name": "盐烤岩鬃肉",
+						"quantity": 1,
+						"status": "in_progress"
+					},
+					"custom_preserved": {
+						"value": 42
+					},
+					"first_order_cooking": {
+						"pointer": 0.0,
+						"quality": 1,
+						"recipe_id": "salt_grilled_rockmane",
+						"status": "locked"
+					},
+					"first_order_progress": {
+						"ingredients_claimed": true,
+						"next_step": "deliver"
+					},
+					"first_order_settlement": {},
+					"inventory": {
+						"rock_salt": 0,
+						"rockmane_meat": 0,
+						"salt_grilled_rockmane": 1
+					},
+					"prepared_dishes": {
+						"salt_grilled_rockmane": {
+							"1": 1,
+							"2": 0,
+							"3": 0
+						}
+					},
+					"reputation": 0,
+					"tutorial_done": false
+				}
+			},
+			"label": "只补序章标记，不改经营/未知字段且读档不落盘 cook_first_order",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "原子保存迁移 cook_first_order",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移保存后重进 cook_first_order",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "旧档序章判定 deliver_first_order",
+			"passed": true
+		},
+		{
+			"details": {
+				"after": {
+					"chapter_1_departure": {
+						"cards": {
+							"card_ids": [],
+							"status": "pending_content",
+							"unlocked": false
+						},
+						"empty_warehouse_checked": false,
+						"entrance_lit": false,
+						"map": {
+							"other_regions": "fog",
+							"unlocked_floors": [],
+							"visible_regions": []
+						},
+						"objective": "",
+						"party": [],
+						"step": "relief",
+						"tieshan_name_revealed": false
+					},
+					"chapter_1_done": false,
+					"chapter_1_intro": "not_started",
+					"current_order": {
+						"id": "chapter_1_first_order",
+						"item_id": "salt_grilled_rockmane",
+						"item_name": "盐烤岩鬃肉",
+						"quantity": 1.0,
+						"status": "completed"
+					},
+					"custom_preserved": {
+						"value": 42.0
+					},
+					"first_order_cooking": {
+						"pointer": 0.0,
+						"quality": 1,
+						"recipe_id": "salt_grilled_rockmane",
+						"status": "locked"
+					},
+					"first_order_progress": {
+						"ingredients_claimed": true,
+						"next_step": "chapter_wrap_up"
+					},
+					"first_order_settlement": {
+						"item_id": "salt_grilled_rockmane",
+						"order_id": "chapter_1_first_order",
+						"quality": 1.0,
+						"quantity": 1.0,
+						"reputation_awarded": 10.0
+					},
+					"inventory": {
+						"rock_salt": 0,
+						"rockmane_meat": 0,
+						"salt_grilled_rockmane": 0
+					},
+					"prepared_dishes": {
+						"salt_grilled_rockmane": {
+							"1": 0,
+							"2": 0,
+							"3": 0
+						}
+					},
+					"reputation": 10.0,
+					"tutorial_done": false
+				},
+				"before": {
+					"chapter_1_departure": {
+						"cards": {
+							"card_ids": [],
+							"status": "pending_content",
+							"unlocked": false
+						},
+						"empty_warehouse_checked": false,
+						"entrance_lit": false,
+						"map": {
+							"other_regions": "fog",
+							"unlocked_floors": [],
+							"visible_regions": []
+						},
+						"objective": "",
+						"party": [],
+						"step": "relief",
+						"tieshan_name_revealed": false
+					},
+					"chapter_1_done": false,
+					"chapter_1_intro": "not_started",
+					"current_order": {
+						"id": "chapter_1_first_order",
+						"item_id": "salt_grilled_rockmane",
+						"item_name": "盐烤岩鬃肉",
+						"quantity": 1,
+						"status": "completed"
+					},
+					"custom_preserved": {
+						"value": 42
+					},
+					"first_order_cooking": {
+						"pointer": 0.0,
+						"quality": 1,
+						"recipe_id": "salt_grilled_rockmane",
+						"status": "locked"
+					},
+					"first_order_progress": {
+						"ingredients_claimed": true,
+						"next_step": "chapter_wrap_up"
+					},
+					"first_order_settlement": {
+						"item_id": "salt_grilled_rockmane",
+						"order_id": "chapter_1_first_order",
+						"quality": 1,
+						"quantity": 1,
+						"reputation_awarded": 10
+					},
+					"inventory": {
+						"rock_salt": 0,
+						"rockmane_meat": 0,
+						"salt_grilled_rockmane": 0
+					},
+					"prepared_dishes": {
+						"salt_grilled_rockmane": {
+							"1": 0,
+							"2": 0,
+							"3": 0
+						}
+					},
+					"reputation": 10,
+					"tutorial_done": false
+				}
+			},
+			"label": "只补序章标记，不改经营/未知字段且读档不落盘 deliver_first_order",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "原子保存迁移 deliver_first_order",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移保存后重进 deliver_first_order",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "旧档序章判定 ready_to_depart",
+			"passed": true
+		},
+		{
+			"details": {
+				"after": {
+					"chapter_1_departure": {
+						"cards": {
+							"card_ids": [],
+							"status": "pending_content",
+							"unlocked": false
+						},
+						"empty_warehouse_checked": true,
+						"entrance_lit": true,
+						"map": {
+							"other_regions": "fog",
+							"unlocked_floors": [
+								1
+							],
+							"visible_regions": [
+								"old_salt_pool"
+							]
+						},
+						"objective": "与芽芽、铁山一同进入迷宫浅层",
+						"party": [
+							"yaya",
+							"tieshan"
+						],
+						"step": "ready_to_depart",
+						"tieshan_name_revealed": true
+					},
+					"chapter_1_done": false,
+					"chapter_1_intro": "not_started",
+					"current_order": {
+						"id": "chapter_1_first_order",
+						"item_id": "salt_grilled_rockmane",
+						"item_name": "盐烤岩鬃肉",
+						"quantity": 1.0,
+						"status": "completed"
+					},
+					"custom_preserved": {
+						"value": 42.0
+					},
+					"first_order_cooking": {
+						"pointer": 0.0,
+						"quality": 1,
+						"recipe_id": "salt_grilled_rockmane",
+						"status": "locked"
+					},
+					"first_order_progress": {
+						"ingredients_claimed": true,
+						"next_step": "chapter_wrap_up"
+					},
+					"first_order_settlement": {
+						"item_id": "salt_grilled_rockmane",
+						"order_id": "chapter_1_first_order",
+						"quality": 1.0,
+						"quantity": 1.0,
+						"reputation_awarded": 10.0
+					},
+					"inventory": {
+						"rock_salt": 0,
+						"rockmane_meat": 0,
+						"salt_grilled_rockmane": 0
+					},
+					"prepared_dishes": {
+						"salt_grilled_rockmane": {
+							"1": 0,
+							"2": 0,
+							"3": 0
+						}
+					},
+					"reputation": 10.0,
+					"tutorial_done": false
+				},
+				"before": {
+					"chapter_1_departure": {
+						"cards": {
+							"card_ids": [],
+							"status": "pending_content",
+							"unlocked": false
+						},
+						"empty_warehouse_checked": true,
+						"entrance_lit": true,
+						"map": {
+							"other_regions": "fog",
+							"unlocked_floors": [
+								1
+							],
+							"visible_regions": [
+								"old_salt_pool"
+							]
+						},
+						"objective": "与芽芽、铁山一同进入迷宫浅层",
+						"party": [
+							"yaya",
+							"tieshan"
+						],
+						"step": "ready_to_depart",
+						"tieshan_name_revealed": true
+					},
+					"chapter_1_done": false,
+					"chapter_1_intro": "not_started",
+					"current_order": {
+						"id": "chapter_1_first_order",
+						"item_id": "salt_grilled_rockmane",
+						"item_name": "盐烤岩鬃肉",
+						"quantity": 1,
+						"status": "completed"
+					},
+					"custom_preserved": {
+						"value": 42
+					},
+					"first_order_cooking": {
+						"pointer": 0.0,
+						"quality": 1,
+						"recipe_id": "salt_grilled_rockmane",
+						"status": "locked"
+					},
+					"first_order_progress": {
+						"ingredients_claimed": true,
+						"next_step": "chapter_wrap_up"
+					},
+					"first_order_settlement": {
+						"item_id": "salt_grilled_rockmane",
+						"order_id": "chapter_1_first_order",
+						"quality": 1,
+						"quantity": 1,
+						"reputation_awarded": 10
+					},
+					"inventory": {
+						"rock_salt": 0,
+						"rockmane_meat": 0,
+						"salt_grilled_rockmane": 0
+					},
+					"prepared_dishes": {
+						"salt_grilled_rockmane": {
+							"1": 0,
+							"2": 0,
+							"3": 0
+						}
+					},
+					"reputation": 10,
+					"tutorial_done": false
+				}
+			},
+			"label": "只补序章标记，不改经营/未知字段且读档不落盘 ready_to_depart",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "原子保存迁移 ready_to_depart",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移保存后重进 ready_to_depart",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "旧档序章判定 chapter_1_done",
+			"passed": true
+		},
+		{
+			"details": {
+				"after": {
+					"chapter_1_departure": {
+						"cards": {
+							"card_ids": [],
+							"status": "pending_content",
+							"unlocked": false
+						},
+						"empty_warehouse_checked": false,
+						"entrance_lit": false,
+						"map": {
+							"other_regions": "fog",
+							"unlocked_floors": [],
+							"visible_regions": []
+						},
+						"objective": "",
+						"party": [],
+						"step": "relief",
+						"tieshan_name_revealed": false
+					},
+					"chapter_1_done": true,
+					"chapter_1_intro": "not_started",
+					"current_order": {
+						"id": "",
+						"item_id": "",
+						"item_name": "",
+						"quantity": 0,
+						"status": "none"
+					},
+					"custom_preserved": {
+						"value": 42.0
+					},
+					"first_order_cooking": {
+						"pointer": 0.0,
+						"quality": 0,
+						"recipe_id": "",
+						"status": "idle"
+					},
+					"first_order_progress": {
+						"ingredients_claimed": false,
+						"next_step": "accept_order"
+					},
+					"first_order_settlement": {},
+					"inventory": {
+						"rock_salt": 0,
+						"rockmane_meat": 0,
+						"salt_grilled_rockmane": 0
+					},
+					"prepared_dishes": {
+						"salt_grilled_rockmane": {
+							"1": 0,
+							"2": 0,
+							"3": 0
+						}
+					},
+					"reputation": 0.0,
+					"tutorial_done": false
+				},
+				"before": {
+					"chapter_1_departure": {
+						"cards": {
+							"card_ids": [],
+							"status": "pending_content",
+							"unlocked": false
+						},
+						"empty_warehouse_checked": false,
+						"entrance_lit": false,
+						"map": {
+							"other_regions": "fog",
+							"unlocked_floors": [],
+							"visible_regions": []
+						},
+						"objective": "",
+						"party": [],
+						"step": "relief",
+						"tieshan_name_revealed": false
+					},
+					"chapter_1_done": true,
+					"chapter_1_intro": "not_started",
+					"current_order": {
+						"id": "",
+						"item_id": "",
+						"item_name": "",
+						"quantity": 0,
+						"status": "none"
+					},
+					"custom_preserved": {
+						"value": 42
+					},
+					"first_order_cooking": {
+						"pointer": 0.0,
+						"quality": 0,
+						"recipe_id": "",
+						"status": "idle"
+					},
+					"first_order_progress": {
+						"ingredients_claimed": false,
+						"next_step": "accept_order"
+					},
+					"first_order_settlement": {},
+					"inventory": {
+						"rock_salt": 0,
+						"rockmane_meat": 0,
+						"salt_grilled_rockmane": 0
+					},
+					"prepared_dishes": {
+						"salt_grilled_rockmane": {
+							"1": 0,
+							"2": 0,
+							"3": 0
+						}
+					},
+					"reputation": 0,
+					"tutorial_done": false
+				}
+			},
+			"label": "只补序章标记，不改经营/未知字段且读档不落盘 chapter_1_done",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "原子保存迁移 chapter_1_done",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移保存后重进 chapter_1_done",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "旧档序章判定 legacy_tutorial_only",
+			"passed": true
+		},
+		{
+			"details": {
+				"after": {
+					"chapter_1_departure": {
+						"cards": {
+							"card_ids": [],
+							"status": "pending_content",
+							"unlocked": false
+						},
+						"empty_warehouse_checked": false,
+						"entrance_lit": false,
+						"map": {
+							"other_regions": "fog",
+							"unlocked_floors": [],
+							"visible_regions": []
+						},
+						"objective": "",
+						"party": [],
+						"step": "relief",
+						"tieshan_name_revealed": false
+					},
+					"chapter_1_done": false,
+					"chapter_1_intro": "not_started",
+					"current_order": {
+						"id": "",
+						"item_id": "",
+						"item_name": "",
+						"quantity": 0,
+						"status": "none"
+					},
+					"custom_preserved": {
+						"value": 42.0
+					},
+					"first_order_cooking": {
+						"pointer": 0.0,
+						"quality": 0,
+						"recipe_id": "",
+						"status": "idle"
+					},
+					"first_order_progress": {
+						"ingredients_claimed": false,
+						"next_step": "accept_order"
+					},
+					"first_order_settlement": {},
+					"inventory": {
+						"rock_salt": 0,
+						"rockmane_meat": 0,
+						"salt_grilled_rockmane": 0
+					},
+					"prepared_dishes": {
+						"salt_grilled_rockmane": {
+							"1": 0,
+							"2": 0,
+							"3": 0
+						}
+					},
+					"reputation": 0.0,
+					"tutorial_done": true
+				},
+				"before": {
+					"chapter_1_departure": {
+						"cards": {
+							"card_ids": [],
+							"status": "pending_content",
+							"unlocked": false
+						},
+						"empty_warehouse_checked": false,
+						"entrance_lit": false,
+						"map": {
+							"other_regions": "fog",
+							"unlocked_floors": [],
+							"visible_regions": []
+						},
+						"objective": "",
+						"party": [],
+						"step": "relief",
+						"tieshan_name_revealed": false
+					},
+					"chapter_1_done": false,
+					"chapter_1_intro": "not_started",
+					"current_order": {
+						"id": "",
+						"item_id": "",
+						"item_name": "",
+						"quantity": 0,
+						"status": "none"
+					},
+					"custom_preserved": {
+						"value": 42
+					},
+					"first_order_cooking": {
+						"pointer": 0.0,
+						"quality": 0,
+						"recipe_id": "",
+						"status": "idle"
+					},
+					"first_order_progress": {
+						"ingredients_claimed": false,
+						"next_step": "accept_order"
+					},
+					"first_order_settlement": {},
+					"inventory": {
+						"rock_salt": 0,
+						"rockmane_meat": 0,
+						"salt_grilled_rockmane": 0
+					},
+					"prepared_dishes": {
+						"salt_grilled_rockmane": {
+							"1": 0,
+							"2": 0,
+							"3": 0
+						}
+					},
+					"reputation": 0,
+					"tutorial_done": true
+				}
+			},
+			"label": "只补序章标记，不改经营/未知字段且读档不落盘 legacy_tutorial_only",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "原子保存迁移 legacy_tutorial_only",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "迁移保存后重进 legacy_tutorial_only",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "错误类型不伪造已看",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "错误类型从稳定第一章进度恢复",
+			"passed": true
+		}
+	],
+	"data": {
+		"chapter_1_departure": {
+			"cards": {
+				"card_ids": [],
+				"status": "pending_content",
+				"unlocked": false
+			},
+			"empty_warehouse_checked": false,
+			"entrance_lit": false,
+			"map": {
+				"other_regions": "fog",
+				"unlocked_floors": [],
+				"visible_regions": []
+			},
+			"objective": "",
+			"party": [],
+			"step": "relief",
+			"tieshan_name_revealed": false
+		},
+		"chapter_1_done": false,
+		"chapter_1_intro": "awakened",
+		"current_order": {
+			"id": "",
+			"item_id": "",
+			"item_name": "",
+			"quantity": 0,
+			"status": "none"
+		},
+		"first_order_cooking": {
+			"pointer": 0.0,
+			"quality": 0,
+			"recipe_id": "",
+			"status": "idle"
+		},
+		"first_order_progress": {
+			"ingredients_claimed": false,
+			"next_step": "accept_order"
+		},
+		"first_order_settlement": {},
+		"inventory": {
+			"rock_salt": 0,
+			"rockmane_meat": 0,
+			"salt_grilled_rockmane": 0
+		},
+		"prepared_dishes": {
+			"salt_grilled_rockmane": {
+				"1": 0,
+				"2": 0,
+				"3": 0
+			}
+		},
+		"prologue_done": true,
+		"reputation": 0.0,
+		"tutorial_done": false
+	},
+	"failures": 0,
+	"finished_signals": 0,
+	"max_video_position": 0.0,
+	"mode": "migration",
+	"renderer": "headless",
+	"replay_disk_after": "2b0a8420af12c9b8831107938343a06887950051b317ce6153cc172e362f6ddc",
+	"replay_disk_before": "",
+	"replay_memory_after": "f08bfc981f29b84c6c451bc963b718fb7a91fcc5bfdc2906ced62d84108b17de",
+	"replay_memory_before": "",
+	"restaurant_entries": 0,
+	"sample_positions": [],
+	"ticket": "PRO-01",
+	"transitions": 0,
+	"user_dir": "c:/users/ksg/appdata/local/temp/maze_start01_21ac95ee122845e8b6498d3203cbb54f/prologue-migration/roaming/godot/app_userdata/maze_code/"
+}

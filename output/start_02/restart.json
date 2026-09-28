@@ -1,0 +1,35 @@
+{
+	"active_path": "user://saves/1790580011-878-d5570a0440c522a9.json",
+	"checks": [
+		{
+			"description": "新进程中已删除 A 不存在",
+			"passed": true
+		},
+		{
+			"description": "新进程仅有 B 和坏档",
+			"passed": true
+		},
+		{
+			"description": "新进程载入 B 路径与内容一致",
+			"passed": true
+		},
+		{
+			"description": "新进程名称持久化",
+			"passed": true
+		},
+		{
+			"description": "真实独占文件锁使读写删除全部失败",
+			"passed": true
+		},
+		{
+			"description": "锁定失败后内存与活动路径不变",
+			"passed": true
+		},
+		{
+			"description": "释放文件锁后原档字节一致",
+			"passed": true
+		}
+	],
+	"failures": 0,
+	"user_dir": "C:/Users/KSG/.codex/worktrees/77ae/maze_code/output/start_02/isolated/state/Roaming/Godot/app_userdata/maze_code/"
+}

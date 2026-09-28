@@ -1,0 +1,199 @@
+{
+	"captures": [
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression/replay-playing.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression/replay-black.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression/replay-restaurant.png"
+	],
+	"checks": [
+		{
+			"details": {},
+			"label": "正式入口为封面，序章保持独立入口",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "实际命令行启用整次进程隔离预览",
+			"passed": true
+		},
+		{
+			"details": {
+				"position": 1.86666666666666
+			},
+			"label": "新档实际读取并播放视频",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "离开前不记录序章完成",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "跳过使用既有 SproutButton",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "保存实际渲染截图 playing",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "视频播放进度持续增长",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "保存实际渲染截图 black",
+			"passed": true
+		},
+		{
+			"details": {
+				"entries": 1,
+				"transitions": 1
+			},
+			"label": "唯一转场成功进入餐厅",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "黑幕达到全黑并实际渲染",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "视频/转场遮罩全部销毁",
+			"passed": true
+		},
+		{
+			"details": {
+				"idx": 0,
+				"stage": 1
+			},
+			"label": "正式 TutorialGuide/TutorialManager 启动正确阶段",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "餐厅未残留暂停或相机锁",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "玩家锁仅由现有第一章对白持有",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "首句保持可见，跳过输入不泄漏到第一章",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "没有补发章节完成",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "成功进入餐厅才记录序章完成",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "保存实际渲染截图 restaurant",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "预览副本可提交检查点",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "取消第一章后输入/镜头/教程遮罩正常释放",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "取消教程后仍只能写入预览副本",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "整次预览正式 data 与 save.json SHA256 不变",
+			"passed": true
+		}
+	],
+	"data": {
+		"chapter_1_departure": {
+			"cards": {
+				"card_ids": [],
+				"status": "pending_content",
+				"unlocked": false
+			},
+			"empty_warehouse_checked": false,
+			"entrance_lit": false,
+			"map": {
+				"other_regions": "fog",
+				"unlocked_floors": [],
+				"visible_regions": []
+			},
+			"objective": "",
+			"party": [],
+			"step": "relief",
+			"tieshan_name_revealed": false
+		},
+		"chapter_1_done": false,
+		"chapter_1_intro": "not_started",
+		"current_order": {
+			"id": "",
+			"item_id": "",
+			"item_name": "",
+			"quantity": 0,
+			"status": "none"
+		},
+		"first_order_cooking": {
+			"pointer": 0.0,
+			"quality": 0,
+			"recipe_id": "",
+			"status": "idle"
+		},
+		"first_order_progress": {
+			"ingredients_claimed": false,
+			"next_step": "accept_order"
+		},
+		"first_order_settlement": {},
+		"inventory": {
+			"rock_salt": 0,
+			"rockmane_meat": 0,
+			"salt_grilled_rockmane": 0
+		},
+		"prepared_dishes": {
+			"salt_grilled_rockmane": {
+				"1": 0,
+				"2": 0,
+				"3": 0
+			}
+		},
+		"prologue_done": false,
+		"reputation": 0,
+		"tutorial_done": false
+	},
+	"failures": 0,
+	"finished_signals": 0,
+	"max_video_position": 3.57212766666666,
+	"mode": "replay",
+	"renderer": "Windows",
+	"replay_disk_after": "5ad38304b535c2987dbd24657c1a11b884984ff600d9f389deb0d4e634fee792",
+	"replay_disk_before": "5ad38304b535c2987dbd24657c1a11b884984ff600d9f389deb0d4e634fee792",
+	"replay_memory_after": "5b7031e72049bcd0efade0d30e78a9354f2901055d89e88a8fff1cbecb6a5be8",
+	"replay_memory_before": "5b7031e72049bcd0efade0d30e78a9354f2901055d89e88a8fff1cbecb6a5be8",
+	"restaurant_entries": 1,
+	"sample_positions": [
+		1.86666666666666,
+		3.0719771111111
+	],
+	"ticket": "PRO-01",
+	"transitions": 1,
+	"user_dir": "c:/users/ksg/appdata/local/temp/maze_start01_90c854ae6f7542f8af20db9360d9212f/prologue-replay/roaming/godot/app_userdata/maze_code/"
+}

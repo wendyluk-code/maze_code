@@ -1,0 +1,109 @@
+{
+	"captures": [
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\ui/visual-manage-1280-selected.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\ui/visual-manage-1280-rename-cancel.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\ui/visual-manage-1280-renamed.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\ui/visual-manage-1280-delete-confirmation.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\ui/visual-manage-1280-deleted.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\ui/visual-manage-1280-broken-rename.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\ui/visual-manage-1280-broken-load.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\ui/visual-manage-1280-write-failed.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\ui/visual-manage-1280-active-deleted.png"
+	],
+	"checks": [
+		{
+			"description": "Viewport 鼠标选择 A",
+			"passed": true
+		},
+		{
+			"description": "截图 selected",
+			"passed": true
+		},
+		{
+			"description": "重命名输入框获焦",
+			"passed": true
+		},
+		{
+			"description": "截图 rename-cancel",
+			"passed": true
+		},
+		{
+			"description": "Esc 取消重命名不改变状态或数量",
+			"passed": true
+		},
+		{
+			"description": "鼠标确认重命名落盘",
+			"passed": true
+		},
+		{
+			"description": "非活动档改名不切换内存路径",
+			"passed": true
+		},
+		{
+			"description": "截图 renamed",
+			"passed": true
+		},
+		{
+			"description": "取消按钮保留已提交名称",
+			"passed": true
+		},
+		{
+			"description": "截图 delete-confirmation",
+			"passed": true
+		},
+		{
+			"description": "删除确认默认焦点为取消",
+			"passed": true
+		},
+		{
+			"description": "默认 Enter 取消删除",
+			"passed": true
+		},
+		{
+			"description": "关闭删除确认不改状态",
+			"passed": true
+		},
+		{
+			"description": "确认删除仅移除 A",
+			"passed": true
+		},
+		{
+			"description": "截图 deleted",
+			"passed": true
+		},
+		{
+			"description": "坏档重命名失败留在弹窗原档不变",
+			"passed": true
+		},
+		{
+			"description": "截图 broken-rename",
+			"passed": true
+		},
+		{
+			"description": "坏档载入错误不切换内存路径",
+			"passed": true
+		},
+		{
+			"description": "截图 broken-load",
+			"passed": true
+		},
+		{
+			"description": "界面显示写入失败且状态不变",
+			"passed": true
+		},
+		{
+			"description": "截图 write-failed",
+			"passed": true
+		},
+		{
+			"description": "界面删除活动档不能复活",
+			"passed": true
+		},
+		{
+			"description": "截图 active-deleted",
+			"passed": true
+		}
+	],
+	"failures": 0,
+	"input": "Viewport event injection; not OS mouse/keyboard"
+}

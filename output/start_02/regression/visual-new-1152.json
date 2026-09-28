@@ -1,0 +1,94 @@
+{
+	"active_path": "user://saves/1790580117-524-d5317baf5c2a2c0b.json",
+	"captures": [
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression/visual-new-1152-cover.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression/visual-new-1152-modal.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression/visual-new-1152-focus.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression/visual-new-1152-hover.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression/visual-new-1152-pressed.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression/visual-new-1152-prologue.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression/visual-new-1152-restaurant.png"
+	],
+	"checks": [
+		{
+			"description": "真实渲染器运行",
+			"passed": true
+		},
+		{
+			"description": "旧档序章标记不会绕过封面",
+			"passed": true
+		},
+		{
+			"description": "截图 cover",
+			"passed": true
+		},
+		{
+			"description": "真实点击继续游戏打开弹窗",
+			"passed": true
+		},
+		{
+			"description": "截图 modal",
+			"passed": true
+		},
+		{
+			"description": "遮罩阻止底层新游戏点击",
+			"passed": true
+		},
+		{
+			"description": "Esc 取消不改变存档状态",
+			"passed": true
+		},
+		{
+			"description": "取消按钮无副作用",
+			"passed": true
+		},
+		{
+			"description": "关闭按钮可关闭弹窗",
+			"passed": true
+		},
+		{
+			"description": "无档时列表为空且载入禁用",
+			"passed": true
+		},
+		{
+			"description": "Tab 将焦点移动到新游戏",
+			"passed": true
+		},
+		{
+			"description": "截图 focus",
+			"passed": true
+		},
+		{
+			"description": "截图 hover",
+			"passed": true
+		},
+		{
+			"description": "截图 pressed",
+			"passed": true
+		},
+		{
+			"description": "真实点击新游戏进入既有序章",
+			"passed": true
+		},
+		{
+			"description": "连续点击只创建一份独立档",
+			"passed": true
+		},
+		{
+			"description": "截图 prologue",
+			"passed": true
+		},
+		{
+			"description": "按钮流程最终进入餐厅",
+			"passed": true
+		},
+		{
+			"description": "截图 restaurant",
+			"passed": true
+		}
+	],
+	"failures": 0,
+	"mode": "visual-new-1152",
+	"renderer": "Windows",
+	"user_dir": "c:/users/ksg/appdata/local/temp/maze_start01_21ac95ee122845e8b6498d3203cbb54f/visual-new-1152/roaming/godot/app_userdata/maze_code/"
+}

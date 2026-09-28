@@ -1,0 +1,20 @@
+{
+  "results": [
+    {
+      "mode": "smoke",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "mode": "prologue-replay",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "mode": "lifecycle",
+      "passed": true,
+      "exit_code": 0
+    }
+  ],
+  "isolated_root": "C:\\Users\\KSG\\AppData\\Local\\Temp\\maze_start01_90c854ae6f7542f8af20db9360d9212f"
+}

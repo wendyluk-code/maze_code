@@ -1,0 +1,80 @@
+{
+  "status": "user_manual_acceptance_confirmed_merge_authorized",
+  "reports": [
+    {
+      "report": "C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\restart.json",
+      "checks": 7,
+      "failures": 0
+    },
+    {
+      "report": "C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\state.json",
+      "checks": 23,
+      "failures": 0
+    },
+    {
+      "report": "C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\ui\\visual-manage-1152.json",
+      "checks": 23,
+      "failures": 0
+    },
+    {
+      "report": "C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\ui\\visual-manage-1280.json",
+      "checks": 23,
+      "failures": 0
+    },
+    {
+      "report": "C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression\\lifecycle.json",
+      "checks": 16,
+      "failures": 0
+    },
+    {
+      "report": "C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression\\prologue-atomic.json",
+      "checks": 8,
+      "failures": 0
+    },
+    {
+      "report": "C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression\\prologue-migration.json",
+      "checks": 67,
+      "failures": 0
+    },
+    {
+      "report": "C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression\\prologue-old.json",
+      "checks": 11,
+      "failures": 0
+    },
+    {
+      "report": "C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression\\prologue-replay.json",
+      "checks": 22,
+      "failures": 0
+    },
+    {
+      "report": "C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression\\restart.json",
+      "checks": 3,
+      "failures": 0
+    },
+    {
+      "report": "C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression\\state.json",
+      "checks": 22,
+      "failures": 0
+    },
+    {
+      "report": "C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression\\visual-continue-1280.json",
+      "checks": 16,
+      "failures": 0
+    },
+    {
+      "report": "C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression\\visual-new-1152.json",
+      "checks": 19,
+      "failures": 0
+    }
+  ],
+  "os_capture_errors": [
+    "FrameArrived timed out: timed out waiting on channel",
+    "window capture timed out: timed out waiting on channel"
+  ],
+  "original_delivery_status": "incomplete_os_input_blocked",
+  "user_acceptance": {
+    "date": "2026-09-28",
+    "statement": "我手动验收完了，合并代码把",
+    "agent_os_input_verified": false
+  }
+}

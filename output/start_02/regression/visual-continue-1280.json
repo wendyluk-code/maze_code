@@ -1,0 +1,80 @@
+{
+	"active_path": "user://saves/1790580123-684-dd582ed2ce22938b.json",
+	"captures": [
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression/visual-continue-1280-cover.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression/visual-continue-1280-modal.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression/visual-continue-1280-broken.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression/visual-continue-1280-selected.png",
+		"C:\\Users\\KSG\\.codex\\worktrees\\77ae\\maze_code\\output\\start_02\\regression/visual-continue-1280-restaurant.png"
+	],
+	"checks": [
+		{
+			"description": "真实渲染器运行",
+			"passed": true
+		},
+		{
+			"description": "旧档序章标记不会绕过封面",
+			"passed": true
+		},
+		{
+			"description": "截图 cover",
+			"passed": true
+		},
+		{
+			"description": "真实点击继续游戏打开弹窗",
+			"passed": true
+		},
+		{
+			"description": "截图 modal",
+			"passed": true
+		},
+		{
+			"description": "遮罩阻止底层新游戏点击",
+			"passed": true
+		},
+		{
+			"description": "Esc 取消不改变存档状态",
+			"passed": true
+		},
+		{
+			"description": "取消按钮无副作用",
+			"passed": true
+		},
+		{
+			"description": "关闭按钮可关闭弹窗",
+			"passed": true
+		},
+		{
+			"description": "坏档载入显示真实错误并留在弹窗",
+			"passed": true
+		},
+		{
+			"description": "截图 broken",
+			"passed": true
+		},
+		{
+			"description": "截图 selected",
+			"passed": true
+		},
+		{
+			"description": "真实选择和载入恢复对应档案",
+			"passed": true
+		},
+		{
+			"description": "测试档案相互独立",
+			"passed": true
+		},
+		{
+			"description": "按钮流程最终进入餐厅",
+			"passed": true
+		},
+		{
+			"description": "截图 restaurant",
+			"passed": true
+		}
+	],
+	"failures": 0,
+	"mode": "visual-continue-1280",
+	"renderer": "Windows",
+	"user_dir": "c:/users/ksg/appdata/local/temp/maze_start01_21ac95ee122845e8b6498d3203cbb54f/visual-continue-1280/roaming/godot/app_userdata/maze_code/"
+}

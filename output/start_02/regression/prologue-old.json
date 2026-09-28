@@ -1,0 +1,135 @@
+{
+	"captures": [],
+	"checks": [
+		{
+			"details": {},
+			"label": "正式入口为封面，序章保持独立入口",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "旧档夹具通过真实接单取料",
+			"passed": true
+		},
+		{
+			"details": {
+				"entries": 1,
+				"transitions": 1
+			},
+			"label": "唯一转场成功进入餐厅",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "黑幕达到全黑并实际渲染",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "视频/转场遮罩全部销毁",
+			"passed": true
+		},
+		{
+			"details": {
+				"idx": 13,
+				"stage": 5
+			},
+			"label": "正式 TutorialGuide/TutorialManager 启动正确阶段",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "餐厅未残留暂停或相机锁",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "玩家锁仅由现有第一章对白持有",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "稳定旧档不播放且状态/文件保持不变",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "旧档未启动视频",
+			"passed": true
+		},
+		{
+			"details": {},
+			"label": "取消第一章后输入/镜头/教程遮罩正常释放",
+			"passed": true
+		}
+	],
+	"data": {
+		"chapter_1_departure": {
+			"cards": {
+				"card_ids": [],
+				"status": "pending_content",
+				"unlocked": false
+			},
+			"empty_warehouse_checked": false,
+			"entrance_lit": false,
+			"map": {
+				"other_regions": "fog",
+				"unlocked_floors": [],
+				"visible_regions": []
+			},
+			"objective": "",
+			"party": [],
+			"step": "relief",
+			"tieshan_name_revealed": false
+		},
+		"chapter_1_done": false,
+		"chapter_1_intro": "not_started",
+		"current_order": {
+			"id": "chapter_1_first_order",
+			"item_id": "salt_grilled_rockmane",
+			"item_name": "盐烤岩鬃肉",
+			"quantity": 1.0,
+			"status": "in_progress"
+		},
+		"first_order_cooking": {
+			"pointer": 0.0,
+			"quality": 0,
+			"recipe_id": "",
+			"status": "idle"
+		},
+		"first_order_progress": {
+			"ingredients_claimed": true,
+			"next_step": "cook"
+		},
+		"first_order_settlement": {},
+		"inventory": {
+			"rock_salt": 1,
+			"rockmane_meat": 1,
+			"salt_grilled_rockmane": 0
+		},
+		"prepared_dishes": {
+			"salt_grilled_rockmane": {
+				"1": 0,
+				"2": 0,
+				"3": 0
+			}
+		},
+		"prologue_done": true,
+		"reputation": 0.0,
+		"tutorial_done": false
+	},
+	"failures": 0,
+	"finished_signals": 0,
+	"max_video_position": 0.0,
+	"mode": "old",
+	"renderer": "headless",
+	"replay_disk_after": "49b91cb41a1100d6775889459c29914f745ae18bdf5072734b857d514c2e125b",
+	"replay_disk_before": "49b91cb41a1100d6775889459c29914f745ae18bdf5072734b857d514c2e125b",
+	"replay_memory_after": "3e9b022c2fbe36b2ebfc1d21d4a5ac2684bf55d4bf1f27f527dd330eab7c734c",
+	"replay_memory_before": "3e9b022c2fbe36b2ebfc1d21d4a5ac2684bf55d4bf1f27f527dd330eab7c734c",
+	"restaurant_entries": 1,
+	"sample_positions": [],
+	"ticket": "PRO-01",
+	"transitions": 1,
+	"user_dir": "c:/users/ksg/appdata/local/temp/maze_start01_21ac95ee122845e8b6498d3203cbb54f/prologue-old/roaming/godot/app_userdata/maze_code/"
+}

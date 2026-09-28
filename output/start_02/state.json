@@ -1,0 +1,99 @@
+{
+	"active_path": "user://saves/1790580011-878-d5570a0440c522a9.json",
+	"checks": [
+		{
+			"description": "测试运行器启动",
+			"passed": true
+		},
+		{
+			"description": "真实创建 A 并接单",
+			"passed": true
+		},
+		{
+			"description": "真实创建 B 并取料",
+			"passed": true
+		},
+		{
+			"description": "非活动档重命名成功",
+			"passed": true
+		},
+		{
+			"description": "仅改元数据且不切换活动档",
+			"passed": true
+		},
+		{
+			"description": "活动档名称同步",
+			"passed": true
+		},
+		{
+			"description": "后续自动保存不撤销改名",
+			"passed": true
+		},
+		{
+			"description": "重复同名不写盘",
+			"passed": true
+		},
+		{
+			"description": "非法名称不变更：1",
+			"passed": true
+		},
+		{
+			"description": "非法名称不变更：3",
+			"passed": true
+		},
+		{
+			"description": "非法名称不变更：41",
+			"passed": true
+		},
+		{
+			"description": "临时文件无法写入时完整回滚",
+			"passed": true
+		},
+		{
+			"description": "坏档重命名拒绝且原文保留",
+			"passed": true
+		},
+		{
+			"description": "坏档载入不切换活动档",
+			"passed": true
+		},
+		{
+			"description": "坏档列表仍有诊断条目",
+			"passed": true
+		},
+		{
+			"description": "非法或缺失路径不变更：user://saves/../save.json",
+			"passed": true
+		},
+		{
+			"description": "非法或缺失路径不变更：user://other.json",
+			"passed": true
+		},
+		{
+			"description": "非法或缺失路径不变更：user://saves/missing.json",
+			"passed": true
+		},
+		{
+			"description": "删除非活动档不改变当前进度",
+			"passed": true
+		},
+		{
+			"description": "重复删除无额外效果",
+			"passed": true
+		},
+		{
+			"description": "删除活动档解除绑定且不能自动复活",
+			"passed": true
+		},
+		{
+			"description": "删除活动档后显式载入 B 内容路径正确",
+			"passed": true
+		},
+		{
+			"description": "重播禁止管理正式档",
+			"passed": true
+		}
+	],
+	"failures": 0,
+	"user_dir": "C:/Users/KSG/.codex/worktrees/77ae/maze_code/output/start_02/isolated/state/Roaming/Godot/app_userdata/maze_code/"
+}

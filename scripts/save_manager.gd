@@ -384,6 +384,53 @@ func list_save_slots() -> Dictionary:
 func active_save_path() -> String:
 	return _active_save_path
 
+func _valid_slot_path(path: String) -> bool:
+	return path == SAVE_PATH or (path.get_base_dir() == SLOTS_DIR and path.ends_with(".json") and not path.contains("..") and not path.contains("\\"))
+
+## 名称仅写入元数据，不改文件路径，不迁移或重写经营进度。
+func rename_save_slot(path: String, requested_name: String) -> Dictionary:
+	if _replaying or _prologue_preview or not _valid_slot_path(path):
+		return {"success": false, "message": "当前不能管理此存档。"}
+	var label := requested_name.strip_edges()
+	if label.is_empty() or label.length() > 40 or label.contains("\n") or label.contains("\r") or label.contains("\t"):
+		return {"success": false, "message": "名称须为 1–40 个字符，不能包含换行或制表符。"}
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return {"success": false, "message": "存档读取失败，未更改名称。"}
+	var parser := JSON.new()
+	var error := parser.parse(file.get_as_text())
+	file.close()
+	if error != OK or not parser.data is Dictionary:
+		return {"success": false, "message": "存档内容损坏，无法重命名；原文件已保留。"}
+	var snapshot: Dictionary = parser.data
+	var metadata = snapshot.get(SLOT_META_KEY, {})
+	metadata = metadata.duplicate(true) if metadata is Dictionary else {}
+	if metadata.get("name") == label:
+		return {"success": true, "changed": false}
+	metadata["name"] = label
+	snapshot[SLOT_META_KEY] = metadata
+	if not _write_atomic(path, snapshot):
+		return {"success": false, "message": "重命名保存失败，原存档和进度已保留。"}
+	if path == _active_save_path:
+		data[SLOT_META_KEY] = metadata.duplicate(true)
+	return {"success": true, "changed": true}
+
+## 删除成功才解除活动档绑定，避免后续自动保存复活已删除的文件。
+## 不选择其他档案；重复删除返回失败但保持状态不变。
+func delete_save_slot(path: String) -> Dictionary:
+	if _replaying or _prologue_preview or not _valid_slot_path(path):
+		return {"success": false, "message": "当前不能管理此存档。"}
+	if not FileAccess.file_exists(path):
+		return {"success": false, "message": "存档不存在或无法访问，请刷新列表。"}
+	if DirAccess.remove_absolute(path) != OK:
+		return {"success": false, "message": "删除失败，原存档和进度已保留，请检查访问权限。"}
+	if path == _active_save_path:
+		_active_save_path = ""
+		data = _defaults()
+		migration_diagnostics.clear()
+		last_load_error = ""
+	return {"success": true}
+
 ## 首次落盘成功才切换活动档；一份文件即一份档案，不依赖可失配的索引。
 func create_new_game() -> Dictionary:
 	if _replaying or _prologue_preview:
@@ -408,7 +455,7 @@ func create_new_game() -> Dictionary:
 func load_save_slot(path: String) -> Dictionary:
 	if _replaying or _prologue_preview:
 		return {"success": false, "message": "重播期间不能切换正式存档。"}
-	if path != SAVE_PATH and (path.get_base_dir() != SLOTS_DIR or not path.ends_with(".json") or path.contains("..")):
+	if not _valid_slot_path(path):
 		return {"success": false, "message": "存档路径无效。"}
 	var previous := data.duplicate(true)
 	var previous_path := _active_save_path
@@ -639,6 +686,8 @@ func _normalize_progress(value) -> Dictionary:
 func save() -> bool:
 	if _replaying:
 		return true
+	if _active_save_path.is_empty():
+		return false
 	return _write_atomic(_active_save_path, _state)
 
 func _write_atomic(path: String, snapshot: Dictionary) -> bool:

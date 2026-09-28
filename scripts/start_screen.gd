@@ -104,6 +104,7 @@ func _new_game() -> void:
 func _continue_game() -> void:
 	if _busy or save_modal.visible or _error_modal.visible:
 		return
+	_game_prepared = false
 	_set_buttons_disabled(true)
 	save_modal.open_slots()
 

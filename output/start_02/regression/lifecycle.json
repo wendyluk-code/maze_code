@@ -1,0 +1,183 @@
+{
+	"checks": [
+		{
+			"name": "合法 ready_to_depart 前置态",
+			"ok": true
+		},
+		{
+			"name": "最终确认原子提交成功",
+			"ok": true
+		},
+		{
+			"name": "done 阶段与两个完成标记一致",
+			"ok": true
+		},
+		{
+			"name": "完成不改地图、队伍、入口和卡组",
+			"ok": true
+		},
+		{
+			"name": "重复完成幂等且不重复写盘",
+			"ok": true
+		},
+		{
+			"name": "重复完成不改变内存或正式存档",
+			"ok": true
+		},
+		{
+			"name": "重进恢复 done",
+			"ok": true
+		},
+		{
+			"name": "重进恢复出发快照",
+			"ok": true
+		},
+		{
+			"name": "建立保存失败夹具",
+			"ok": true
+		},
+		{
+			"name": "保存失败返回可诊断原因",
+			"ok": true
+		},
+		{
+			"name": "保存失败完整回滚",
+			"ok": true
+		},
+		{
+			"name": "移除保存失败夹具",
+			"ok": true
+		},
+		{
+			"name": "建立重播基线",
+			"ok": true
+		},
+		{
+			"name": "重播副本可完成",
+			"ok": true
+		},
+		{
+			"name": "重播完成不污染正式存档",
+			"ok": true
+		},
+		{
+			"name": "退出重播恢复原准备态",
+			"ok": true
+		}
+	],
+	"failures": 0,
+	"stage": "ready_to_depart",
+	"state": {
+		"chapter_1_departure": {
+			"cards": {
+				"card_ids": [
+					"yaya_01",
+					"yaya_02",
+					"yaya_03",
+					"yaya_04",
+					"yaya_05",
+					"yaya_06",
+					"yaya_07",
+					"yaya_08",
+					"tieshan_01",
+					"tieshan_02",
+					"tieshan_03",
+					"tieshan_04",
+					"tieshan_05",
+					"tieshan_06",
+					"tieshan_07",
+					"tieshan_08"
+				],
+				"characters": {
+					"tieshan": {
+						"attack": 1,
+						"max_hp": 6
+					},
+					"yaya": {
+						"attack": 2,
+						"max_hp": 5
+					}
+				},
+				"deck_ids": [
+					"yaya_01",
+					"yaya_02",
+					"yaya_03",
+					"yaya_04",
+					"yaya_05",
+					"yaya_06",
+					"yaya_07",
+					"yaya_08",
+					"tieshan_01",
+					"tieshan_02",
+					"tieshan_03",
+					"tieshan_04",
+					"tieshan_05",
+					"tieshan_06",
+					"tieshan_07",
+					"tieshan_08"
+				],
+				"status": "unlocked",
+				"unlocked": true
+			},
+			"empty_warehouse_checked": true,
+			"entrance_lit": true,
+			"map": {
+				"other_regions": "fog",
+				"unlocked_floors": [
+					1
+				],
+				"visible_regions": [
+					"old_salt_pool"
+				]
+			},
+			"objective": "与芽芽、铁山一同进入迷宫浅层",
+			"party": [
+				"yaya",
+				"tieshan"
+			],
+			"step": "ready_to_depart",
+			"tieshan_name_revealed": true
+		},
+		"chapter_1_done": false,
+		"chapter_1_intro": "not_started",
+		"current_order": {
+			"id": "chapter_1_first_order",
+			"item_id": "salt_grilled_rockmane",
+			"item_name": "盐烤岩鬃肉",
+			"quantity": 1,
+			"status": "completed"
+		},
+		"first_order_cooking": {
+			"pointer": 0.0,
+			"quality": 0,
+			"recipe_id": "",
+			"status": "idle"
+		},
+		"first_order_progress": {
+			"ingredients_claimed": true,
+			"next_step": "chapter_wrap_up"
+		},
+		"first_order_settlement": {
+			"item_id": "salt_grilled_rockmane",
+			"order_id": "chapter_1_first_order",
+			"quantity": 1,
+			"reputation_awarded": 20
+		},
+		"inventory": {
+			"rock_salt": 0,
+			"rockmane_meat": 0,
+			"salt_grilled_rockmane": 0
+		},
+		"prepared_dishes": {
+			"salt_grilled_rockmane": {
+				"1": 0,
+				"2": 0,
+				"3": 0
+			}
+		},
+		"prologue_done": false,
+		"reputation": 20,
+		"tutorial_done": false
+	},
+	"ticket": "CH1-11"
+}
