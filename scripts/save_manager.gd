@@ -358,8 +358,9 @@ func list_save_slots() -> Dictionary:
 			if filename.ends_with(".json"):
 				paths.append(SLOTS_DIR.path_join(filename))
 	var slots: Array[Dictionary] = []
+	paths.sort()
 	for path in paths:
-		var label := "旧存档" if path == SAVE_PATH else "冒险 " + path.get_file().get_basename()
+		var label := ""
 		var modified := FileAccess.get_modified_time(path)
 		var problem := ""
 		var file := FileAccess.open(path, FileAccess.READ)
@@ -375,11 +376,35 @@ func list_save_slots() -> Dictionary:
 				var metadata = parser.data.get(SLOT_META_KEY, {})
 				if metadata is Dictionary and metadata.get("name") is String:
 					label = metadata.name
-		var local_time := modified + int(Time.get_time_zone_from_system().bias) * 60
+					if not metadata.get("custom_name", false) and _is_legacy_slot_name(label, str(metadata.get("id", ""))):
+						label = ""
 		slots.append({"id": path, "name": label, "saved_at": modified,
-			"time_text": Time.get_datetime_string_from_unix_time(local_time).replace("T", " ") + "（本地时间）", "problem": problem})
+			"time_text": save_date_text(modified), "problem": problem})
+	# 先按固定路径分配旧档显示名，再按保存时间排序；读取不修改任何旧档。
+	var used_names: Array[String] = []
+	for slot in slots:
+		if not slot.name.is_empty():
+			used_names.append(slot.name)
+	var number := 1
+	for slot in slots:
+		if slot.name.is_empty():
+			while used_names.has("冒险%d" % number):
+				number += 1
+			slot.name = "冒险%d" % number
+			used_names.append(slot.name)
 	slots.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.saved_at > b.saved_at)
 	return {"success": true, "message": "", "slots": slots}
+
+func save_date_text(timestamp: int) -> String:
+	# 存档日期固定北京时间，不跟随运行机器的时区。
+	return Time.get_date_string_from_unix_time(timestamp + 8 * 3600)
+
+func _is_legacy_slot_name(label: String, id: String) -> bool:
+	if id.is_empty() or not label.ends_with(" · " + id.right(4).to_upper()):
+		return false
+	var pattern := RegEx.new()
+	pattern.compile("^新冒险 [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} · [0-9A-F]{4}$")
+	return pattern.search(label) != null
 
 func active_save_path() -> String:
 	return _active_save_path
@@ -408,6 +433,7 @@ func rename_save_slot(path: String, requested_name: String) -> Dictionary:
 	if metadata.get("name") == label:
 		return {"success": true, "changed": false}
 	metadata["name"] = label
+	metadata["custom_name"] = true
 	snapshot[SLOT_META_KEY] = metadata
 	if not _write_atomic(path, snapshot):
 		return {"success": false, "message": "重命名保存失败，原存档和进度已保留。"}
@@ -442,7 +468,16 @@ func create_new_game() -> Dictionary:
 	if FileAccess.file_exists(path):
 		return {"success": false, "message": "存档名称冲突，请重试。"}
 	var fresh := _defaults()
-	fresh[SLOT_META_KEY] = {"name": "新冒险 " + Time.get_datetime_string_from_system().replace("T", " ") + " · " + id.right(4).to_upper(), "id": id}
+	var existing := list_save_slots()
+	if not existing.success:
+		return {"success": false, "message": existing.message}
+	var names: Array[String] = []
+	for slot in existing.slots:
+		names.append(slot.name)
+	var number := 1
+	while names.has("冒险%d" % number):
+		number += 1
+	fresh[SLOT_META_KEY] = {"name": "冒险%d" % number, "id": id}
 	if not _write_atomic(path, fresh):
 		return {"success": false, "message": "新存档保存失败，原有进度已保留，请检查磁盘和访问权限。"}
 	data = fresh

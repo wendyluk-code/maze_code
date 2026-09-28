@@ -1,7 +1,7 @@
-param([switch]$Gui, [string]$Resolution='1152x648', [string]$Label='1152')
+param([switch]$Gui, [string]$Resolution='1152x648', [string]$Label='1152', [string]$OutputDirectory='')
 $ErrorActionPreference='Stop'
 $workspace=(Resolve-Path "$PSScriptRoot/../..").Path
-$output=Join-Path $workspace 'output/start_02'
+$output=if($OutputDirectory){$OutputDirectory}else{Join-Path $workspace 'output/start_02'}
 $runRoot=Join-Path $output $(if($Gui){'isolated'}else{'isolated-'+[guid]::NewGuid().ToString('N')})
 $env:MAZE_START02_ROOT=$runRoot
 $env:APPDATA=Join-Path $runRoot $(if($Gui){'gui/Roaming'}else{'state/Roaming'})

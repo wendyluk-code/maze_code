@@ -1,10 +1,10 @@
 [CmdletBinding()]
-param([string[]]$Modes = @('visual-manage-1152','visual-manage-1280'), [switch]$Import)
+param([string[]]$Modes = @('visual-manage-1152','visual-manage-1280'), [switch]$Import, [string]$OutputDirectory='')
 $ErrorActionPreference = 'Stop'
 $workspace = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $godot = 'F:\SteamLibrary\steamapps\common\Godot Engine\godot.windows.opt.tools.64.exe'
 if (-not (Test-Path -LiteralPath $godot)) { throw 'Godot 不存在' }
-$output = Join-Path $workspace 'output/start_02/ui'
+$output = if($OutputDirectory){$OutputDirectory}else{Join-Path $workspace 'output/start_02/ui'}
 $runRoot = Join-Path $env:TEMP ('maze_start01_' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force $output,$runRoot | Out-Null
 $savedRoaming = $env:APPDATA

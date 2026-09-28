@@ -63,6 +63,14 @@ func state_suite() -> void:
 	check(a.success and sm.accept_first_order().success, "真实创建 A 并接单")
 	var b: Dictionary = sm.create_new_game()
 	check(b.success and sm.accept_first_order().success and sm.claim_first_order_ingredients().success, "真实创建 B 并取料")
+	check(JSON.parse_string(disk(a.id))[sm.SLOT_META_KEY].name == "冒险1" and sm.data[sm.SLOT_META_KEY].name == "冒险2", "新建档默认依次为冒险1和冒险2")
+	check(sm.save_date_text(57599) == "1970-01-01" and sm.save_date_text(57600) == "1970-01-02", "日期跨北京时间午夜，不依赖系统时区")
+	var legacy_path := "user://saves/legacy-ABCD.json"
+	var legacy_text := '{"_save_slot":{"id":"legacy-ABCD","name":"新冒险 2026-07-28 11:15:35 · ABCD"},"sentinel":42}'
+	write(legacy_path, legacy_text)
+	check(sm.list_save_slots().slots.any(func(s): return s.id == legacy_path and s.name == "冒险3") and disk(legacy_path) == legacy_text, "旧自动名简化为冒险3且列表读取不改旧档")
+	check(sm.rename_save_slot(legacy_path, "新冒险 自定标题").success and sm.list_save_slots().slots.any(func(s): return s.id == legacy_path and s.name == "新冒险 自定标题"), "用户自定的新冒险前缀标题保留")
+	sm.delete_save_slot(legacy_path)
 	var active: String = sm.active_save_path()
 	var before: Dictionary = sm.data.duplicate(true)
 	var a_before: Dictionary = JSON.parse_string(disk(a.id))

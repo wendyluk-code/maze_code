@@ -32,6 +32,8 @@ func _ready() -> void:
 	art.add_child(picture)
 	new_button = _hotspot("新游戏", Rect2(109, 579, 325, 70))
 	continue_button = _hotspot("继续游戏", Rect2(109, 665, 325, 70))
+	# 原图已有边框，返回焦点时只做轻微高亮，避免叠出第二层框。
+	continue_button.add_theme_stylebox_override("focus", _feedback(Color(1, 1, 1, 0.16)))
 	new_button.pressed.connect(_new_game)
 	continue_button.pressed.connect(_continue_game)
 	save_modal = SAVE_MODAL.new()
