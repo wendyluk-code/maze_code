@@ -75,7 +75,7 @@ func _run_quality(quality: int) -> void:
 	_check(sm.cooked_quality() == quality and modal.get("_finished"), "品质%d：鼠标起锅锁定品质" % quality)
 	await _capture("quality_%d_result" % quality)
 	await _wait_until(func(): return tm.idx == 14 and not modal.visible, 180)
-	var register := scene.get_node("InteractPoints/Register")
+	var register := scene.get_node("InteractPoints/BarCounter")
 	player.global_position = _stand(register)
 	await _wait_until(func(): return tm.idx == 15, 180)
 	_send_key(KEY_E)

@@ -1,10 +1,21 @@
 [gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/prologue.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/ui/components/sprout_button.gd" id="2"]
 [ext_resource type="FontFile" path="res://assets/ui/zcool_kuail.ttf" id="3"]
 
+[sub_resource type="StyleBoxFlat" id="skip_style"]
+bg_color = Color(0.1, 0.13, 0.12, 0.7)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 14.0
+content_margin_top = 6.0
+content_margin_right = 14.0
+content_margin_bottom = 6.0
+
 [node name="Prologue" type="Control"]
+clip_contents = true
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -31,8 +42,8 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-ratio = 1.7777778
-stretch_mode = 2
+ratio = 1.7239264
+stretch_mode = 3
 
 [node name="Video" type="VideoStreamPlayer" parent="Aspect"]
 unique_name_in_owner = true
@@ -40,20 +51,34 @@ layout_mode = 2
 mouse_filter = 2
 expand = true
 
+[node name="EndCard" type="TextureRect" parent="Aspect"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
 [node name="SkipPrologue" type="Button" parent="."]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -214.0
-offset_top = 24.0
-offset_right = -24.0
-offset_bottom = 76.0
+offset_left = -134.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = 58.0
 grow_horizontal = 0
-text = "跳过序章"
-tooltip_text = "Esc / 空格 / Enter"
-script = ExtResource("2")
+focus_mode = 0
+theme_override_colors/font_color = Color(1, 1, 1, 0.92)
+theme_override_colors/font_hover_color = Color(1, 0.9, 0.6, 1)
+theme_override_fonts/font = ExtResource("3")
+theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = SubResource("skip_style")
+theme_override_styles/hover = SubResource("skip_style")
+theme_override_styles/pressed = SubResource("skip_style")
+text = "跳过 ▸"
 
 [node name="Status" type="Label" parent="."]
 unique_name_in_owner = true

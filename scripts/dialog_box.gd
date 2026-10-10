@@ -35,14 +35,13 @@ func start(speaker: String, lines: Array, ptex: Texture2D = null) -> void:
 	dialog_text.text = ""
 	next_icon.visible = false
 	speaker_name.text = speaker
-	if ptex != null:
-		portrait_texture.texture = ptex
-		portrait_texture.visible = true
-		portrait_fallback.visible = false
-	else:
-		portrait_texture.visible = false
-		portrait_fallback.visible = true
-		portrait_fallback.text = speaker.substr(0, 1) if not speaker.is_empty() else "?"
+	speaker_name.visible = not speaker.is_empty()
+	portrait_texture.texture = ptex
+	portrait_texture.visible = ptex != null
+	portrait_fallback.visible = false
+	portrait.visible = ptex != null
+	if ptex == null and not speaker.is_empty():
+		push_warning("DialogBox: 对话头像缺失 speaker=%s" % speaker)
 
 func _process(delta: float) -> void:
 	if not visible or _lines.is_empty() or _line_idx >= _lines.size():
@@ -105,3 +104,9 @@ func hide_box() -> void:
 	_line_idx = 0
 	_shown = 0.0
 	next_icon.visible = false
+	speaker_name.text = ""
+	speaker_name.visible = false
+	portrait_texture.texture = null
+	portrait_texture.visible = false
+	portrait_fallback.visible = false
+	portrait.visible = false

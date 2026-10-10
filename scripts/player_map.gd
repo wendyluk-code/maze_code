@@ -141,8 +141,8 @@ func nearest_interactable() -> Node2D:
 	if tm != null and tm.active and tm._chapter_1_run and tm.current_stage == 6 \
 			and tm.idx >= 0 and tm.idx < tm.steps.size():
 		var step: Dictionary = tm.steps[tm.idx]
-		if step.get("type", "") in ["move_to", "interact"] and step.get("target", "") == "前台":
-			serving_target = tm.resolve_target("前台")
+		if step.get("type", "") in ["move_to", "interact"] and step.get("target", "") == "吧台":
+			serving_target = tm.resolve_target("吧台")
 	for n in get_tree().get_nodes_in_group("interactable"):
 		var node := n as Node2D
 		if not node:

@@ -18,6 +18,7 @@ var protected_memory := ""
 var protected_disk := ""
 var replay_clean := true
 var watch_replay := false
+var skip_visual: Dictionary = {}
 
 func _ready() -> void:
 	_run.call_deferred()
@@ -65,7 +66,7 @@ func _run() -> void:
 	tm = get_node("/root/TutorialManager")
 	mode = _arg("--mode=")
 	DisplayServer.window_set_title("PRO-01 " + mode)
-	_check(ProjectSettings.get_setting("application/run/main_scene") == "res://scenes/prologue.tscn", "主场景为序章入口")
+	_check(ProjectSettings.get_setting("application/run/main_scene") == "res://scenes/start_screen.tscn", "封面为正式入口，序章通过新游戏进入")
 	if mode == "migration":
 		_migrations()
 	elif mode == "atomic":
@@ -95,6 +96,7 @@ func _migrations() -> void:
 		_check(sm.call(operation).success, "迁移夹具通过真实事务 " + operation)
 		cases.append([operation, sm.data.duplicate(true), true])
 	for step in sm.WRAPUP_STEPS.slice(0, -1):
+		if sm.RETIRED_WRAPUP_STEPS.has(step): continue
 		_check(sm.advance_departure(step).success, "迁移夹具推进 " + step)
 	cases.append(["ready_to_depart", sm.data.duplicate(true), true])
 	sm.data = sm._defaults()
@@ -165,13 +167,16 @@ func _entry() -> void:
 		await get_tree().create_timer(2.0).timeout
 		_check(is_instance_valid(prologue) and prologue.video.is_playing() and max_position > 0.5, "新档实际读取并播放视频", {"position": max_position})
 		_check(not sm.is_prologue_done(), "离开前不记录序章完成")
-		_check(prologue.skip_button.get_script().resource_path == "res://scripts/ui/components/sprout_button.gd", "跳过使用既有 SproutButton")
+		skip_visual = _skip_visual(prologue.skip_button)
+		_check(prologue.skip_button.focus_mode == Control.FOCUS_NONE and prologue.skip_button.text == "跳过 ▸", "跳过按钮使用第一章文案且不能被键盘聚焦")
 		positions.append(max_position)
 		await _capture("playing")
 		await get_tree().create_timer(1.2).timeout
 		positions.append(max_position)
 		_check(positions[1] > positions[0] + 0.5, "视频播放进度持续增长")
-		if mode in ["natural", "manual"]:
+		if mode in ["natural", "hold-e"]:
+			await _natural_end_card()
+		elif mode == "manual":
 			print("PRO_01 等待完整自然播放或人工输入，最长 330 秒；不快进。")
 		elif mode == "race":
 			prologue.video.finished.emit()
@@ -186,6 +191,9 @@ func _entry() -> void:
 			_mouse(prologue.skip_button.get_global_rect().get_center())
 		else:
 			_key({"esc": KEY_ESCAPE, "space": KEY_SPACE, "enter": KEY_ENTER}.get(mode, KEY_ESCAPE))
+			await get_tree().create_timer(0.25).timeout
+			_check(is_instance_valid(prologue) and transitions == 0, "播放期旧键盘跳过无效 " + mode)
+			_mouse(prologue.skip_button.get_global_rect().get_center())
 	var deadline := Time.get_ticks_msec() + (330000 if mode in ["natural", "manual"] else 15000)
 	while Time.get_ticks_msec() < deadline and (restaurant_entries == 0 or get_tree().has_group("prologue_transition")):
 		await get_tree().process_frame
@@ -197,6 +205,8 @@ func _entry() -> void:
 	var scene := get_tree().current_scene
 	var player := scene.get_node("Player")
 	var guide := get_tree().get_first_node_in_group("tutorial_guide")
+	if not skip_visual.is_empty():
+		_check(skip_visual == _skip_visual(guide.skip_button), "序章与第一章跳过按钮字体/底色/圆角/边距/尺寸一致", {"prologue":skip_visual,"chapter":_skip_visual(guide.skip_button)})
 	_check(tm.active and tm.current_stage == (5 if mode == "old" else 1), "正式 TutorialGuide/TutorialManager 启动正确阶段", {"stage": tm.current_stage, "idx": tm.idx})
 	_check(not get_tree().paused and not scene.get_node("Camera").paused, "餐厅未残留暂停或相机锁")
 	_check(player.input_locked == tm._player_lock_owned and player.is_physics_processing() == not tm._player_lock_owned, "玩家锁仅由现有第一章对白持有")
@@ -213,8 +223,8 @@ func _entry() -> void:
 		_check(sm.is_prologue_done(), "成功进入餐厅才记录序章完成")
 	await get_tree().create_timer(0.8).timeout
 	await _capture("restaurant")
-	if mode == "natural":
-		_check(finished_signals == 1 and max_position >= 200.0, "完整视频自然结束触发唯一 finished", {"position": max_position})
+	if mode in ["natural","hold-e"]:
+		_check(max_position > 10.0 and finished_signals <= 1, "视频自然播至片尾且没有重复完成信号", {"position":max_position,"finished_signals":finished_signals})
 	if watch_replay:
 		# 确认预览中的真实检查点写入、取消教程、再次写入均不能泄漏到正式状态。
 		_check(sm.record_intro("awakened"), "预览副本可提交检查点")
@@ -268,8 +278,61 @@ func _mouse(position: Vector2) -> void:
 	event.global_position = position
 	event.pressed = true
 	Input.parse_input_event(event)
+
 	event = InputEventMouseButton.new()
 	event.button_index = MOUSE_BUTTON_LEFT
 	event.position = position
 	event.global_position = position
 	Input.parse_input_event(event)
+
+func _skip_visual(button: Button) -> Dictionary:
+	var style: StyleBoxFlat = button.get_theme_stylebox("normal")
+	return {"text":button.text,"size":str(button.size),"right":get_viewport().get_visible_rect().size.x-button.get_global_rect().end.x,"top":button.get_global_rect().position.y,
+		"font":button.get_theme_font("font").resource_path,"font_size":button.get_theme_font_size("font_size"),"font_color":str(button.get_theme_color("font_color")),
+		"background":str(style.bg_color),"radius":[style.corner_radius_top_left,style.corner_radius_top_right,style.corner_radius_bottom_left,style.corner_radius_bottom_right],
+		"margins":[style.content_margin_left,style.content_margin_top,style.content_margin_right,style.content_margin_bottom]}
+
+func _natural_end_card() -> void:
+	var end_time: float = prologue.end_card_time
+	_check(end_time > 10.0,"片尾定格时刻已配置",{"seconds":end_time})
+	_key(KEY_E)
+	for code in [KEY_SPACE,KEY_ENTER,KEY_ESCAPE,KEY_KP_ENTER]: _key(code)
+	await get_tree().process_frame
+	_check(is_instance_valid(prologue) and transitions == 0 and prologue.playback_state == "playing","开头E及旧跳过按键均不提前转场")
+	var midpoint_tested := false
+	var hold_started := false
+	var deadline := Time.get_ticks_msec() + 330000
+	while is_instance_valid(prologue) and prologue.playback_state == "playing" and Time.get_ticks_msec() < deadline:
+		var position: float = prologue.video.stream_position
+		if not midpoint_tested and position >= end_time * 0.5:
+			_key(KEY_E)
+			midpoint_tested = true
+			await get_tree().process_frame
+			_check(is_instance_valid(prologue) and transitions == 0,"中途E不提前转场",{"position":position})
+			await _capture("midpoint")
+		if mode == "hold-e" and not hold_started and position >= end_time - 1.0:
+			var down := InputEventKey.new(); down.keycode = KEY_E; down.pressed = true
+			Input.parse_input_event(down)
+			hold_started = true
+		await get_tree().process_frame
+	var awaiting: bool = is_instance_valid(prologue) and prologue.playback_state == "awaiting_continue"
+	_check(awaiting and transitions == 0 and restaurant_entries == 0,"自然播放进入片尾等待，没有自动转场")
+	if not awaiting: return
+	_check(max_position >= end_time - 0.25,"视频实际进度达到配置的片尾时刻",{"position":max_position,"end_card_time":end_time})
+	_check(prologue.end_card.visible and prologue.end_card.texture != null and prologue.video.paused,"片尾定格贴图可见且视频暂停")
+	await _capture("end-card")
+	var frozen: float = prologue.video.stream_position
+	if mode == "hold-e":
+		_check(hold_started and Input.is_key_pressed(KEY_E),"E确实持续按住跨越片尾边界")
+		var echo := InputEventKey.new(); echo.keycode = KEY_E; echo.pressed = true; echo.echo = true
+		Input.parse_input_event(echo)
+	await get_tree().create_timer(9.2).timeout
+	_check(is_instance_valid(prologue) and transitions == 0 and prologue.playback_state == "awaiting_continue" and is_equal_approx(prologue.video.stream_position,frozen),"片尾等待超过8秒仍定格，无停滞错误或提前转场",{"seconds":9.2,"held_e":hold_started})
+	await _capture("end-card-after-wait")
+	if mode == "hold-e":
+		var up := InputEventKey.new(); up.keycode = KEY_E; up.pressed = false
+		Input.parse_input_event(up)
+		await get_tree().process_frame
+		_check(transitions == 0,"跨片尾长按E松开本身不进入")
+	_key(KEY_E)
+	_key(KEY_E)

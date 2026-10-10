@@ -1,6 +1,8 @@
 extends Control
 ## 教程引导层（放到 CanvasLayer 下，全屏覆盖）
-## 组成：对白暗幕 + 顶部阶段提示 + 跳过按钮 + 对话框 + Toast
+## 组成：对白暗幕 + 顶部操作提示 + 对话框 + Toast
+
+const HINT_TOP := 16.0
 
 signal dialog_done
 
@@ -19,8 +21,6 @@ var _modal_hint_visible := false
 
 func _ready() -> void:
 	add_to_group("tutorial_guide")
-	if not skip_button.pressed.is_connected(_on_skip):
-		skip_button.pressed.connect(_on_skip)
 	if not dialog.finished.is_connected(_on_dialog_finished):
 		dialog.finished.connect(_on_dialog_finished)
 	# 只有正式餐厅入口负责自动启动。测试或其他场景临时实例化地图时，
@@ -46,6 +46,8 @@ func should_start_chapter_1() -> bool:
 	var replay := TutorialManager.has_method("is_replay_requested") and TutorialManager.is_replay_requested()
 	if replay:
 		return true
+	if SaveManager.has_pending_chapter_1_outro():
+		return true
 	if SaveManager.is_ready_to_depart():
 		return false
 	return not SaveManager.has_method("is_chapter_1_done") or not SaveManager.is_chapter_1_done()
@@ -61,10 +63,10 @@ func prepare_for_start() -> void:
 	dim.color.a = 0.5
 	hint_panel.visible = false
 	toast.visible = false
-	skip_button.visible = true
+	skip_button.visible = false
 	chapter_title.text = "第一章：醒来与首单教程"
-	chapter_title.visible = true
-	chapter_stage.visible = true
+	chapter_title.visible = false
+	chapter_stage.visible = false
 	chapter_stage.text = "阶段 1/7 · 苏醒与失忆"
 	dialog.hide_box()
 
@@ -88,10 +90,12 @@ func set_modal_suppressed(value: bool) -> void:
 	_sync_dialog_mask()
 
 func setup(step: Dictionary) -> void:
-	# 阶段提示放在章节信息下方，并避开当前角色、目标和交互按钮。
+	# 操作提示置顶居中，章节与阶段信息仅供内部流程记录。
 	var hint := str(step.get("hint", ""))
 	hint_panel.visible = not hint.is_empty()
 	hint_label.text = hint
+	_position_hint_panel()
+	_position_toast()
 	_sync_dialog_mask()
 
 func set_chapter_stage(stage: int, title: String) -> void:
@@ -112,7 +116,7 @@ func _position_toast() -> void:
 	toast.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	toast.size = box_size
 	toast.position = Vector2((get_viewport_rect().size.x - box_size.x) * 0.5,
-		hint_panel.get_rect().end.y + 8.0 if hint_panel.visible else 98.0)
+		hint_panel.get_rect().end.y + 8.0 if hint_panel.visible else HINT_TOP)
 
 func _position_hint_panel() -> void:
 	if not hint_panel.visible:
@@ -120,7 +124,7 @@ func _position_hint_panel() -> void:
 	var box_size := _compact_hint_size(hint_label)
 	hint_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	hint_panel.size = box_size
-	hint_panel.position = Vector2((get_viewport_rect().size.x - box_size.x) * 0.5, 96.0)
+	hint_panel.position = Vector2((get_viewport_rect().size.x - box_size.x) * 0.5, HINT_TOP)
 
 func _compact_hint_size(label: Label) -> Vector2:
 	var viewport_width := get_viewport_rect().size.x
@@ -129,7 +133,9 @@ func _compact_hint_size(label: Label) -> Vector2:
 	if is_instance_valid(tracker) and tracker.has_method("expanded_panel_rect"):
 		var task_rect: Rect2 = tracker.expanded_panel_rect()
 		if task_rect.has_area():
-			max_width = minf(max_width, maxf(120.0, viewport_width - 2.0 * (task_rect.end.x + 16.0)))
+			var center_x := viewport_width * 0.5
+			var available_half := task_rect.position.x - center_x if task_rect.get_center().x >= center_x else center_x - task_rect.end.x
+			max_width = minf(max_width, maxf(120.0, (available_half - 16.0) * 2.0))
 	var font := label.get_theme_font("font")
 	var font_size := label.get_theme_font_size("font_size")
 	var natural_width := 0.0
@@ -173,6 +179,7 @@ func show_toast(text: String) -> void:
 	toast.modulate.a = 1.0
 	toast.text = text
 	toast.visible = true
+	_position_toast()
 	if _toast_tween != null and _toast_tween.is_valid():
 		_toast_tween.kill()
 	_toast_tween = create_tween()

@@ -47,12 +47,12 @@ func _serving_run() -> void:
 		await _start_scene()
 		_check(tm.current_stage == 6 and sm.inventory_quantity("salt_grilled_rockmane") == 1,
 			"独立进程恢复交付前检查点")
-		await _walk_to("Register", 15)
+		await _walk_to("BarCounter", 15)
 		await get_tree().process_frame
 		var ui := scene.get_node("UIOverlay")
-		var register := scene.get_node("InteractPoints/Register") as Node2D
-		var button: Control = ui.get("_buttons")[register]
-		_check(button.visible and button.get_node("Content/ActionLabel").text == "交单上菜", "阶段6前台显示交单上菜按钮")
+		var bar_counter := scene.get_node("InteractPoints/BarCounter") as Node2D
+		var button: Control = ui.get("_buttons")[bar_counter]
+		_check(button.visible and button.get_node("Content/ActionLabel").text == "交单上菜", "阶段6吧台显示交单上菜按钮")
 		await _capture("before")
 		var before: Dictionary = sm.data.duplicate(true)
 		var disk := _disk()
@@ -61,7 +61,7 @@ func _serving_run() -> void:
 		var stand: Vector2 = player.global_position
 		player.global_position = Vector2(-10000, -10000)
 		_press_e()
-		player.interacted.emit(register)
+		player.interacted.emit(bar_counter)
 		_check(sm.data == before and _disk() == disk and tm.idx == 15, "超距输入及直接信号均无副作用")
 		player.global_position = stand
 		sm.data[sm.INVENTORY_KEY][sm.FIRST_ORDER_ITEM_ID] = 0
@@ -79,19 +79,19 @@ func _serving_run() -> void:
 		_press_e()
 		_check(sm.data == before and _disk() == disk and tm.idx == 15, "保存失败 E 不消耗、不结算、不推进")
 		_check(DirAccess.remove_absolute(temporary) == OK, "移除写入失败夹具")
-		# 相邻设施可能比前台更近；暂时移出选择器，单独验证距离上限。
+		# 相邻设施可能比吧台更近；暂时移出选择器，单独验证距离上限。
 		# 完成后恢复全部设施，成功交单仍在原场景真实站位执行。
 		var other_targets: Array[Node] = []
 		for target in get_tree().get_nodes_in_group("interactable"):
-			if target != register:
+			if target != bar_counter:
 				other_targets.append(target)
 				target.remove_from_group("interactable")
-		var boundary := _serving_stand(register)
+		var boundary := _serving_stand(bar_counter)
 		player.global_position = boundary
 		player.last_valid = boundary
 		await get_tree().process_frame
-		_check(player.interaction_distance_to(register) > 95.0 and player.interaction_distance_to(register) <= 120.0
-			and player.nearest_interactable() == register and button.visible, "95至120px按钮与E选择器一致")
+		_check(player.interaction_distance_to(bar_counter) > 95.0 and player.interaction_distance_to(bar_counter) <= 120.0
+			and player.nearest_interactable() == bar_counter and button.visible, "95至120px按钮与E选择器一致")
 		for target in other_targets:
 			target.add_to_group("interactable")
 		player.global_position = stand
@@ -154,7 +154,7 @@ func _repeat_checks() -> void:
 	var disk := _disk()
 	for i in 5:
 		_press_e()
-		player.interacted.emit(scene.get_node("InteractPoints/Register"))
+		player.interacted.emit(scene.get_node("InteractPoints/BarCounter"))
 	_check(sm.data == before and _disk() == disk and tm.idx == 16, "重复E和重复信号不改状态或推进")
 	_reject_delivery("already_completed", "重复交单API")
 	var accept: Dictionary = sm.accept_first_order()

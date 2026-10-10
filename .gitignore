@@ -21,3 +21,8 @@ log/
 # 内嵌工具源码（单独维护，不入库）
 tools/mmd_tools_src/
 
+
+# Local verification output and Python caches
+/output/
+__pycache__/
+*.pyc

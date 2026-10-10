@@ -15,8 +15,15 @@ const CHAPTER_1_STAGE_NAMES := {
 	3: "前台接单",
 	4: "仓库取料",
 	5: "料理制作",
-	6: "前台交付与结算",
+	6: "吧台交付与结算",
 	7: "准备同行",
+}
+
+const DIALOG_PORTRAITS := {
+	"你": "res://assets/characters/player_portrait.png",
+	"芽芽": "res://assets/characters/yaya_portrait.png",
+	"？？？": "res://assets/characters/tieshan/tieshan_portrait.png",
+	"铁山": "res://assets/characters/tieshan/tieshan_portrait.png",
 }
 
 var active := false
@@ -43,6 +50,7 @@ var _chapter_1_run := false
 var _order_explanation_pending := false
 var _dialog_done_callback: Callable
 var _guide_exit_callback: Callable
+var _chapter_outro: CanvasLayer
 
 func _ready() -> void:
 	process_mode = PROCESS_MODE_ALWAYS
@@ -63,7 +71,10 @@ func is_replay_requested() -> bool:
 ## 启动教程。custom_steps 为空时使用正式的“第一章：醒来与首单教程”。
 ## 非空 custom_steps 仅作为兼容测试/内部脚本入口，不改变章节完成状态。
 func start(custom_steps: Array = []) -> void:
-	if custom_steps.is_empty() and not _replay_requested and SaveManager.is_ready_to_depart():
+	if custom_steps.is_empty() and not _replay_requested and SaveManager.is_chapter_1_complete() and not SaveManager.has_pending_chapter_1_outro():
+		_cancel_current_run()
+		return
+	if custom_steps.is_empty() and not _replay_requested and SaveManager.is_ready_to_depart() and not SaveManager.has_pending_chapter_1_outro():
 		_cancel_current_run()
 		return
 	var next_guide = get_tree().get_first_node_in_group("tutorial_guide")
@@ -115,7 +126,7 @@ func _resume_saved_cooking() -> void:
 	if stage == "not_started":
 		return
 	var next_stage: int = {"awakened": 2, "guest_arrived": 2, "order_accepted": 4,
-		"ingredients_collected": 5, "dish_ready": 6, "order_served": 7}.get(stage, 1)
+		"ingredients_collected": 5, "dish_ready": 6, "order_served": 7, "ready_to_depart": 7, "done": 7}.get(stage, 1)
 	for i in steps.size():
 		if stage == "guest_arrived" and steps[i].get("type") == "cutscene_guest":
 			idx = i + 1
@@ -134,7 +145,13 @@ func _restore_cooking_guest(token: int) -> void:
 	_parked_guest = (load("res://scenes/guest_placeholder.tscn") as PackedScene).instantiate()
 	_parked_guest.position = Vector2(910, 198)
 	get_tree().current_scene.add_child(_parked_guest)
-	_parked_guest.settle_prone()
+	# 已接单后按经营状态直接坐等，不在读档时重播倒地与起身。
+	if SaveManager.lifecycle_stage() == "guest_arrived":
+		_parked_guest.settle_prone()
+	elif SaveManager.has_first_order_settlement():
+		_parked_guest.settle_satisfied()
+	else:
+		_parked_guest.settle_seated()
 
 ## 第一章：醒来与首单教程（脚本化演示，后续接真实经营系统）
 ## 叙事：片头视频（占位）→ 芽芽唤醒失忆的主角 → 饥肠辘辘的客人(？？？)来临 → 芽芽引导做菜
@@ -145,15 +162,7 @@ func chapter_1_lesson() -> Array:
 			"type": "dialog", "speaker": "芽芽",
 			"portrait": "res://assets/characters/yaya_portrait.png",
 			"lines": [
-				"……你终于醒了。",
-			],
-		},
-		{
-			"stage": 1,
-			"type": "dialog", "speaker": "芽芽",
-			"portrait": "res://assets/characters/yaya_portrait.png",
-			"lines": [
-				"你还记得我吗？",
+				"……你终于醒了。记得我吗？",
 			],
 		},
 		{
@@ -169,15 +178,7 @@ func chapter_1_lesson() -> Array:
 			"type": "dialog", "speaker": "芽芽",
 			"portrait": "res://assets/characters/yaya_portrait.png",
 			"lines": [
-				"……果然，你又想不起来了。",
-			],
-		},
-		{
-			"stage": 1,
-			"type": "dialog", "speaker": "芽芽",
-			"portrait": "res://assets/characters/yaya_portrait.png",
-			"lines": [
-				"没关系。我陪着你，总会想起来的。",
+				"你果然又想不起来了。没关系，我陪着你，总会想起来的。",
 			],
 		},
 		{
@@ -204,7 +205,7 @@ func chapter_1_lesson() -> Array:
 			"portrait": "res://assets/characters/yaya_portrait.png",
 			"lines": [
 				"先不说了，救人要紧。",
-				"你不会连怎么做饭都忘了吧？……没事，跟我来——你以前，也是这么做的。",
+				"你不会连怎么做饭都忘了吧？……没事，跟我来。你以前，也是这么做的。",
 			],
 		},
 		{
@@ -241,40 +242,39 @@ func chapter_1_lesson() -> Array:
 		},
 		{
 			"stage": 6,
-			"type": "move_to", "target": "前台", "radius": 120.0,
-			"hint": "端过去给他，小心别洒了",
+			"type": "move_to", "target": "吧台", "radius": 120.0,
+			"hint": "把料理端到吧台给他，小心别洒了",
 		},
 		{
 			"stage": 6,
-			"type": "interact", "target": "前台",
-			"hint": "靠近前台，按 E 交单上菜",
+			"type": "interact", "target": "吧台",
+			"hint": "靠近吧台，按 E 交单上菜",
 			"toast": "顾客评价将根据料理品质结算",
 		},
 	] + departure_lesson()
 
-## 阶段7逐句检查点：自报姓名确认后，后续说话人改为铁山。
+## 阶段7逐句检查点：从自报姓名这一句起，说话人显示铁山。
 func departure_lesson() -> Array:
 	var rows := [
 		["relief", "？？？", "……缓过来了。"],
 		["meat", "？？？", "这是岩鬃兽的肉？那东西又硬又腥，你居然能做成这样。"],
 		["yaya_past", "芽芽", "他以前做得更好。"],
-		["hero_past", "主角", "以前？"],
+		["hero_past", "你", "以前？"],
 		["yaya_yes", "芽芽", "……嗯。"],
 		["second_serving", "？？？", "还能再来一份吗？"],
 		["check_store", "芽芽", "再去仓库看看吧。"],
 		["warehouse_move", "move_to", "仓库"],
 		["warehouse_inspect", "interact", "仓库"],
+		["yaya_empty", "芽芽", "刚才已经是最后一份了。"],
+		["hero_where", "你", "哪里可以找到岩鬃兽的肉？"],
 		["salt_pool", "？？？", "迷宫浅层，旧盐池附近，我就是从那边回来的。"],
 		["map_review", "departure_map", ""],
-		["introduction", "？？？", "我叫铁山，是个冒险者。"],
-		["offer", "铁山", "你如果要去，我可以带路。"],
-		["no", "芽芽", "……不行。"],
-		["memory", "芽芽", "你才刚醒，连自己是谁都不记得。"],
-		["cooking", "主角", "可我还记得怎么做饭，我想继续做下去。"],
-		["ingredients", "主角", "没有食材，就做不了下一顿。"],
-		["yaya_join", "芽芽", "……那我也去。"],
-		["stay_shallow", "芽芽", "谁都不许往深处走。"],
-		["agreement", "铁山", "说定了。拿够食材就回来。"],
+		["introduction", "铁山", "我叫铁山，是个冒险者。你如果要去，我可以带路。"],
+		["no", "芽芽", "……不行。你才刚醒，连自己是谁都不记得。"],
+		["cooking", "你", "可我还记得怎么做饭，我想再试试。但没有食材，就做不了下一顿。"],
+		["yaya_join", "芽芽", "……那我陪你一起去。但是说好了，谁都不许往深处走。"],
+		["agreement", "铁山", "说定了，拿够食材就回来。"],
+		["yaya_ready", "芽芽", "你准备好后，我们就出发吧。"],
 		["ready_to_depart", "ready_to_depart", ""],
 	]
 	var result: Array = []
@@ -287,12 +287,8 @@ func departure_lesson() -> Array:
 			step["type"] = row[1]
 		else:
 			step.merge({"type": "dialog", "speaker": row[1], "lines": [row[2]]})
-			if row[1] in ["？？？", "铁山"]:
-				step["portrait"] = "res://assets/characters/tieshan/tieshan_portrait.png"
-			elif row[1] == "芽芽":
-				step["portrait"] = "res://assets/characters/yaya_portrait.png"
-			if row[0] == "relief":
-				step["hint"] = "他放下了盘子。"
+			if DIALOG_PORTRAITS.has(row[1]):
+				step["portrait"] = DIALOG_PORTRAITS[row[1]]
 		result.append(step)
 	return result
 
@@ -325,9 +321,11 @@ func skip_all() -> void:
 	if is_instance_valid(tracker) and tracker.has_method("hide_tracking"):
 		tracker.hide_tracking()
 
-## 准备面板的显式最终确认。教程已在 ready_to_depart 步骤结束，
-## 因此这里只提交原子完成事务并发出章节完成信号，不切换场景。
+## 旧准备面板的兼容接口；不能绕过入队弹窗和两个入口对白。
+## 正常完成由收尾控制器在迷宫入口对白结束时原子提交。
 func confirm_chapter_1() -> Dictionary:
+	if SaveManager.chapter_1_outro_state() not in ["title", "done"]:
+		return {"success": false, "created": false, "reason": "outro_pending"}
 	var result: Dictionary = SaveManager.complete_chapter_1()
 	if result.success and result.created and not SaveManager._replaying:
 		chapter_1_finished.emit()
@@ -362,10 +360,13 @@ func _run_step(token: int) -> void:
 		"dialog":
 			_set_player_locked(true)
 			var act: Texture2D = null
-			var p_tex = step.get("portrait")
+			var speaker := str(step.get("speaker", ""))
+			var p_tex = step.get("portrait", DIALOG_PORTRAITS.get(speaker, ""))
 			if p_tex is String and not (p_tex as String).is_empty():
 				act = load(p_tex) as Texture2D
-			guide.play_dialog(str(step.get("speaker", "")), step.get("lines", []), act)
+			if not speaker.is_empty() and act == null:
+				push_warning("TutorialManager: 对话头像缺失 speaker=%s path=%s" % [speaker, str(p_tex)])
+			guide.play_dialog(speaker, step.get("lines", []), act)
 		"notify":
 			guide.show_toast(str(step.get("toast", "")))
 			await get_tree().create_timer(float(step.get("delay", 1.4))).timeout
@@ -384,9 +385,16 @@ func _run_step(token: int) -> void:
 			_set_player_locked(true)
 			_open_departure_map.call_deferred(token)
 		"ready_to_depart":
-			# 阶段7只建立稳定的 ready_to_depart 准备态；最终完成必须由
-			# 准备面板的显式确认触发，避免进入餐厅后自动写入 done。
-			_cancel_current_run()
+			_set_player_locked(true)
+			# 从存档直接恢复时，餐厅可能仍在 _ready 中，待入树完成再添加收尾层。
+			await get_tree().process_frame
+			if not _run_is_valid(token):
+				return
+			if not is_instance_valid(_chapter_outro):
+				_chapter_outro = CanvasLayer.new()
+				_chapter_outro.set_script(load("res://scripts/chapter_1_outro.gd"))
+				get_tree().current_scene.add_child(_chapter_outro)
+				_chapter_outro.start(self, token)
 		_:
 			pass
 
@@ -520,8 +528,15 @@ func _cancel_current_run() -> void:
 		return
 	active = false
 	_run_token += 1
+	if is_instance_valid(_chapter_outro):
+		_chapter_outro.cancel()
+		_chapter_outro.queue_free()
+	_chapter_outro = null
 	_order_explanation_pending = false
 	_set_order_explanation_highlight(false)
+	var active_tracker := get_tree().get_first_node_in_group("order_tracking")
+	if is_instance_valid(active_tracker):
+		active_tracker.cancel_feedback()
 	SaveManager.recover_interrupted_cooking()
 	_close_departure_modals()
 	_set_player_locked(false)
@@ -556,7 +571,13 @@ func _on_dialog_done(token: int) -> void:
 		if not _order_explanation_pending:
 			return
 		_order_explanation_pending = false
+		var tracker := get_tree().get_first_node_in_group("order_tracking")
+		if is_instance_valid(tracker) and tracker.has_method("collapse_details"):
+			tracker.collapse_details()
 		_set_order_explanation_highlight(false)
+		# 只在这句说明真正关闭时开始铁山演出；首次接单E与补全文本E均不会触发。
+		if is_instance_valid(_parked_guest) and _parked_guest.has_method("play_seating"):
+			_parked_guest.play_seating()
 		_set_player_locked(false)
 		_complete_step(_run_token)
 		return
@@ -572,16 +593,25 @@ func _on_player_interact(node: Node2D) -> void:
 	if not active or not is_instance_valid(guide) or idx < 0 or idx >= steps.size():
 		return
 	var step: Dictionary = steps[idx]
-	if step.get("type", "") != "interact":
+	var step_type := str(step.get("type", ""))
+	if step_type not in ["move_to", "interact"]:
+		return
+	if not is_instance_valid(node) or not is_instance_valid(player) or player.input_locked:
 		return
 	var target := resolve_target(step.get("target"))
-	if target == null or node != target:
+	if target == null:
 		return
 	# 交互信号通常只由 Player 在范围内发出；这里再做一次同一选择器校验，
 	# 防止测试/其他调用方直接投递错误目标或超距目标时改变教程和订单状态。
 	if is_instance_valid(player) and player.has_method("nearest_interactable"):
 		if player.nearest_interactable() != node:
 			return
+	if node != target:
+		if _chapter_1_run:
+			guide.show_toast("请先完成当前任务")
+		return
+	if step_type != "interact":
+		return
 	var is_first_order_step := _chapter_1_run \
 			and int(step.get("stage", 0)) == 3 \
 			and str(step.get("target", "")) == "前台"
@@ -637,14 +667,14 @@ func _on_player_interact(node: Node2D) -> void:
 		var modal := get_tree().get_first_node_in_group("cooking_modal")
 		if not is_instance_valid(modal) or modal.get("_open"):
 			return
-		if not modal.cooking_finished.is_connected(_on_cooking_finished):
-			modal.cooking_finished.connect(_on_cooking_finished)
+		if not modal.result_confirmed.is_connected(_on_cooking_result_confirmed):
+			modal.result_confirmed.connect(_on_cooking_result_confirmed)
 		if not modal.cancelled.is_connected(_on_cooking_cancelled):
 			modal.cancelled.connect(_on_cooking_cancelled)
 		_set_player_locked(true)
 		modal.open_for_order(SaveManager.FIRST_ORDER_ITEM_ID)
 		return
-	if _chapter_1_run and int(step.get("stage", 0)) == 6 and str(step.get("target", "")) == "前台":
+	if _chapter_1_run and int(step.get("stage", 0)) == 6 and str(step.get("target", "")) == "吧台":
 		if not is_instance_valid(player) or player.interaction_distance_to(target) > 120.0:
 			return
 		var sm := get_node_or_null("/root/SaveManager")
@@ -663,7 +693,9 @@ func _on_player_interact(node: Node2D) -> void:
 			return
 		var tracker := get_tree().get_first_node_in_group("order_tracking")
 		if is_instance_valid(tracker):
-			tracker.refresh_saved_state()
+			tracker.play_completion_feedback("order")
+		if is_instance_valid(_parked_guest) and _parked_guest.has_method("on_order_served"):
+			_parked_guest.on_order_served()
 		guide.show_toast(_quality_feedback(int(result.get("quality", 1)), int(result.get("reputation_awarded", 10))))
 		_complete_step(_run_token)
 		return
@@ -694,8 +726,8 @@ func _on_warehouse_claimed(result: Dictionary) -> void:
 		return
 	_set_player_locked(false)
 	var tracker := get_tree().get_first_node_in_group("order_tracking")
-	if is_instance_valid(tracker) and tracker.has_method("refresh_saved_state"):
-		tracker.refresh_saved_state()
+	if is_instance_valid(tracker) and tracker.has_method("play_completion_feedback"):
+		tracker.play_completion_feedback("ingredients")
 	if is_instance_valid(guide):
 		guide.show_toast(str(step.get("toast", "")))
 	_complete_step(_run_token)
@@ -704,31 +736,19 @@ func _on_warehouse_cancelled() -> void:
 	if active:
 		_set_player_locked(false)
 
-func _on_cooking_finished(result: Dictionary) -> void:
+func _on_cooking_result_confirmed(result: Dictionary) -> void:
 	if not active or idx < 0 or idx >= steps.size():
 		return
-	var token := _run_token
 	var step: Dictionary = steps[idx]
 	if step.get("type", "") != "interact" or int(step.get("stage", 0)) != 5:
 		return
 	if not bool(result.get("success", false)):
 		return
-	# 结果短暂留在弹窗中，随后关闭并恢复教程输入，避免遮罩下推进到移动步骤。
-	await get_tree().create_timer(1.0).timeout
-	if not active or token != _run_token or idx < 0 or idx >= steps.size():
-		return
-	if steps[idx].get("type", "") != "interact" or int(steps[idx].get("stage", 0)) != 5:
-		return
-	var modal := get_tree().get_first_node_in_group("cooking_modal")
-	if not is_instance_valid(modal) or not modal.get("_open"):
-		return
-	modal.close_modal()
+	# 成品已在判定时保存；玩家确认独立结果弹窗后才恢复上菜引导。
 	_set_player_locked(false)
 	var tracker := get_tree().get_first_node_in_group("order_tracking")
-	if is_instance_valid(tracker) and tracker.has_method("refresh_saved_state"):
-		tracker.refresh_saved_state()
-	if is_instance_valid(guide):
-		guide.show_toast("【盐烤岩鬃肉】完成：%d 星" % int(result.get("quality", 1)))
+	if is_instance_valid(tracker) and tracker.has_method("play_completion_feedback"):
+		tracker.play_completion_feedback("cooking")
 	_complete_step(_run_token)
 
 func _on_cooking_cancelled() -> void:

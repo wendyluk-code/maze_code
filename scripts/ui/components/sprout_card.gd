@@ -21,6 +21,8 @@ var _effect_label: Label
 var _value_label: Label
 var _rarity_label: Label
 var _number_label: Label
+var _ability_hint: CanvasLayer
+var _ability_details_enabled := false
 
 func _ready() -> void:
 	theme = SproutTheme.make_theme()
@@ -28,6 +30,10 @@ func _ready() -> void:
 	size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_build()
+	_ability_hint = preload("res://scripts/ui/components/ability_hint.gd").new()
+	_ability_hint.card = self
+	_ability_hint.enabled = _ability_details_enabled
+	add_child(_ability_hint)
 	if _data:
 		_apply_data(_data)
 
@@ -36,6 +42,15 @@ func configure(data: SproutCardData) -> SproutCard:
 	if is_node_ready():
 		_apply_data(data)
 	return self
+
+## 仅由冒险者之家查看卡牌，或战斗点击展开详情的调用方显式开启。
+## 普通列表与入队展示不自动启用；退出详情时调用 false。
+func set_ability_details_enabled(value: bool) -> void:
+	_ability_details_enabled = value
+	if is_instance_valid(_ability_hint):
+		_ability_hint.enabled = value
+		if not value:
+			_ability_hint.dismiss()
 
 func _build() -> void:
 	var content := VBoxContainer.new()
@@ -108,6 +123,7 @@ func _build() -> void:
 	bottom.add_child(_number_label)
 
 func _apply_data(data: SproutCardData) -> void:
+	_ability_hint.ability_text = data.effect
 	var tieshan := data.faction == "tieshan"
 	var bg := TIESHAN_BG if tieshan else SPROUT_BG
 	var border := TIESHAN_BORDER if tieshan else SPROUT_BORDER

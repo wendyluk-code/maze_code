@@ -1,15 +1,30 @@
-[gd_scene load_steps=3 format=3 uid="uid://guestplaceholder0001"]
+[gd_scene load_steps=7 format=3 uid="uid://guestplaceholder0001"]
 
 [ext_resource type="Script" path="res://scripts/guest_placeholder.gd" id="1_guest"]
-[ext_resource type="SpriteFrames" path="res://assets/characters/tieshan/tieshan_collapse.tres" id="2_tieshan"]
+[ext_resource type="SpriteFrames" path="res://assets/characters/tieshan/tieshan_seating.tres" id="2_tieshan"]
+[ext_resource type="Shader" path="res://assets/characters/tieshan/bar_guest_occlusion.gdshader" id="3_occlusion"]
+[ext_resource type="Texture2D" path="res://assets/characters/tieshan/bar_guest_occlusion.png" id="4_mask"]
+[ext_resource type="Texture2D" path="res://assets/characters/tieshan/ground_shadow.png" id="5_shadow"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_guest"]
+shader = ExtResource("3_occlusion")
+shader_parameter/world_occlusion = ExtResource("4_mask")
 
 [node name="TieshanGuest" type="Node2D"]
 z_index = 10
 script = ExtResource("1_guest")
 
+[node name="GroundShadow" type="Sprite2D" parent="."]
+z_index = -1
+position = Vector2(0, 15)
+scale = Vector2(0.55, 0.55)
+texture = ExtResource("5_shadow")
+material = SubResource("ShaderMaterial_guest")
+
 [node name="Portrait" type="AnimatedSprite2D" parent="."]
 position = Vector2(-84.599, -157.591)
 scale = Vector2(0.351765, 0.351765)
+material = SubResource("ShaderMaterial_guest")
 sprite_frames = ExtResource("2_tieshan")
 animation = &"collapse"
 centered = false

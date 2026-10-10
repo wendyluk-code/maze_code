@@ -4,13 +4,15 @@ extends "res://tools/tests/ch1_07_cooking_suite.gd"
 const EXPECTED_DIALOGUE := [
 	["？？？", "……缓过来了。"],
 	["？？？", "这是岩鬃兽的肉？那东西又硬又腥，你居然能做成这样。"],
-	["芽芽", "他以前做得更好。"], ["主角", "以前？"], ["芽芽", "……嗯。"],
+	["芽芽", "他以前做得更好。"], ["你", "以前？"], ["芽芽", "……嗯。"],
 	["？？？", "还能再来一份吗？"], ["芽芽", "再去仓库看看吧。"],
+	["芽芽", "刚才已经是最后一份了。"], ["你", "岩鬃兽在哪里？"],
 	["？？？", "迷宫浅层，旧盐池附近，我就是从那边回来的。"],
 	["？？？", "我叫铁山，是个冒险者。"], ["铁山", "你如果要去，我可以带路。"],
 	["芽芽", "……不行。"], ["芽芽", "你才刚醒，连自己是谁都不记得。"],
-	["主角", "可我还记得怎么做饭，我想继续做下去。"], ["主角", "没有食材，就做不了下一顿。"],
+	["你", "可我还记得怎么做饭，我想继续做下去。"], ["你", "没有食材，就做不了下一顿。"],
 	["芽芽", "……那我也去。"], ["芽芽", "谁都不许往深处走。"], ["铁山", "说定了。拿够食材就回来。"],
+	["芽芽", "等你准备好了，我们再一起去看看。"],
 ]
 
 func _run() -> void:
@@ -86,7 +88,11 @@ func _wrapup_run() -> void:
 		_press_e()
 		var modal := scene.get_node("UIOverlay/WarehouseModal")
 		modal._on_cancel_pressed()
-		_check(sm.departure_state().empty_warehouse_checked and _step() == "salt_pool", "确认空仓库后才进入地图线索")
+		_check(sm.departure_state().empty_warehouse_checked and _step() == "yaya_empty", "确认空仓库后先进入芽芽说明")
+		await _finish_dialogue()
+		_check(_step() == "hero_where", "芽芽说明后主角追问")
+		await _finish_dialogue()
+		_check(_step() == "salt_pool", "主角追问后才进入旧盐池线索")
 		# 线索对白结束时制造单次保存失败，不能解锁地图或丢失检查点。
 		var temporary := ProjectSettings.globalize_path("user://save.json.tmp")
 		_check(DirAccess.make_dir_absolute(temporary) == OK, "建立阶段保存失败夹具")
@@ -190,7 +196,9 @@ func _assert_ready() -> void:
 	_check(state.party == ["yaya", "tieshan"] and state.entrance_lit and state.objective == "与芽芽、铁山一同进入迷宫浅层", "队伍、入口和精确目标持久化")
 	_check(state.cards == {"status": "pending_content", "unlocked": false, "card_ids": []}, "卡牌待提供且未解锁，没有伪造卡牌")
 	_check(not sm.is_chapter_1_done() and not sm.is_tutorial_done(), "CH1-10/11未完成时两个完成标记均为false")
-	_check(sm.can_start_departure() and sm.reputation() == 20 and not sm.has_active_order(), "首单结算与零库存保持不变")
+	_check(sm.can_start_departure() and sm.has_first_order_settlement()
+		and sm.reputation() == int(sm.data.first_order_settlement.reputation_awarded)
+		and not sm.has_active_order(), "首单结算与零库存保持不变")
 	_check(not guide.should_start_chapter_1() and not guide.visible and not player.input_locked, "入口守卫隐藏引导并解除玩家锁定")
 	var before: Dictionary = sm.data.duplicate(true)
 	_check(not sm.claim_first_order_ingredients().success and not sm.deliver_first_order().success and sm.data == before,

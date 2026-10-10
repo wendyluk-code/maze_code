@@ -13,13 +13,15 @@
 | `map.unlocked_floors` | 铁山提供旧盐池线索后为 `[1]`，查询返回整数楼层。JSON 读取的浮点数字转换为整数，保证跨进程一致。 |
 | `map.visible_regions` | 同时写入 `["old_salt_pool"]`（旧盐池）。 |
 | `map.other_regions` | 固定 `fog`（迷雾）。不生成其它区域或完整迷宫。 |
-| `tieshan_name_revealed` | “我叫铁山，是个冒险者。”确认后为 true；该句仍显示“？？？”，随后使用“铁山”。 |
+| `tieshan_name_revealed` | “我叫铁山，是个冒险者。你如果要去，我可以带路。”确认后为 true；按最新对白要求，该句本身已显示“铁山”。 |
 | `party` | 最后一句同行约定确认后写入 `["yaya", "tieshan"]`（芽芽、铁山）。 |
 | `objective` | 与队伍一起写入“与芽芽、铁山一同进入迷宫浅层”。 |
 | `entrance_lit` | 与队伍一起设为 true；餐厅左侧门出现光圈，E 只查看地图与队伍，不切换场景。 |
 | `cards` | `status=pending_content`（内容待提供）、`unlocked=false`（未解锁）、`card_ids=[]`（无卡牌）。本票据不提供正式卡牌。 |
 
 每次 `advance_departure(expected_step)`（完成预期步骤）只允许从当前步骤推进一次，步骤变化及对应状态在同一个存档提交。对白逐句确认后保存：已经确认的句子不重播，尚未确认的句子允许重播。重复旧步骤、提前调用后续步骤、远距离和错误目标交互都不能取得解锁。
+
+2026-10-10 对白删合：`WRAPUP_STEPS` 保留历史标识以校验旧存档；`offer → no`、`memory → cooking`、`ingredients → yaya_join`、`stay_shallow → agreement` 为已删除句到下一可见对白的映射。读取时先检查原始状态，再接续下一句；正常推进直接跳过删除句，并在原事务内一次保存。四个跳过区间没有地图、姓名或入队副作用，不增加玩家按键次数。
 
 正例：旧盐池对白确认后，存档同时出现第一层解锁与 `map_review`（查看地图）检查点；重进打开地图确认面板。反例：仅设置章节完成布尔值、发 Toast（短暂提示），或未检查仓库直接确认同行，均不构成准备成功。
 

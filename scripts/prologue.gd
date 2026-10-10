@@ -6,17 +6,23 @@ const RESTAURANT := "res://scenes/restaurant_map_2d.tscn"
 const STALL_TIMEOUT := 8.0
 
 @export_file("*.ogv") var video_path := "res://assets/video/prologue/prologue_opening_zh.ogv"
+@export_file("*.png") var end_card_path := "res://assets/video/prologue/prologue_end_card.png"
+@export var end_card_time := 197.5
 @onready var video: VideoStreamPlayer = %Video
+@onready var end_card: TextureRect = %EndCard
 @onready var skip_button: Button = %SkipPrologue
 @onready var status: Label = %Status
 
 var _leaving := false
 var _last_position := 0.0
 var _stalled_for := 0.0
+var playback_state := "playing"
+var _e_held := false
+var _continue_armed := false
 
 func _ready() -> void:
 	add_to_group("prologue")
-	skip_button.set_icon_visible(false)
+	skip_button.focus_mode = Control.FOCUS_NONE
 	skip_button.pressed.connect(request_exit.bind("skip_button"))
 	video.finished.connect(_on_finished)
 	if SaveManager.is_prologue_done() and not SaveManager.is_prologue_preview():
@@ -36,13 +42,21 @@ func _start_video() -> void:
 	if video.stream == null:
 		_playback_failed("无法加载视频：" + video_path)
 		return
+	if ResourceLoader.exists(end_card_path, "Texture2D"):
+		end_card.texture = load(end_card_path) as Texture2D
+	if end_card.texture == null:
+		_playback_failed("片尾画面缺失：" + end_card_path)
+		return
 	video.play()
 	print("PROLOGUE playback_started: ", video_path)
 
 func _process(delta: float) -> void:
-	if _leaving or video.stream == null:
+	if _leaving or playback_state != "playing" or video.stream == null:
 		return
 	var position := video.stream_position
+	if end_card_time > 0.0 and position >= end_card_time:
+		_enter_awaiting_continue()
+		return
 	if position > _last_position + 0.01:
 		_last_position = position
 		_stalled_for = 0.0
@@ -52,13 +66,34 @@ func _process(delta: float) -> void:
 		_playback_failed("播放进度停滞超过 8 秒，位置=" + str(position))
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo \
-			and event.keycode in [KEY_ESCAPE, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
-		get_viewport().set_input_as_handled()
-		request_exit("skip_key")
+	if not event is InputEventKey or (event.keycode != KEY_E and event.physical_keycode != KEY_E):
+		return
+	get_viewport().set_input_as_handled()
+	if event.echo:
+		return
+	if not event.pressed:
+		_e_held = false
+		if playback_state == "awaiting_continue":
+			_continue_armed = true
+		return
+	var was_held := _e_held
+	_e_held = true
+	if playback_state == "awaiting_continue" and _continue_armed and not was_held:
+		_continue_armed = false
+		request_exit("end_card_continue")
 
 func _on_finished() -> void:
-	request_exit("finished")
+	_enter_awaiting_continue()
+
+func _enter_awaiting_continue() -> void:
+	if _leaving or playback_state != "playing":
+		return
+	playback_state = "awaiting_continue"
+	video.paused = true
+	end_card.show()
+	# 跨越片尾边界一直按住 E 时，必须先释放再按，重复事件不能穿透。
+	_continue_armed = not _e_held and not Input.is_key_pressed(KEY_E) and not Input.is_physical_key_pressed(KEY_E)
+	print("PROLOGUE awaiting_continue: position=", video.stream_position)
 
 func _playback_failed(message: String) -> void:
 	push_warning("PROLOGUE 播放失败，安全进入第一章：" + message)
@@ -70,6 +105,7 @@ func request_exit(reason: String) -> void:
 	if _leaving:
 		return
 	_leaving = true
+	playback_state = "leaving"
 	skip_button.disabled = true
 	set_process(false)
 	print("PROLOGUE exit_requested: ", reason, " position=", video.stream_position)
@@ -80,5 +116,9 @@ func request_exit(reason: String) -> void:
 
 func _on_transition_failed() -> void:
 	_leaving = false
+	playback_state = "awaiting_continue"
+	_continue_armed = not _e_held and not Input.is_key_pressed(KEY_E) and not Input.is_physical_key_pressed(KEY_E)
+	if end_card.texture != null:
+		end_card.show()
 	skip_button.disabled = false
 	status.text = "餐厅加载失败，请重试进入（详见日志）"

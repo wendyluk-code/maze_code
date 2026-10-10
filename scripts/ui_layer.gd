@@ -18,6 +18,9 @@ var player: Node2D = null
 
 func _ready() -> void:
 	add_to_group("ui_layer")
+	var restaurant_hud := CanvasLayer.new()
+	restaurant_hud.set_script(load("res://scripts/ui/restaurant_hud.gd"))
+	add_child(restaurant_hud)
 	var departure_panel := Control.new()
 	departure_panel.name = "DeparturePanel"
 	departure_panel.set_script(load("res://scripts/ui/departure_panel.gd"))
@@ -42,7 +45,23 @@ func _rebuild_buttons() -> void:
 		var content_w: float = btn.get_node("Content").get_combined_minimum_size().x
 		btn.size = Vector2(maxf(140.0, content_w + 24.0), BUTTON_HEIGHT)
 		btn.set_meta("target", node)
+		# 鼠标点击与键盘 E 进入同一交互信号，并复用最近目标校验。
+		btn.mouse_filter = Control.MOUSE_FILTER_STOP
+		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		for child in btn.find_children("*", "Control", true, false):
+			child.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		btn.gui_input.connect(_on_interaction_button_input.bind(node, btn))
 		_buttons[node] = btn
+
+func _on_interaction_button_input(event: InputEvent, target: Node2D, button: Control) -> void:
+	if not event is InputEventMouseButton or not event.pressed or event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if not is_instance_valid(player) or player.input_locked or not button.is_visible_in_tree():
+		return
+	if not is_instance_valid(target) or player.nearest_interactable() != target:
+		return
+	get_viewport().set_input_as_handled()
+	player.interacted.emit(target)
 
 func _process(_delta: float) -> void:
 	# 教学对话框/过场时隐藏；其余时刻按各自 target 的交互距离显示
@@ -50,7 +69,7 @@ func _process(_delta: float) -> void:
 	var hiding := false
 	if tm and tm.active and tm.idx < tm.steps.size():
 		var st: Dictionary = tm.steps[tm.idx]
-		if st.get("type", "") == "dialog" or st.get("type", "") == "cutscene_guest":
+		if st.get("type", "") in ["dialog", "cutscene_guest"] or is_instance_valid(tm._chapter_outro):
 			hiding = true
 	if hiding != _hiding:
 		_hiding = hiding
@@ -71,7 +90,9 @@ func _process(_delta: float) -> void:
 	var warehouse_modal := get_tree().get_first_node_in_group("warehouse_modal")
 	var departure_panel := get_tree().get_first_node_in_group("departure_panel")
 	var cooking_modal := get_tree().get_first_node_in_group("cooking_modal")
-	if (is_instance_valid(warehouse_modal) and warehouse_modal.visible) or (is_instance_valid(departure_panel) and departure_panel._open) or (is_instance_valid(cooking_modal) and cooking_modal.visible):
+	var restaurant_hud := get_tree().get_first_node_in_group("restaurant_hud")
+	var confirming: bool = is_instance_valid(restaurant_hud) and restaurant_hud.confirmation.visible
+	if confirming or (is_instance_valid(warehouse_modal) and warehouse_modal.visible) or (is_instance_valid(departure_panel) and departure_panel._open) or (is_instance_valid(cooking_modal) and cooking_modal.visible):
 		_hiding = true
 		for b in _buttons.values():
 			if is_instance_valid(b):
@@ -119,24 +140,21 @@ func _place_button(btn: Control, node: Node2D, cam: Camera2D, zone: Node, vp: Ve
 
 func action_for(display_name: String) -> String:
 	match display_name:
-		"魔法汤锅":
+		"魔法汤锅", "料理台":
 			return "烹饪"
 		"小餐车":
-			return "补货料理"
+			return "送餐"
 		"冰柜":
-			return "存取食材"
+			return "冷藏"
 		"吧台":
 			return "上菜"
 		"前台":
-			var tm := get_node_or_null("/root/TutorialManager")
-			if tm != null and tm.active and tm.current_stage == 6:
-				return "交单上菜"
 			return "点单"
 		"仓库":
-			if SaveManager.has_first_order_settlement():
-				return "查看库存"
-			return "取货"
+			return "领取食材"
 		"迷宫入口":
-			return "查看出发准备"
+			return "前往迷宫"
+		"冒险者之家入口":
+			return "前往冒险者之家"
 		_:
 			return display_name

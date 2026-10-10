@@ -160,11 +160,13 @@ func _run_quality(quality: int, resolution: Vector2i, output_dir: String) -> voi
 	_check(sm.cooked_quality() == quality and sm.inventory_quantity(sm.FIRST_ORDER_ITEM_ID) == 1,
 		"品质%d：鼠标起锅锁定星级" % quality)
 	await _capture(output_dir, "qte03_%d_%dx%d_result" % [quality, resolution.x, resolution.y])
-	_check(await _wait_until(func(): return tm.idx == 14 and not modal.visible, 240), "品质%d：完成后关闭料理弹窗" % quality)
-	player.global_position = _stand(register)
+	await get_tree().create_timer(0.25).timeout
+	await _click(modal.get("_result_popup").get("_confirm_button"))
+	_check(await _wait_until(func(): return tm.idx in [14,15] and tm.current_stage == 6 and not modal.visible, 240), "品质%d：确认结果后关闭料理弹窗" % quality)
+	player.global_position = _stand(scene.get_node("InteractPoints/BarCounter"))
 	_check(await _wait_until(func(): return tm.idx == 15, 240), "品质%d：交付教学步骤" % quality)
 	await _send_key(KEY_E)
-	var reward: int = int({1: 10, 2: 12, 3: 15}[quality])
+	var reward: int = int({1: 60, 2: 80, 3: 100}[quality])
 	_check(sm.has_first_order_settlement() and sm.reputation() == reward and sm.current_order().get("status", "") == "completed",
 		"品质%d：真实 E 交付声望%d" % [quality, reward])
 	_check(_feedback_contains(guide, quality), "品质%d：顾客评价分档" % quality)
@@ -206,7 +208,7 @@ func _run_post_delivery_empty_warehouse() -> void:
 	var modal := scene.get_node("UIOverlay/WarehouseModal")
 	_check(modal.visible and bool(modal.get("_empty_stock")) and str(modal.get("_message").text) == "没有任何食物" and not modal.get("_claim_button").visible, "交付后E打开空仓库并隐藏领取")
 	await _click(modal.get("_cancel_button"))
-	_check(not modal.visible and str(tm.steps[tm.idx].get("wrapup_id", "")) == "salt_pool", "确认空仓库后推进盐池线索")
+	_check(not modal.visible and str(tm.steps[tm.idx].get("wrapup_id", "")) == "yaya_empty", "确认空仓库后先播放芽芽说明")
 	await _advance_dialogues_until("map_review", 12000)
 	var panel := scene.get_node("UIOverlay/DeparturePanel")
 	_check(bool(panel.get("_open")), "交付后真实对白打开地图确认面板")

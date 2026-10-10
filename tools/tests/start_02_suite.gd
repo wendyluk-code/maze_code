@@ -64,7 +64,7 @@ func state_suite() -> void:
 	var b: Dictionary = sm.create_new_game()
 	check(b.success and sm.accept_first_order().success and sm.claim_first_order_ingredients().success, "真实创建 B 并取料")
 	check(JSON.parse_string(disk(a.id))[sm.SLOT_META_KEY].name == "冒险1" and sm.data[sm.SLOT_META_KEY].name == "冒险2", "新建档默认依次为冒险1和冒险2")
-	check(sm.save_date_text(57599) == "1970-01-01" and sm.save_date_text(57600) == "1970-01-02", "日期跨北京时间午夜，不依赖系统时区")
+	check(sm.save_date_text(57599) == "1970-01-01 23:59:59" and sm.save_date_text(57600) == "1970-01-02 00:00:00", "日期时间显示到秒，跨北京时间午夜且不依赖系统时区")
 	var legacy_path := "user://saves/legacy-ABCD.json"
 	var legacy_text := '{"_save_slot":{"id":"legacy-ABCD","name":"新冒险 2026-07-28 11:15:35 · ABCD"},"sentinel":42}'
 	write(legacy_path, legacy_text)

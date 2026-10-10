@@ -25,6 +25,8 @@ func _build_layers() -> void:
 		if target == null or not target.has_method("world_foreground_polygon") \
 			or not target.has_method("world_occlusion_polygon"):
 			continue
+		if target.get_meta("foreground_disabled", false):
+			continue
 		var foreground: PackedVector2Array = target.world_foreground_polygon()
 		var occlusion: PackedVector2Array = target.world_occlusion_polygon()
 		if foreground.size() < 3 or occlusion.size() < 3:

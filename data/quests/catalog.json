@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "types": {
+    "order": {
+      "name": "订单任务",
+      "accept_event": "order.accepted",
+      "complete_event": "order.delivered",
+      "completion_handler": "canonical_order_settlement",
+      "interaction": "front_desk_accept_then_bar_deliver"
+    },
+    "exploration": {
+      "name": "探索任务",
+      "accept_event": "chapter_1.ready_to_depart",
+      "complete_event": "exploration.region_entered",
+      "completion_handler": "verified_region_arrival",
+      "interaction": "enter_target_region"
+    }
+  },
+  "quests": {
+    "restaurant_customer_order": {
+      "type": "order",
+      "title": "交出盐烤岩鬃肉",
+      "accept_condition": {"handler": "waiting_customer_order_accepted"},
+      "completion_condition": {"handler": "customer_order_settlement"},
+      "subtasks": [
+        {"id": "collect_ingredients", "title": "领取食材", "handler": "customer_order_ingredients_available"},
+        {"id": "cook_dish", "title": "制作料理", "handler": "customer_order_dish_available"}
+      ]
+    },
+    "chapter_1_first_order": {
+      "type": "order",
+      "title": "交出盐烤岩鬃肉",
+      "accept_condition": {"handler": "canonical_first_order_active"},
+      "completion_condition": {"handler": "canonical_order_settlement", "order_id": "chapter_1_first_order"},
+      "subtasks": [
+        {"id": "collect_ingredients", "title": "领取食材", "handler": "first_order_ingredients_claimed"},
+        {"id": "cook_dish", "title": "制作料理", "handler": "first_order_cooked"}
+      ]
+    },
+    "chapter_1_salt_pool": {
+      "type": "exploration",
+      "title": "前往迷宫第一层·盐池",
+      "accept_condition": {"handler": "chapter_1_ready_to_depart"},
+      "completion_condition": {"handler": "verified_region_arrival", "floor": 1, "region_id": "old_salt_pool", "implemented": false},
+      "subtasks": []
+    }
+  }
+}

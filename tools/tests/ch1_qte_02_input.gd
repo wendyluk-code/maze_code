@@ -40,7 +40,7 @@ func _mount_saved() -> void:
 
 func _deliver(quality: int) -> void:
 	var p := scene.get_node("Player")
-	p.global_position = _stand(scene.get_node("InteractPoints/Register"))
+	p.global_position = _stand(scene.get_node("InteractPoints/BarCounter"))
 	_check(await _wait_until(func(): return tm.idx == 15, 180), "重进到真实交单步骤")
 	await _send_key(KEY_E)
 	_check(sm.has_first_order_settlement() and sm.reputation() == {1: 10, 2: 12, 3: 15}[quality], "真实 E 交单品质奖励")
@@ -159,7 +159,7 @@ func _save_failure() -> void:
 	await _click(modal.get("_finish_button"))
 	_check(sm.cooked_quality() == stars and is_equal_approx(sm.cooking_state().pointer, pointer) and sm.inventory_quantity(sm.FIRST_ORDER_ITEM_ID) == 1, "起锅重试仅提交原品质一次")
 	await _wait_until(func(): return tm.idx == 14, 180)
-	scene.get_node("Player").global_position = _stand(scene.get_node("InteractPoints/Register"))
+	scene.get_node("Player").global_position = _stand(scene.get_node("InteractPoints/BarCounter"))
 	await _wait_until(func(): return tm.idx == 15, 180)
 	before = sm.data.duplicate(true)
 	disk = FileAccess.get_file_as_string(sm.SAVE_PATH)

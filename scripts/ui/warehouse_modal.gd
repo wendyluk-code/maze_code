@@ -28,6 +28,7 @@ var _claim_button: SproutButton
 var _selected := {}
 var _open := false
 var _empty_stock := false
+var _general_stock := false
 var _stock_title: Label
 var _slots_grid: GridContainer
 var _scroll: ScrollContainer
@@ -96,9 +97,15 @@ func _build() -> void:
 	_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	add_child(_panel)
 
+	var frame := VBoxContainer.new()
+	frame.add_theme_constant_override("separation", 4)
+	_panel.add_child(frame)
+
+	# 内容区始终占满剩余高度，隐藏选择列表时也保持底部按钮栏的位置。
 	var outer := VBoxContainer.new()
+	outer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	outer.add_theme_constant_override("separation", 4)
-	_panel.add_child(outer)
+	frame.add_child(outer)
 
 	var heading := Label.new()
 	heading.text = "仓库"
@@ -214,7 +221,7 @@ func _build() -> void:
 	actions.alignment = BoxContainer.ALIGNMENT_END
 	actions.custom_minimum_size.y = 38
 	actions.add_theme_constant_override("separation", 10)
-	outer.add_child(actions)
+	frame.add_child(actions)
 
 	_cancel_button = SproutButton.new()
 	_cancel_button.configure("取消")
@@ -291,6 +298,7 @@ func _ingredient_icon(source: Texture2D, region: Rect2) -> AtlasTexture:
 	return texture
 
 func open_for_order() -> void:
+	_general_stock = false
 	_empty_stock = false
 	_selected.clear()
 	_stock_title.text = "食材"
@@ -317,6 +325,7 @@ func open_for_order() -> void:
 	_set_tutorial_suppressed(true)
 
 func open_empty_stock() -> void:
+	_general_stock = false
 	_empty_stock = true
 	_selected.clear()
 	_open = true
@@ -347,6 +356,21 @@ func _has_stock(stock: Dictionary) -> bool:
 		if int(stock.get(item_id, 0)) > 0:
 			return true
 	return false
+
+func open_stock() -> void:
+	var stock := SaveManager.warehouse_snapshot()
+	if not _has_stock(stock):
+		open_empty_stock()
+		_message.text = "没有任何食物"
+		for item_id in _slot_by_id:
+			_set_slot(_slot_by_id[item_id], 0, true, true)
+		return
+	open_for_order()
+	_general_stock = true
+	for item_id in _slot_by_id:
+		var quantity := int(stock.get(item_id, 0))
+		_set_slot(_slot_by_id[item_id], quantity, quantity <= 0, true)
+	_update_selection()
 
 func _set_slot(slot: SproutItemSlot, quantity: int, disabled_state: bool, slot_visible: bool) -> void:
 	slot.configure(slot.item_id, slot._item_name, clampi(quantity, 0, MAX_ITEM_QUANTITY), slot._icon_index, disabled_state)
@@ -391,7 +415,7 @@ func _update_selection() -> void:
 			total += quantity
 	_selection_label.text = "已选择 %d 种，共 %d 份" % [kinds, total]
 	_selected_title.text = "已选择食材"
-	_claim_button.disabled = not _is_first_order_selection()
+	_claim_button.disabled = _selected.is_empty() if _general_stock else not _is_first_order_selection()
 	_rebuild_selected_list()
 
 func _rebuild_selected_list() -> void:
@@ -511,6 +535,15 @@ func _on_cancel_pressed() -> void:
 		cancelled.emit()
 
 func _on_claim_pressed() -> void:
+	if _general_stock and _open:
+		var result := SaveManager.take_warehouse_items(_selected)
+		if result.success:
+			close_modal()
+			claimed.emit(result)
+		else:
+			_message.text = "取出失败，当前库存未改变"
+			_message.show()
+		return
 	if _empty_stock:
 		return
 	if not _open or not _is_first_order_selection():

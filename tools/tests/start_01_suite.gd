@@ -208,7 +208,7 @@ func _visual_suite() -> void:
 		_check(sm.list_save_slots().slots.size() == 1, "连续点击只创建一份独立档")
 		await get_tree().create_timer(1.0).timeout
 		await _capture("prologue")
-		await _key(KEY_ESCAPE)
+		await _click_at(get_tree().current_scene.skip_button.get_global_rect().get_center())
 	else:
 		await _click(screen.continue_button)
 		await _select_row("user://saves/broken.json")

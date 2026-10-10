@@ -39,6 +39,10 @@ texture = ExtResource("1_bg")
 ; centered=false 表示贴图左上角对齐节点位置（该节点在原点，即地图左上角=世界原点）
 centered = false
 
+; 铁山从前台后方绕行至吧台靠右的第一张真实圆凳；锚点落在椅面中心。
+[node name="TieshanSeatAnchor" type="Marker2D" parent="."]
+position = Vector2(471, 251)
+
 ; 交互点容器：所有可交互道具集中放在这个节点下
 [node name="InteractPoints" type="Node2D" parent="." unique_id=1523598777]
 
@@ -114,6 +118,16 @@ foreground_polygon = PackedVector2Array(-65, 30, -20, 0, 10, -30, 105, -5, 190, 
 occlusion_polygon = PackedVector2Array(-82, -172, 18, -185, 108, -158, 188, 25, 184, 52, 128, 90, 76, 75, 5, 88, -48, 80, -84, 55)
 ; 按钮显示位置：右移 35、上移累计 40 像素（触发点仍为 position，坐标为地图像素）
 ui_offset = Vector2(35, -40)
+
+; 右下角通往冒险者之家的门：使用独立轮廓，避免把相连的地图外沿识别成门。
+[node name="AdventurerHomeDoor" type="Node2D" parent="InteractPoints"]
+position = Vector2(1360, 830)
+script = ExtResource("6_interact")
+display_name = "冒险者之家入口"
+interaction_polygon = PackedVector2Array(-45, -55, 60, -45, 85, 75, -35, 95)
+ui_offset = Vector2(-70, -65)
+; 门位于不可穿越的地图边缘，无需重绘道具前景。
+metadata/foreground_disabled = true
 
 ; 可走区域节点：负责角色行动范围判定
 [node name="WalkZone" type="Node2D" parent="." unique_id=1692919276]
