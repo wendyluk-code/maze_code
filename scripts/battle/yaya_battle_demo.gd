@@ -21,6 +21,9 @@ const SideHud = preload("res://scripts/battle/battle_side_hud.gd")
 const Toast = preload("res://scripts/ui/components/feedback_toast.gd")
 const SproutAction = preload("res://scripts/ui/components/sprout_button.gd")
 const BattleMenu = preload("res://scripts/battle/battle_menu.gd")
+const ContinuePrompt = preload("res://scripts/ui/components/continue_prompt.gd")
+const VICTORY_RESULT: Texture2D = preload("res://assets/ui/battle/results/victory_wordmark_v1.png")
+const DEFEAT_RESULT: Texture2D = preload("res://assets/ui/battle/results/defeat_wordmark_v1.png")
 const CREAM := Color("#fff5df")
 const GOLD := Color("#d5ad5e")
 const INK := Color("#345356")
@@ -59,6 +62,10 @@ var draft_hint: Label
 var end_button: Button
 var battle_menu: Control
 var ending_early := false
+var result_ready := false
+var result_armed := false
+var result_e_held := false
+var result_exiting := false
 var battle_tweens: Array[Tween] = []
 var phase_label: Label
 var hint: Label
@@ -640,6 +647,24 @@ func _hand_at(point: Vector2) -> int:
 
 func _input(event: InputEvent) -> void:
 	if not is_instance_valid(board): return
+	if state == "result":
+		# 演出及等待期间消费全部输入，关闭的 E 也不能传到返回场景。
+		get_viewport().set_input_as_handled()
+		if not event is InputEventKey or (event.keycode != KEY_E and event.physical_keycode != KEY_E): return
+		if event.echo: return
+		if not event.pressed:
+			result_e_held = false
+			result_armed = result_ready
+			return
+		var was_held := result_e_held
+		result_e_held = true
+		if result_ready and result_armed and not was_held and not result_exiting:
+			result_armed = false
+			result_exiting = true
+			_return_menu.call_deferred()
+		return
+	if event is InputEventKey and (event.keycode == KEY_E or event.physical_keycode == KEY_E) and not event.echo:
+		result_e_held = event.pressed
 	if ending_early or (is_instance_valid(battle_menu) and battle_menu.is_open): return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 		if state in ["player_turn", "enemy_turn"]: _cancel_selection()
@@ -1003,46 +1028,74 @@ func _float(target: Control, value: String, color: Color, offset := Vector2.ZERO
 	tween.tween_property(label, "modulate:a", 0.0, 0.45).set_delay(0.45)
 	tween.finished.connect(label.queue_free)
 
-func _result(victory: bool, auto_return := false) -> void:
+func _result(victory: bool) -> void:
+	if state == "result": return
 	state = "result"
+	ending_early = true
+	for tween in battle_tweens:
+		if tween.is_valid(): tween.kill()
+	battle_tweens.clear()
 	_cancel_selection()
 	_update_hud()
+	for child in board.get_children():
+		if child.z_index >= 100: child.hide()
+	get_viewport().gui_release_focus()
+	result_ready = false
+	result_armed = false
+	result_e_held = result_e_held or Input.is_key_pressed(KEY_E) or Input.is_physical_key_pressed(KEY_E)
+	var overlay := Control.new()
+	overlay.name = "Result"
+	overlay.size = CANVAS
+	overlay.z_index = 500
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	board.add_child(overlay)
+	var veil := ColorRect.new()
+	veil.name = "Veil"
+	veil.size = CANVAS
+	veil.color = Color(0.025, 0.035, 0.03, 0.78)
+	veil.modulate.a = 0
+	veil.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.add_child(veil)
+	var wordmark := TextureRect.new()
+	wordmark.name = "Wordmark"
+	wordmark.texture = VICTORY_RESULT if victory else DEFEAT_RESULT
+	wordmark.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	wordmark.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	wordmark.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	wordmark.position = Vector2(230, 95)
+	wordmark.size = Vector2(820, 500)
+	wordmark.pivot_offset = wordmark.size * 0.5
+	wordmark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wordmark.modulate.a = 0
+	wordmark.scale = Vector2.ONE * 0.9
+	overlay.add_child(wordmark)
+	var prompt := ContinuePrompt.new()
+	prompt.name = "ContinuePrompt"
+	overlay.add_child(prompt)
+	prompt.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	prompt.offset_top = -84
+	prompt.offset_bottom = -40
+	prompt.modulate.a = 0
 	var loser := enemy_field if victory else player_field
 	var fall := _battle_tween().set_parallel(true)
 	fall.tween_property(loser, "rotation", 0.2, 0.45)
 	fall.tween_property(loser, "position:y", loser.position.y + 30, 0.45)
 	fall.tween_property(loser, "modulate:a", 0.0, 0.45)
 	await fall.finished
-	dim.modulate.a = 0
-	dim.show()
+	dim.hide()
 	var fade := _battle_tween()
-	fade.tween_property(dim, "modulate:a", 1.0, 0.4)
+	fade.tween_property(veil, "modulate:a", 1.0, 0.4)
 	await fade.finished
-	var panel := _panel(board, Rect2(365, 205, 550, 320), Color(0.08,0.18,0.18,0.95), GOLD, 2, 16)
-	panel.name = "Result"
-	panel.z_index = 210
-	panel.pivot_offset = panel.size * 0.5
-	_text(panel, "胜 利" if victory else "惜 败", Rect2(0, 30, 550, 80), 52, GOLD if victory else RED, true)
-	_text(panel, "芽芽的战斗结束了", Rect2(0, 120, 550, 36), 22, CREAM, true)
-	_text(panel, "烹饪 %d 次" % cook_count, Rect2(0, 161, 550, 30), 18, CREAM, true)
-	if auto_return:
-		_text(panel, "即将返回上一级", Rect2(66, 240, 418, 52), 19, CREAM, true)
-	else:
-		_button(panel, "再战一场", Rect2(66, 240, 190, 52), _restart_battle)
-		_button(panel, "返回上一级", Rect2(292, 240, 190, 52), _return_menu)
-	panel.modulate.a = 0
-	panel.scale = Vector2.ONE * 0.9
 	var intro := _battle_tween().set_parallel(true)
-	intro.tween_property(panel, "modulate:a", 1.0, 0.3)
-	intro.tween_property(panel, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	intro.tween_property(wordmark, "modulate:a", 1.0, 0.3)
+	intro.tween_property(wordmark, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_sound(780 if victory else 260, 0.25)
-	if auto_return:
-		await intro.finished
-		await get_tree().create_timer(1.2, false).timeout
-		var leave := _battle_tween()
-		leave.tween_property(board, "modulate:a", 0.0, 0.35)
-		await leave.finished
-		_return_menu()
+	await intro.finished
+	var reveal := _battle_tween()
+	reveal.tween_property(prompt, "modulate:a", 1.0, 0.2)
+	await reveal.finished
+	result_ready = true
+	result_armed = not result_e_held
 
 func _battle_tween() -> Tween:
 	battle_tweens = battle_tweens.filter(func(t: Tween): return t.is_valid())
@@ -1055,14 +1108,8 @@ func _menu_action(action: String) -> void:
 	if action == "restart":
 		_restart_battle()
 		return
-	ending_early = true
-	for tween in battle_tweens:
-		if tween.is_valid(): tween.kill()
-	battle_tweens.clear()
-	for child in board.get_children():
-		if child != battle_menu and child.z_index >= 100: child.hide()
 	player_hp = 0
-	await _result(false, true)
+	await _result(false)
 
 func _restart_battle() -> void:
 	if is_queued_for_deletion(): return

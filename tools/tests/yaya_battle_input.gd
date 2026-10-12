@@ -44,13 +44,20 @@ func _navigation() -> void:
 				await _pause(4.2)
 			_check(battle.state == "result", "真实主场景自然失败")
 			await _pause(1.2)
-			var previous_id := battle.get_instance_id()
-			await _click(Vector2(526, 471))
-			await _pause(0.2)
+			await _fresh_continue()
+			await _pause(0.3)
+			_check(get_tree().current_scene.scene_file_path.ends_with("start_screen.tscn"), "自然失败新按E返回主菜单")
+			var returned := get_tree().current_scene
+			for pressed in [true, false]:
+				var event := InputEventMouseButton.new()
+				event.position = returned.battle_button.get_global_rect().get_center()
+				event.button_index = MOUSE_BUTTON_LEFT
+				event.pressed = pressed
+				get_viewport().push_input(event)
+				await get_tree().process_frame
+			await _pause(0.3)
 			battle = get_tree().current_scene
-			_check(battle.get_instance_id() != previous_id and battle.scene_file_path.ends_with("yaya_battle_demo.tscn"), "结算再战重建战斗")
 			if await _until("draft"):
-				_check(battle.replace_count == 0 and battle.player_hp == 10 and battle.enemy_hp == 5 and battle.discard.is_empty(), "再战清空上一局状态并恢复教学10/5生命")
 				await _click(Vector2(640, 638))
 				if await _until("player_turn"):
 					await _click(battle.battle_menu.gear.get_rect().get_center())
@@ -59,7 +66,10 @@ func _navigation() -> void:
 					await _key(KEY_TAB)
 					await _key(KEY_ENTER)
 					await _pause(3.1)
-					_check(get_tree().current_scene.scene_file_path.ends_with("start_screen.tscn"), "齿轮结束确认后失败结算并返回主菜单")
+					_check(get_tree().current_scene == battle and battle.state == "result", "齿轮结束确认后失败结算等待E")
+					await _fresh_continue()
+					await _pause(0.3)
+					_check(get_tree().current_scene.scene_file_path.ends_with("start_screen.tscn"), "主动结束新按E返回主菜单")
 	var file := FileAccess.open(output + "/navigation.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify({"checks": results.size(), "failures": failures, "results": results}, "\t"))
 	print("YAYA_NAVIGATION ", results.size(), " checks / ", failures, " failures")
@@ -369,7 +379,7 @@ func _game(first: int, teaching: bool) -> void:
 		await _attack_gesture()
 		if not await _until("result"): return
 		await _pause(1.4)
-		_check(battle.enemy_hp <= 0 and battle.board.has_node("Result"), "自然胜利且出现结算按钮")
+		_check(battle.enemy_hp <= 0 and battle.board.has_node("Result"), "自然胜利且出现结算蒙层")
 		await _shot("victory")
 	battle.queue_free()
 	await get_tree().process_frame
@@ -388,4 +398,12 @@ func _tutorial_first() -> void:
 		if not await _until("player_turn"): return
 		_check(battle.enemy_step == 0, "教学确认后玩家先行动")
 		battle.queue_free()
+		await get_tree().process_frame
+
+func _fresh_continue() -> void:
+	for down in [false, true, false]:
+		var event := InputEventKey.new()
+		event.keycode = KEY_E
+		event.pressed = down
+		get_viewport().push_input(event)
 		await get_tree().process_frame

@@ -122,7 +122,10 @@ func _menu_run() -> void:
 		_check(battle.board.has_node("Result") and battle.state == "result" and battle.enemy_step == step_at_end, "失败结算可见且旧异步动作未继续")
 		await _shot("forfeit_result")
 		await _pause(1.8)
-		_check(get_tree().current_scene.scene_file_path.ends_with("start_screen.tscn") and not get_tree().paused, "失败动画播完自动返回上一级且输入恢复")
+		_check(get_tree().current_scene == battle and battle.state == "result", "演出完毕不会自动返回")
+		await _fresh_continue()
+		await _pause(0.3)
+		_check(get_tree().current_scene.scene_file_path.ends_with("start_screen.tscn") and not get_tree().paused, "失败动画播完新按E返回上一级且输入恢复")
 		await _shot("returned")
 		# 从开场计时器期间结束，覆盖与动画等待不同的异步路径。
 		get_tree().current_scene.queue_free()
@@ -134,7 +137,10 @@ func _menu_run() -> void:
 		await _pause(1.3)
 		_check(battle.state == "result" and not is_instance_valid(battle.draft), "开场结束后旧抽签计时器不再进入选牌")
 		await _pause(1.8)
-		_check(get_tree().current_scene.scene_file_path.ends_with("start_screen.tscn"), "开场结束同样播失败后返回")
+		_check(get_tree().current_scene == battle and battle.state == "result", "演出完毕不会自动返回")
+		await _fresh_continue()
+		await _pause(0.3)
+		_check(get_tree().current_scene.scene_file_path.ends_with("start_screen.tscn"), "开场结束同样播失败后新按E返回")
 		get_tree().current_scene.queue_free()
 		get_tree().current_scene = null
 		await get_tree().process_frame

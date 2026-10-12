@@ -93,7 +93,7 @@ func _ask(action: String) -> void:
 	if action == "restart":
 		confirmation.show_modal("重开战斗", "确定重新开始本场战斗吗？\n当前战斗进度将被清空。", "重开战斗")
 	else:
-		confirmation.show_modal("结束战斗", "确定结束本场战斗吗？\n本场将按失败结算，然后返回上一级页面。", "结束战斗")
+		confirmation.show_modal("结束战斗", "确定结束本场战斗吗？\n本场将按失败结算，演出结束后按 E 返回上一级页面。", "结束战斗")
 	confirmation._cancel_button.grab_focus()
 
 func _confirmation_closed() -> void:
