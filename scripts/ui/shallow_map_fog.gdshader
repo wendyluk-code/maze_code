@@ -1,6 +1,13 @@
 shader_type canvas_item;
 render_mode unshaded;
 uniform sampler2D obscured_map : filter_linear_mipmap, repeat_disable;
+uniform sampler2D label_free_map : filter_linear, repeat_disable;
+// 默认参数保留餐厅剧情地图；探索视图传入真实道路遮罩和局部取景。
+uniform sampler2D road_reveal : filter_linear_mipmap, repeat_disable;
+uniform bool exploration_view = false;
+uniform bool circular_view = false;
+uniform bool map_unlocked = true;
+uniform vec4 view_region = vec4(0.0, 0.0, 1.0, 1.0);
 varying vec4 canvas_tint;
 
 void vertex() {
@@ -36,8 +43,30 @@ float hidden_label(vec2 p) {
 	return 1.0 - smoothstep(-2.0, 30.0, d);
 }
 
+float nameplate_rect(vec2 p, vec4 bounds) {
+	vec2 edge = abs(p - bounds.xy - bounds.zw * 0.5) - bounds.zw * 0.5;
+	return 1.0 - smoothstep(0.0,8.0,length(max(edge,vec2(0.0))));
+}
+
+float minimap_nameplates(vec2 p) {
+	// 仅替换原图十二块地名牌及其柔边，其他像素仍取原地图。
+	float mask = nameplate_rect(p,vec4(151.0,137.0,132.0,42.0));
+	mask = max(mask,nameplate_rect(p,vec4(374.0,169.0,141.0,42.0)));
+	mask = max(mask,nameplate_rect(p,vec4(822.0,198.0,122.0,43.0)));
+	mask = max(mask,nameplate_rect(p,vec4(217.0,380.0,124.0,42.0)));
+	mask = max(mask,nameplate_rect(p,vec4(750.0,450.0,139.0,47.0)));
+	mask = max(mask,nameplate_rect(p,vec4(227.0,620.0,126.0,41.0)));
+	mask = max(mask,nameplate_rect(p,vec4(785.0,757.0,124.0,43.0)));
+	mask = max(mask,nameplate_rect(p,vec4(1324.0,701.0,125.0,42.0)));
+	mask = max(mask,nameplate_rect(p,vec4(1392.0,395.0,144.0,44.0)));
+	mask = max(mask,nameplate_rect(p,vec4(1371.0,181.0,123.0,42.0)));
+	mask = max(mask,nameplate_rect(p,vec4(1529.0,114.0,82.0,39.0)));
+	return max(mask,nameplate_rect(p,vec4(104.0,821.0,101.0,43.0)));
+}
+
 void fragment() {
-	vec2 p = UV * vec2(1672.0, 941.0);
+	vec2 map_uv = view_region.xy + UV * view_region.zw;
+	vec2 p = map_uv * vec2(1672.0, 941.0);
 	float d = ellipse_distance(p, vec2(1560.0, 125.0), vec2(92.0, 88.0));
 	d = min(d, ellipse_distance(p, vec2(1434.0, 203.0), vec2(112.0, 66.0)));
 	d = min(d, ellipse_distance(p, vec2(822.0, 487.0), vec2(147.0, 110.0)));
@@ -58,18 +87,25 @@ void fragment() {
 	d = min(d, path_distance(p, vec2(850.0, 365.0), vec2(818.0, 315.0), 38.0));
 	d = min(d, path_distance(p, vec2(818.0, 315.0), vec2(785.0, 288.0), 38.0));
 	d = min(d, path_distance(p, vec2(785.0, 288.0), vec2(801.0, 252.0), 38.0));
-	float clouds = cloud_shadow(UV * vec2(5.0, 3.5), TIME * 0.16);
+	float clouds = cloud_shadow(map_uv * vec2(5.0, 3.5), TIME * 0.16);
 	float coverage = smoothstep(-6.0, 42.0, d + (clouds - 0.5) * 12.0);
-	vec4 source = texture(TEXTURE, UV);
+	if (exploration_view) {
+		float road = max(textureLod(road_reveal, map_uv,0.0).r, textureLod(road_reveal,map_uv,4.4).r * 0.95);
+		coverage = min(coverage, 1.0 - road);
+	}
+	vec4 source = texture(TEXTURE, map_uv);
+	if (circular_view) {
+		source = mix(source,texture(label_free_map,map_uv),minimap_nameplates(p));
+	}
 	// A prefiltered image gives continuous soft contours without repeated edges.
-	vec3 obscured = textureLod(obscured_map, UV, 4.2).rgb;
+	vec3 obscured = textureLod(obscured_map, map_uv, 4.2).rgb;
 	// Replace the baked nameplate with nearby terrain before darkening, so it
 	// disappears into the same shadow instead of leaving an obvious black oval.
 	vec3 around_label = vec3(0.0);
 	for (int x = -1; x <= 1; x++) {
 		vec2 side = vec2(float(x) * 18.0 / 1672.0, 70.0 / 941.0);
-		around_label += textureLod(obscured_map, UV + side, 4.2).rgb;
-		around_label += textureLod(obscured_map, UV - side, 4.2).rgb;
+		around_label += textureLod(obscured_map, map_uv + side, 4.2).rgb;
+		around_label += textureLod(obscured_map, map_uv - side, 4.2).rgb;
 	}
 	obscured = mix(obscured, around_label / 6.0, hidden_label(p));
 	float grey = dot(obscured, vec3(0.299, 0.587, 0.114));
@@ -77,4 +113,15 @@ void fragment() {
 	vec3 fog = mix(vec3(0.012, 0.018, 0.026), vec3(0.03, 0.038, 0.046), clouds);
 	vec3 shadows = fog + obscured * mix(0.20, 0.32, clouds);
 	COLOR = vec4(mix(source.rgb, shadows, coverage), source.a) * canvas_tint;
+	if (!map_unlocked || any(lessThan(map_uv, vec2(0.0))) || any(greaterThan(map_uv,vec2(1.0)))) {
+		COLOR = vec4(0.025,0.045,0.055,1.0) * canvas_tint;
+	}
+	if (circular_view) {
+		float radius = length(UV - vec2(0.5));
+		// 对齐当前任务详情的米色底与一像素暖棕外边，增加内侧框带。
+		float ring = smoothstep(0.459,0.469,radius);
+		vec3 frame = mix(vec3(1.0,0.949,0.831),vec3(0.725,0.565,0.333),smoothstep(0.480,0.490,radius));
+		COLOR.rgb = mix(COLOR.rgb,frame,ring);
+		COLOR.a *= 1.0 - smoothstep(0.492,0.5,radius);
+	}
 }

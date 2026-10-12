@@ -1,11 +1,16 @@
 class_name SproutCardData
 extends RefCounted
-## CH1-10 正式卡牌数据。卡框只消费本契约，卡面素材仍使用角色现有肖像。
+## 卡牌数据契约：字段来自 data/cards/catalog.json，卡面组件只负责排版。
+
+const CATALOG_PATH := "res://data/cards/catalog.json"
+static var _catalog_cache: Array[SproutCardData] = []
 
 var id: String
 var faction: String
 var character_name: String
 var portrait: Texture2D
+var portrait_path: String
+var material_path: String
 var role: String
 var title: String
 var cost: String
@@ -14,51 +19,100 @@ var effect: String
 var value: String
 var rarity: String
 var number: int
+var level: int
+var level_position: String
+var battle_level_default: int
+var attack: int
+var health: int
+var is_role_card: bool
+var satiety_max: int
+var mana_enabled: bool
+var mana_initial: int
+var satiety_cost: int
+var mana_cost: int
+var portable_dish: String
+var dish_category: String
 
 func _init(values: Dictionary = {}) -> void:
 	id = str(values.get("id", "card_placeholder"))
 	faction = str(values.get("faction", "sprout"))
 	character_name = str(values.get("character_name", "芽芽"))
+	portrait_path = str(values.get("portrait_path", ""))
+	material_path = str(values.get("material_path", ""))
 	portrait = values.get("portrait", null) as Texture2D
 	role = str(values.get("role", "辅助"))
 	title = str(values.get("title", ""))
 	cost = str(values.get("cost", ""))
 	card_type = str(values.get("card_type", ""))
+	if card_type == "形态牌":
+		card_type = "赋形牌"
 	effect = str(values.get("effect", ""))
 	value = str(values.get("value", ""))
 	rarity = str(values.get("rarity", "R"))
 	number = int(values.get("number", 1))
+	# 仅为旧读取方保留无效占位；新模板不显示、编辑或导出等级。
+	level = 0
+	level_position = ""
+	battle_level_default = 0
+	attack = int(values.get("attack", 0))
+	health = int(values.get("health", 0))
+	is_role_card = bool(values.get("is_role_card", card_type == "角色牌"))
+	satiety_max = int(values.get("satiety_max", -1))
+	mana_enabled = bool(values.get("mana_enabled", false))
+	mana_initial = int(values.get("mana_initial", -1))
+	satiety_cost = int(values.get("satiety_cost", -1))
+	mana_cost = int(values.get("mana_cost", 0))
+	portable_dish = str(values.get("portable_dish", "待定"))
+	dish_category = str(values.get("dish_category", ""))
+
+static func _read_catalog() -> Array[SproutCardData]:
+	var result: Array[SproutCardData] = []
+	var file := FileAccess.open(CATALOG_PATH, FileAccess.READ)
+	if file == null:
+		push_error("CARD_CATALOG_OPEN_FAILED path=%s" % CATALOG_PATH)
+		return result
+	var parsed = JSON.parse_string(file.get_as_text())
+	file.close()
+	if not parsed is Dictionary or not parsed.has("cards") or not parsed.cards is Array:
+		push_error("CARD_CATALOG_SCHEMA_INVALID path=%s" % CATALOG_PATH)
+		return result
+	for raw in parsed.cards:
+		if not raw is Dictionary:
+			continue
+		var values: Dictionary = raw.duplicate(true)
+		var path := str(values.get("portrait_path", ""))
+		if not path.is_empty():
+			values["portrait"] = load(path) as Texture2D
+		result.append(SproutCardData.new(values))
+	return result
+
+static func catalog_set() -> Array[SproutCardData]:
+	if _catalog_cache.is_empty():
+		_catalog_cache = _read_catalog()
+	return _catalog_cache.duplicate()
 
 static func formal_set() -> Array[SproutCardData]:
-	var sprout_portrait := preload("res://assets/characters/yaya_portrait.png")
-	var tieshan_portrait := preload("res://assets/characters/tieshan/tieshan_portrait.png")
+	## 正式可携带的16张技能牌；角色牌单独由 role_set() 提供。
 	var result: Array[SproutCardData] = []
-	var sprout := [
-		["先吃一口", "法术", 1, "一个友方恢复3点生命。", "治疗+3", "R"],
-		["大家都有", "法术", 2, "全体友方恢复2点生命。", "全体治疗+2", "R"],
-		["芽芽找找", "法术", 1, "抽2张牌，再选1张手牌放牌库底。", "抽2·回底1", "R"],
-		["这张有用！", "法术", 2, "抽2张牌。", "抽2", "R"],
-		["别睡过去！", "法术", 1, "对未气绝友方恢复2点生命；治疗前生命≤2再抽1张。", "治疗+2·低血抽1", "R"],
-		["慢慢养好", "法术", 1, "未气绝友方恢复1点；下个己方回合开始再恢复2点，后续治疗不可叠加。", "1+延迟2", "R"],
-		["趁热吃呀", "法术", 1, "友方恢复2点；本回合已使用料理再抽1张。", "治疗+2·料理抽1", "R"],
-		["都回来吃饭！", "法术", 2, "全体友方恢复3点生命，再抽1张牌。", "全体治疗+3·抽1", "SR"],
-	]
-	var tieshan := [
-		["横盾", "法术", 1, "铁山获得3点护甲。", "护甲+3", "R"],
-		["站我身后", "法术", 1, "铁山进入战斗区并获得2点护甲，不攻击。", "入场·护甲+2", "R"],
-		["盾沿猛击", "战斗", 1, "本次攻击+2，然后出击。", "本次攻击+2", "R"],
-		["稳步推进", "战斗", 1, "先获得2点护甲，然后出击。", "护甲+2·出击", "R"],
-		["还你一下", "战斗", 1, "本次攻击+1；若上个敌方回合曾受到生命伤害则改为+3，然后出击。", "受伤时本次攻击+3", "R"],
-		["老兵直觉", "法术", 1, "抽1张牌，铁山获得1点护甲。", "抽1·护甲+1", "R"],
-		["守住这里", "法术", 1, "下个己方回合开始前铁山下一次伤害-2，最低为0，不叠加。", "减伤-2", "R"],
-		["大伙在我身后", "法术", 2, "铁山进入战斗区并获得5点护甲；牌手下一次伤害-3，不攻击。", "入场·护甲+5·牌手减伤", "SR"],
-	]
-	for i in range(8):
-		var row: Array = sprout[i]
-		result.append(SproutCardData.new({"id": "yaya_%02d" % (i + 1), "faction": "sprout", "character_name": "芽芽", "portrait": sprout_portrait, "role": "辅助", "title": row[0], "card_type": row[1], "cost": str(row[2]), "effect": row[3], "value": row[4], "rarity": row[5], "number": i + 1}))
-	for i in range(8):
-		var row: Array = tieshan[i]
-		result.append(SproutCardData.new({"id": "tieshan_%02d" % (i + 1), "faction": "tieshan", "character_name": "铁山", "portrait": tieshan_portrait, "role": "守卫", "title": row[0], "card_type": row[1], "cost": str(row[2]), "effect": row[3], "value": row[4], "rarity": row[5], "number": i + 1}))
+	for card in catalog_set():
+		if not card.is_role_card:
+			result.append(card)
+	return result
+
+static func role_set() -> Array[SproutCardData]:
+	var result: Array[SproutCardData] = []
+	for card in catalog_set():
+		if card.is_role_card:
+			result.append(card)
+	return result
+
+static func preview_set() -> Array[SproutCardData]:
+	## 预览顺序：每个角色先显示角色牌，再显示该角色的8张技能牌。
+	var result: Array[SproutCardData] = []
+	for faction in ["sprout", "tieshan"]:
+		for card in catalog_set():
+			if card.faction == faction:
+				result.append(card)
 	return result
 
 static func placeholder_set() -> Array[SproutCardData]:
@@ -71,9 +125,16 @@ static func replace_placeholder(data: Array[SproutCardData], replacements: Dicti
 	for item in data:
 		var values := {
 			"id": item.id, "faction": item.faction, "character_name": item.character_name,
-			"portrait": item.portrait, "role": item.role, "title": item.title,
-			"cost": item.cost, "card_type": item.card_type, "effect": item.effect,
-			"value": item.value, "rarity": item.rarity, "number": item.number,
+			"portrait": item.portrait, "portrait_path": item.portrait_path, "role": item.role,
+			"material_path": item.material_path,
+			"title": item.title, "cost": item.cost, "card_type": item.card_type,
+			"effect": item.effect, "value": item.value, "rarity": item.rarity,
+			"number": item.number, "attack": item.attack,
+			"health": item.health, "is_role_card": item.is_role_card,
+			"satiety_max": item.satiety_max, "mana_enabled": item.mana_enabled,
+			"mana_initial": item.mana_initial, "satiety_cost": item.satiety_cost,
+			"mana_cost": item.mana_cost, "portable_dish": item.portable_dish,
+			"dish_category": item.dish_category,
 		}
 		var replacement: Dictionary = replacements.get(item.id, {})
 		for key in replacement:

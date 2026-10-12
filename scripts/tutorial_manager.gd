@@ -30,6 +30,7 @@ var active := false
 var guide = null
 var steps: Array = []
 var idx := 0
+var _dialog_line_index := 0
 var player = null
 var current_stage := 0
 
@@ -102,6 +103,7 @@ func start(custom_steps: Array = []) -> void:
 		SaveManager.begin_replay()
 	steps = custom_steps if not custom_steps.is_empty() else chapter_1_lesson()
 	idx = 0
+	_dialog_line_index = 0
 	current_stage = 0
 	_player_lock_owned = false
 	_order_explanation_pending = false
@@ -124,6 +126,7 @@ func _resume_saved_cooking() -> void:
 	sm.recover_interrupted_cooking()
 	var stage: String = sm.lifecycle_stage()
 	if stage == "not_started":
+		_restore_tutorial_checkpoint()
 		return
 	var next_stage: int = {"awakened": 2, "guest_arrived": 2, "order_accepted": 4,
 		"ingredients_collected": 5, "dish_ready": 6, "order_served": 7, "ready_to_depart": 7, "done": 7}.get(stage, 1)
@@ -137,6 +140,39 @@ func _resume_saved_cooking() -> void:
 	# 正式入口可能仍在 _ready 中，等场景完成入树后恢复客人。
 	if stage != "awakened":
 		_restore_cooking_guest.call_deferred(_run_token)
+	_restore_tutorial_checkpoint()
+
+func _step_save_key(step_index: int) -> String:
+	if step_index < 0 or step_index >= steps.size():
+		return "end"
+	var step: Dictionary = steps[step_index]
+	var wrapup_id := str(step.get("wrapup_id", ""))
+	if not wrapup_id.is_empty():
+		return "wrapup:" + wrapup_id
+	return "step:%d:%s:%s" % [step_index, str(step.get("type", "")), str(step.get("speaker", ""))]
+
+func _restore_tutorial_checkpoint() -> void:
+	if not _chapter_1_run or _replay_requested:
+		return
+	# 阶段7已有逐句事务检查点，以 departure_state 为唯一恢复来源。
+	if idx < steps.size() and int(steps[idx].get("stage", 0)) == 7:
+		return
+	var checkpoint := SaveManager.tutorial_checkpoint()
+	var checkpoint_index := int(checkpoint.get("next_index", 0))
+	if checkpoint_index < 0 or checkpoint_index > steps.size():
+		return
+	# 经营事务的生命周期状态先于教程检查点提交。若检查点写盘失败，
+	# 读档时可能拿到旧的对白位置；旧检查点不能覆盖更晚的真实经营阶段。
+	if checkpoint_index < idx:
+		return
+	var expected_key := "end" if checkpoint_index == steps.size() else _step_save_key(checkpoint_index)
+	if str(checkpoint.get("step_key", "")) != expected_key:
+		return
+	var line_index := int(checkpoint.get("line_index", 0))
+	if line_index > 0 and (checkpoint_index >= steps.size() or steps[checkpoint_index].get("type") != "dialog" or line_index >= steps[checkpoint_index].get("lines", []).size()):
+		return
+	idx = checkpoint_index
+	_dialog_line_index = line_index
 
 func _restore_cooking_guest(token: int) -> void:
 	if not _run_is_valid(token):
@@ -366,7 +402,9 @@ func _run_step(token: int) -> void:
 				act = load(p_tex) as Texture2D
 			if not speaker.is_empty() and act == null:
 				push_warning("TutorialManager: 对话头像缺失 speaker=%s path=%s" % [speaker, str(p_tex)])
-			guide.play_dialog(speaker, step.get("lines", []), act)
+			var lines: Array = step.get("lines", [])
+			# 每次展示一句；确认后由管理器保存行号，下一句才开始播放。
+			guide.play_dialog(speaker, lines.slice(_dialog_line_index, _dialog_line_index + 1), act)
 		"notify":
 			guide.show_toast(str(step.get("toast", "")))
 			await get_tree().create_timer(float(step.get("delay", 1.4))).timeout
@@ -520,10 +558,21 @@ func _complete_step(token: int) -> void:
 			guide.show_toast("准备进度未保存，请重试。")
 			_run_step(token)
 			return
-	idx += 1
+	var next_index := idx + 1
+	var has_departure_checkpoint: bool = idx < steps.size() and steps[idx].has("wrapup_id")
+	if _chapter_1_run and not has_departure_checkpoint and not SaveManager.save_tutorial_checkpoint(next_index, _step_save_key(next_index)):
+		if is_instance_valid(guide):
+			guide.show_toast("进度未保存，请重试。")
+		if idx < steps.size() and steps[idx].get("type") == "cutscene_guest":
+			_cleanup_cutscene(true)
+		_run_step(token)
+		return
+	idx = next_index
+	_dialog_line_index = 0
+	_order_explanation_pending = false
 	_run_step(token)
 
-func _cancel_current_run() -> void:
+func _cancel_current_run(animate_guest_exit := false) -> void:
 	if not active:
 		return
 	active = false
@@ -540,7 +589,7 @@ func _cancel_current_run() -> void:
 	SaveManager.recover_interrupted_cooking()
 	_close_departure_modals()
 	_set_player_locked(false)
-	_cleanup_cutscene(true)
+	_cleanup_cutscene(true, animate_guest_exit)
 	if is_instance_valid(guide) and guide.dialog_done.is_connected(_dialog_done_callback):
 		guide.dialog_done.disconnect(_dialog_done_callback)
 	if is_instance_valid(guide) and guide.tree_exiting.is_connected(_guide_exit_callback):
@@ -567,10 +616,17 @@ func _on_guide_tree_exiting(token: int) -> void:
 func _on_dialog_done(token: int) -> void:
 	if not _run_is_valid(token) or idx < 0 or idx >= steps.size() or steps[idx].get("type", "") != "dialog":
 		return
+	if _dialog_line_index + 1 < steps[idx].get("lines", []).size():
+		var next_line := _dialog_line_index + 1
+		if _chapter_1_run and not SaveManager.save_tutorial_checkpoint(idx, _step_save_key(idx), next_line):
+			guide.show_toast("进度未保存，请重试。")
+		else:
+			_dialog_line_index = next_line
+		_run_step(token)
+		return
 	if bool(steps[idx].get("order_explanation", false)):
 		if not _order_explanation_pending:
 			return
-		_order_explanation_pending = false
 		var tracker := get_tree().get_first_node_in_group("order_tracking")
 		if is_instance_valid(tracker) and tracker.has_method("collapse_details"):
 			tracker.collapse_details()
@@ -823,7 +879,7 @@ func _finish(remove_guest := false, finalize_chapter := false) -> void:
 				guide.show_toast("第一章完成状态未保存，请重试。")
 			return
 		completed = result.created or result.reason == "already_done"
-	_cancel_current_run()
+	_cancel_current_run(not remove_guest)
 	tutorial_finished.emit()
 	if completed and not was_replaying:
 		chapter_1_finished.emit()
@@ -841,7 +897,7 @@ func _close_departure_modals() -> void:
 		cooking.close_modal()
 
 ## 无论正常结束还是跳过：解除镜头驻留；跳过时同时移除未完成的占位演出
-func _cleanup_cutscene(remove_guest := false) -> void:
+func _cleanup_cutscene(remove_guest := false, animate_guest_exit := false) -> void:
 	_kill_camera_tween()
 	_kill_guest_fade_tween()
 	var cam := _get_camera()
@@ -855,5 +911,8 @@ func _cleanup_cutscene(remove_guest := false) -> void:
 	_camera_cutscene_active = false
 	_base_zoom_captured = false
 	if is_instance_valid(_parked_guest):
-		_parked_guest.queue_free()
+		if remove_guest and animate_guest_exit and _parked_guest.has_method("play_exit_fade"):
+			_parked_guest.play_exit_fade()
+		else:
+			_parked_guest.queue_free()
 	_parked_guest = null

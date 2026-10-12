@@ -12,6 +12,7 @@ signal dialog_done
 @onready var skip_button: Button = %SkipButton
 @onready var dialog = %DialogBox
 @onready var toast: Label = %Toast
+@onready var toast_panel: PanelContainer = %ToastPanel
 @onready var chapter_title: Label = %ChapterTitle
 @onready var chapter_stage: Label = %ChapterStage
 
@@ -21,6 +22,7 @@ var _modal_hint_visible := false
 
 func _ready() -> void:
 	add_to_group("tutorial_guide")
+	dim.gui_input.connect(_on_dim_gui_input)
 	if not dialog.finished.is_connected(_on_dialog_finished):
 		dialog.finished.connect(_on_dialog_finished)
 	# 只有正式餐厅入口负责自动启动。测试或其他场景临时实例化地图时，
@@ -35,6 +37,11 @@ func _ready() -> void:
 	prepare_for_start()
 	# 首次进入游戏自动开始新手教学
 	TutorialManager.start()
+
+func _on_dim_gui_input(event: InputEvent) -> void:
+	# 暗幕拦住任务栏等背景控件，仍保留点击任意位置继续对白的操作。
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		dialog._gui_input(event)
 
 func _scene_root() -> Node:
 	var node: Node = self
@@ -62,7 +69,7 @@ func prepare_for_start() -> void:
 	dim.visible = false
 	dim.color.a = 0.5
 	hint_panel.visible = false
-	toast.visible = false
+	_hide_toast()
 	skip_button.visible = false
 	chapter_title.text = "第一章：醒来与首单教程"
 	chapter_title.visible = false
@@ -112,10 +119,10 @@ func _process(_delta: float) -> void:
 func _position_toast() -> void:
 	if not toast.visible:
 		return
-	var box_size := _compact_hint_size(toast)
-	toast.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	toast.size = box_size
-	toast.position = Vector2((get_viewport_rect().size.x - box_size.x) * 0.5,
+	var box_size := _compact_hint_size(toast, 64.0)
+	toast_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	toast_panel.size = box_size
+	toast_panel.position = Vector2((get_viewport_rect().size.x - toast_panel.size.x) * 0.5,
 		hint_panel.get_rect().end.y + 8.0 if hint_panel.visible else HINT_TOP)
 
 func _position_hint_panel() -> void:
@@ -126,7 +133,7 @@ func _position_hint_panel() -> void:
 	hint_panel.size = box_size
 	hint_panel.position = Vector2((get_viewport_rect().size.x - box_size.x) * 0.5, HINT_TOP)
 
-func _compact_hint_size(label: Label) -> Vector2:
+func _compact_hint_size(label: Label, horizontal_padding := 40.0) -> Vector2:
 	var viewport_width := get_viewport_rect().size.x
 	var max_width := minf(640.0, viewport_width - 48.0)
 	var tracker := get_tree().get_first_node_in_group("order_tracking")
@@ -141,8 +148,8 @@ func _compact_hint_size(label: Label) -> Vector2:
 	var natural_width := 0.0
 	for line in label.text.split("\n"):
 		natural_width = maxf(natural_width, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
-	var width := minf(max_width, ceilf(natural_width) + 40.0)
-	var text_size := font.get_multiline_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, width - 40.0, font_size)
+	var width := minf(max_width, ceilf(natural_width) + horizontal_padding)
+	var text_size := font.get_multiline_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, width - horizontal_padding, font_size)
 	return Vector2(width, ceilf(text_size.y) + 20.0)
 
 func _position_skip_button() -> void:
@@ -176,20 +183,22 @@ func _on_dialog_finished() -> void:
 	dialog_done.emit()
 
 func show_toast(text: String) -> void:
-	toast.modulate.a = 1.0
+	toast_panel.modulate.a = 1.0
 	toast.text = text
 	toast.visible = true
+	toast_panel.visible = true
 	_position_toast()
 	if _toast_tween != null and _toast_tween.is_valid():
 		_toast_tween.kill()
 	_toast_tween = create_tween()
 	_toast_tween.tween_interval(1.3)
-	_toast_tween.tween_property(toast, "modulate:a", 0.0, 0.4)
+	_toast_tween.tween_property(toast_panel, "modulate:a", 0.0, 0.4)
 	_toast_tween.tween_callback(_hide_toast)
 
 func _hide_toast() -> void:
 	toast.visible = false
-	toast.modulate.a = 1.0
+	toast_panel.visible = false
+	toast_panel.modulate.a = 1.0
 
 func finish_all() -> void:
 	_modal_suppressed = false
@@ -199,7 +208,7 @@ func finish_all() -> void:
 	_toast_tween = null
 	hint_panel.visible = false
 	dialog.hide_box()
-	toast.visible = false
+	_hide_toast()
 	skip_button.visible = false
 	chapter_title.visible = false
 	chapter_stage.visible = false

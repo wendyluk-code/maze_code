@@ -1,10 +1,18 @@
 class_name SproutCard
 extends PanelContainer
-## Sprout Lands 像素卡面：纯视觉组件，可由 SproutCardData 替换占位数据。
+## 共享卡面：已批准素材切片 + 动态文字；无正式切图时保留旧通用布局。
 
-const CARD_SIZE := Vector2(340, 420)
+const CARD_SIZE := Vector2(300, 500)
+const LAYOUT_VERSION := "edge_icons_v4"
+const EFFECT_FONT_SIZE := 20
+const EFFECT_MIN_FONT_SIZE := 18
+const EFFECT_WIDTH := 220.0
+const EFFECT_TOP := 297.0
+const EFFECT_STATS_HEIGHT := 95.0
+const EFFECT_SPELL_HEIGHT := 143.0
 const INK := Color("#3f2a1d")
 const CREAM := Color("#fff4dc")
+const MATERIAL := preload("res://scripts/ui/components/sprout_card_material.gd")
 const SPROUT_BG := Color("#d9e8bb")
 const SPROUT_BORDER := Color("#6d985f")
 const TIESHAN_BG := Color("#d9b18c")
@@ -22,7 +30,32 @@ var _value_label: Label
 var _rarity_label: Label
 var _number_label: Label
 var _ability_hint: CanvasLayer
+var _generic_content: Control
+var _material_root: Control
+var _material_base: TextureRect
+var _material_art: TextureRect
+var _material_canvas: Control
+var _title_leaf_left: TextureRect
+var _title_leaf_right: TextureRect
+var _material_title: Label
+var _material_type: Label
+var _material_effect: Label
+var _attack_art: TextureRect
+var _health_art: TextureRect
+var _satiety_art: TextureRect
+var _mana_art: TextureRect
+var _material_stat_attack: Label
+var _material_stat_health: Label
+var _satiety_slot: Label
+var _mana_slot: Label
+var _shield_slot: Label
+var _cost_slots: Array[Label] = []
 var _ability_details_enabled := false
+var _battle_context := false
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		_refresh_layout()
 
 func _ready() -> void:
 	theme = SproutTheme.make_theme()
@@ -43,6 +76,12 @@ func configure(data: SproutCardData) -> SproutCard:
 		_apply_data(data)
 	return self
 
+func set_battle_context(value: bool, _legacy_level: int = 0) -> void:
+	# 第二参数仅兼容旧调用；战斗与收录都不存在等级。
+	_battle_context = value
+	if is_node_ready() and _data:
+		_apply_material(_data)
+
 ## 仅由冒险者之家查看卡牌，或战斗点击展开详情的调用方显式开启。
 ## 普通列表与入队展示不自动启用；退出详情时调用 false。
 func set_ability_details_enabled(value: bool) -> void:
@@ -54,8 +93,22 @@ func set_ability_details_enabled(value: bool) -> void:
 
 func _build() -> void:
 	var content := VBoxContainer.new()
+	_generic_content = content
 	content.add_theme_constant_override("separation", 8)
 	add_child(content)
+	_material_root = Control.new()
+	_material_root.name = "MaterialCard"
+	_material_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_material_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_material_root.visible = false
+	add_child(_material_root)
+	_material_canvas = Control.new()
+	_material_canvas.size = CARD_SIZE
+	_material_canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_material_root.add_child(_material_canvas)
+	_material_art = _material_texture("", MATERIAL.edge_rect("illustration_yaya"))
+	_material_base = _edge_texture("frame")
+	_build_material_labels()
 
 	var top := HBoxContainer.new()
 	top.custom_minimum_size.y = 34
@@ -131,15 +184,196 @@ func _apply_data(data: SproutCardData) -> void:
 	_character_label.text = data.character_name
 	_role_label.text = "定位：" + data.role
 	_title_label.text = data.title
-	_cost_label.text = "费用\n" + data.cost
+	_cost_label.text = "" if data.cost.is_empty() else "费用\n" + data.cost
 	_type_label.text = "类型：" + data.card_type
 	_effect_label.text = "效果\n" + data.effect
 	_value_label.text = "核心数值：" + data.value
 	_rarity_label.text = data.rarity
 	_number_label.text = "No.%02d" % data.number
 	_portrait.texture = data.portrait
+	_apply_material(data)
 	for label in [_character_label, _role_label, _title_label, _cost_label, _type_label, _effect_label, _value_label, _rarity_label, _number_label]:
 		label.add_theme_color_override("font_color", INK)
+	_refresh_layout()
+
+func _material_texture(path: String, rect: Rect2) -> TextureRect:
+	var node := TextureRect.new()
+	node.position = rect.position
+	node.size = rect.size
+	node.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	node.stretch_mode = TextureRect.STRETCH_SCALE
+	node.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if not path.is_empty():
+		node.texture = load(path) as Texture2D
+	_material_canvas.add_child(node)
+	return node
+
+func _edge_texture(id: String) -> TextureRect:
+	return _material_texture(MATERIAL.EDGE_ROOT + MATERIAL.edge_layer(id).file, MATERIAL.edge_rect(id))
+
+func _build_material_labels() -> void:
+	_title_leaf_left = _edge_texture("title_leaf_left")
+	_title_leaf_right = _edge_texture("title_leaf_right")
+	_edge_texture("type_rule_left")
+	_edge_texture("type_rule_right")
+	_attack_art = _edge_texture("attack")
+	_health_art = _edge_texture("health")
+	_satiety_art = _edge_texture("satiety")
+	_mana_art = _edge_texture("mana")
+	_material_title = _material_label("", Rect2(58, 223.5, 184, 31), 24)
+	_material_type = _material_label("", Rect2(118, 258.5, 64, 22), 14)
+	_material_type.add_theme_color_override("font_color", Color("#926044"))
+	_material_effect = _material_label("", Rect2((CARD_SIZE.x - EFFECT_WIDTH) / 2, EFFECT_TOP, EFFECT_WIDTH, EFFECT_STATS_HEIGHT), EFFECT_FONT_SIZE)
+	_material_effect.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_material_effect.add_theme_constant_override("line_spacing", 0)
+	_material_stat_attack = _material_label("", Rect2(22.8, 414.3, 39, 38), 32)
+	_material_stat_health = _material_label("", Rect2(235.4, 414.3, 39, 38), 32)
+	_satiety_slot = _material_label("", Rect2(252.1, 93.7, 39, 38), 30)
+	_mana_slot = _material_label("", Rect2(253.3, 168.8, 39, 38), 30)
+	var number_font := FontVariation.new()
+	number_font.base_font = ThemeDB.fallback_font
+	number_font.variation_embolden = 0.8
+	for label in [_material_stat_attack, _material_stat_health, _satiety_slot, _mana_slot]:
+		label.add_theme_font_override("font", number_font)
+		label.add_theme_color_override("font_color", Color("#fff7df"))
+		label.add_theme_color_override("font_outline_color", Color("#22506e") if label == _mana_slot else (Color("#3b4930") if label == _material_stat_attack else Color("#8c3328")))
+		label.add_theme_constant_override("outline_size", 2)
+	_satiety_slot.add_theme_color_override("font_color", Color("#462618"))
+	_satiety_slot.add_theme_constant_override("outline_size", 0)
+	_shield_slot = _resource_slot(Rect2(35, 80, 48, 36), Color("#e2e7de"))
+	for index in 2:
+		_cost_slots.append(_resource_slot(Rect2(115 + index * 75, 287, 70, 23), Color("#f3e6cc")))
+
+func _resource_slot(rect: Rect2, fill: Color) -> Label:
+	var slot := _material_label("", rect, 12)
+	var style := StyleBoxFlat.new()
+	style.bg_color = fill
+	style.border_color = Color("#c7aa7e")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(5)
+	slot.add_theme_stylebox_override("normal", style)
+	slot.add_theme_constant_override("line_spacing", 1)
+	return slot
+
+func _material_label(value: String, rect: Rect2, font_size: int) -> Label:
+	var label := Label.new()
+	label.text = value
+	label.position = rect.position
+	label.size = rect.size
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_color_override("font_color", Color("#462618"))
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_material_canvas.add_child(label)
+	return label
+
+func _apply_material(data: SproutCardData) -> void:
+	var source := data.material_path
+	if source.is_empty():
+		source = MATERIAL.path_for(data.character_name, data.title, data.card_type, data.is_role_card)
+	var art_path := MATERIAL.art_path_for(source)
+	if art_path.is_empty() or not ResourceLoader.exists(art_path):
+		_generic_content.visible = true
+		_material_root.visible = false
+		return
+	_generic_content.visible = false
+	_material_root.visible = true
+	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	_material_art.texture = load(art_path) as Texture2D
+	_material_title.text = data.title if not data.is_role_card else data.character_name
+	_material_type.text = data.card_type
+	_material_effect.text = effect_display_text(data)
+	var title_size := 24
+	while title_size > 14 and SproutTheme.FONT_CN.get_string_size(_material_title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, title_size).x > 173:
+		title_size -= 1
+	_material_title.add_theme_font_size_override("font_size", title_size)
+	var title_width := SproutTheme.FONT_CN.get_string_size(_material_title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, title_size).x
+	_title_leaf_left.position.x = 150 - title_width / 2 - 21
+	_title_leaf_right.position.x = 150 + title_width / 2 + 7
+	var stats := data.is_role_card or data.card_type == "赋形牌"
+	for node in [_attack_art, _health_art, _material_stat_attack, _material_stat_health]:
+		node.visible = stats
+	_material_effect.position.y = EFFECT_TOP if data.is_role_card else 316.0
+	_material_effect.add_theme_font_size_override("font_size", effect_font_size(data))
+	_material_effect.size = Vector2(EFFECT_WIDTH, effect_area_height(data))
+	_material_effect.set_deferred("size", Vector2(EFFECT_WIDTH, effect_area_height(data)))
+	_material_stat_attack.text = str(data.attack)
+	_material_stat_health.text = str(data.health)
+	_material_stat_attack.add_theme_font_size_override("font_size", 32 if data.attack < 10 else 26)
+	_material_stat_health.add_theme_font_size_override("font_size", 32 if data.health < 10 else 26)
+	var skill := data.card_type in ["赋形牌", "法术牌", "战斗牌"]
+	# 收录角色显示基础资源，技能显示消耗；战斗中的角色/赋形资源仍为待接入占位。
+	var battle_stats := _battle_context and stats
+	_satiety_slot.visible = data.is_role_card or skill
+	_satiety_slot.text = _number_text(data.satiety_max if data.is_role_card else data.satiety_cost)
+	if battle_stats:
+		_satiety_slot.text = "—"
+	_mana_slot.visible = data.mana_enabled if data.is_role_card or battle_stats else (skill and data.mana_cost != 0)
+	_mana_slot.text = _number_text(data.mana_initial if data.is_role_card else data.mana_cost)
+	if battle_stats:
+		_mana_slot.text = "—"
+	_satiety_art.visible = _satiety_slot.visible
+	_mana_art.visible = _mana_slot.visible
+	_satiety_slot.add_theme_font_size_override("font_size", 30 if _satiety_slot.text.length() <= 1 else 24)
+	_mana_slot.add_theme_font_size_override("font_size", 30 if _mana_slot.text.length() <= 1 else 24)
+	_shield_slot.visible = _battle_context and stats
+	_shield_slot.text = "护盾\n—"
+	for slot in _cost_slots:
+		slot.visible = false
+	if not data.is_role_card:
+		_cost_slots[0].visible = true
+		_cost_slots[0].position.x = 75 if data.card_type == "料理" else 115
+		_cost_slots[0].text = "行动 " + (data.cost if not data.cost.is_empty() else "—")
+		if data.card_type == "料理":
+			_cost_slots[1].visible = true
+			_cost_slots[1].position.x = 155
+			_cost_slots[1].text = {"可携带": "可携带", "不可携带": "不可携带"}.get(data.portable_dish, "携带待定")
+
+static func _number_text(value: int) -> String:
+	return str(value) if value >= 0 else "—"
+
+static func effect_area_height(data: SproutCardData) -> float:
+	if data.is_role_card:
+		return EFFECT_STATS_HEIGHT
+	return 75.0 if data.card_type == "赋形牌" else 109.0
+
+
+static func effect_display_text(data: SproutCardData) -> String:
+	# 已批准原稿沿用原稿断句；只改变显示，不改变规则数据。
+	var approved_lines := {
+		"每回合一次，芽芽出击时，烹饪。": "每回合一次，\n芽芽出击时，烹饪。",
+		"为你或任意一名己方角色恢复2生命。": "为你或任意一名己方角色\n恢复2生命。",
+		"己方回合结束时，若芽芽在战斗区，烹饪。": "己方回合结束时，\n若芽芽在战斗区，烹饪。",
+		"选择一张食材，让一名其他己方角色使用并出击。": "选择一张食材，\n让一名其他己方角色\n使用并出击。",
+	}
+	return approved_lines.get(data.effect, data.effect)
+
+static func effect_font_size(data: SproutCardData) -> int:
+	var available := effect_area_height(data)
+	for font_size in range(EFFECT_FONT_SIZE, EFFECT_MIN_FONT_SIZE - 1, -1):
+		if _effect_text_height(data, font_size) <= available:
+			return font_size
+	return EFFECT_MIN_FONT_SIZE
+
+static func effect_fits(data: SproutCardData) -> bool:
+	var available := effect_area_height(data)
+	return _effect_text_height(data, effect_font_size(data)) <= available
+
+static func _effect_text_height(data: SproutCardData, font_size: int) -> float:
+	# 与Label中文智能换行一致；离树Label还没有主题布局，不能用于测高。
+	var paragraph := TextParagraph.new()
+	paragraph.break_flags = TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
+	paragraph.width = EFFECT_WIDTH
+	paragraph.add_string(effect_display_text(data), SproutTheme.FONT_CN, font_size)
+	return paragraph.get_size().y
+
+func _refresh_layout() -> void:
+	if is_instance_valid(_material_canvas):
+		var factor := minf(size.x / CARD_SIZE.x, size.y / CARD_SIZE.y)
+		_material_canvas.scale = Vector2.ONE * factor
+		_material_canvas.position = (size - CARD_SIZE * factor) / 2
 
 func _label(value: String, size: int) -> Label:
 	var label := Label.new()

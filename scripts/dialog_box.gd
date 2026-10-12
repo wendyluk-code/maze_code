@@ -55,6 +55,14 @@ func _process(delta: float) -> void:
 	else:
 		next_icon.visible = true
 
+func _input(event: InputEvent) -> void:
+	# 在 GUI 控件消费事件前接收空白点击；专属教学关闭通用输入后由其父弹窗处理。
+	if not is_visible_in_tree() or not is_processing_unhandled_input() or _lines.is_empty():
+		return
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		get_viewport().set_input_as_handled()
+		_advance()
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible or _lines.is_empty() or _line_idx >= _lines.size():
 		return

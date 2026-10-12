@@ -6,9 +6,10 @@ const RECIPES := {
 	"salt_grilled_rockmane": {
 		"name": "盐烤岩鬃肉",
 		"ingredients": {"rockmane_meat": 1, "rock_salt": 1},
-		"round_duration": 3.6,
+		"round_duration": 5.0,
 		"perfect_width": 0.16,
-		"good_width": 0.38,
+		# 含中间绿色：0.16 + 左右黄色各 0.32，单侧黄色为绿色总宽度的两倍。
+		"good_width": 0.80,
 	}
 }
 

@@ -5,7 +5,7 @@ signal reveal_finished
 var cards: Array[TextureRect] = []
 var _veil: ColorRect
 var _join_message: Label
-var _prompt: Label
+var _prompt: HBoxContainer
 var _error: Label
 var _tween: Tween
 var _progress := 0.0
@@ -38,8 +38,14 @@ func _ready() -> void:
 		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cards.append(card)
 		add_child(card)
-	_join_message = _label("芽芽、铁山加入队伍", 24)
-	_prompt = _label("按 E 继续", 24)
+	_join_message = _label("芽芽、铁山加入队伍", 30)
+	_join_message.add_theme_color_override("font_color", Color("fff1cd"))
+	_join_message.add_theme_color_override("font_outline_color", Color("493626"))
+	_join_message.add_theme_constant_override("outline_size", 6)
+	_join_message.add_theme_color_override("font_shadow_color", Color(0.08, 0.06, 0.04, 0.6))
+	_join_message.add_theme_constant_override("shadow_offset_y", 3)
+	_prompt = preload("res://scripts/ui/components/continue_prompt.gd").new()
+	add_child(_prompt)
 	_error = _label("", 17)
 	resized.connect(_layout)
 	hide()
@@ -73,9 +79,9 @@ func _layout() -> void:
 		card.scale = Vector2.ONE * lerpf(0.92, 1.0, _progress)
 		card.modulate.a = clampf(_progress * 5.0, 0.0, 1.0)
 	if is_instance_valid(_prompt):
-		_join_message.position = Vector2(0, size.y - 102)
-		_join_message.size = Vector2(size.x, 30)
-		_prompt.position = Vector2(0, size.y - 64)
+		_join_message.position = Vector2(0, size.y - 110)
+		_join_message.size = Vector2(size.x, 42)
+		_prompt.position = Vector2(0, size.y - 60)
 		_prompt.size = Vector2(size.x, 36)
 		_error.position = Vector2(0, size.y - 28)
 		_error.size = Vector2(size.x, 24)
@@ -107,6 +113,11 @@ func _finish_reveal() -> void:
 	reveal_finished.emit()
 
 func _input(event: InputEvent) -> void:
+	if visible and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		get_viewport().set_input_as_handled()
+		if _ready_for_input and not _e_held:
+			continue_requested.emit()
+		return
 	var is_e: bool = event is InputEventKey and (event.keycode == KEY_E or event.physical_keycode == KEY_E)
 	if not visible:
 		if is_e and not event.echo:

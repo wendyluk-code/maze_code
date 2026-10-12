@@ -326,3 +326,14 @@ func _cancel_motion() -> void:
 		portrait.show()
 	if is_instance_valid(ground_shadow):
 		ground_shadow.modulate.a = 1.0
+
+## 铁山退场时保留当前站位，先整体渐隐再释放占位节点。
+func play_exit_fade() -> void:
+	if not is_inside_tree():
+		return
+	_cancel_motion()
+	modulate.a = 1.0
+	var tween := create_tween()
+	tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.tween_property(self, "modulate:a", 0.0, FADE_OUT_SECONDS)
+	tween.finished.connect(queue_free)

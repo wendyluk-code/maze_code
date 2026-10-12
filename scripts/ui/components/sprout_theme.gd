@@ -61,6 +61,19 @@ static func panel_style(modulate := Color.WHITE) -> StyleBoxTexture:
 	style.modulate_color = modulate
 	return style
 
+## 与餐厅仓库一致的细线圆角面板；不改变既有纹理面板默认样式。
+static func thin_panel_style(fill := CREAM) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = fill
+	style.border_color = Color("#a98049")
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(7)
+	style.content_margin_left = 18.0
+	style.content_margin_right = 18.0
+	style.content_margin_top = 16.0
+	style.content_margin_bottom = 16.0
+	return style
+
 static func button_style(modulate: Color) -> StyleBoxTexture:
 	var style := panel_style(modulate)
 	style.content_margin_left = 13.0

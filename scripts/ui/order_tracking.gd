@@ -2,8 +2,8 @@ extends Control
 ## 首单任务入口：进度读取已提交的任务状态，不等同于库存。
 
 const PANEL_WIDTH := 260.0
-# 入口与详情右对齐，沿用16像素屏幕安全边距。
-const PANEL_POSITION := Vector2(-276, 66)
+# 入口与详情共用左边缘，沿用16像素屏幕安全边距。
+const PANEL_POSITION := Vector2(16, 66)
 const EXPAND_DURATION := 0.25
 const COMPLETION_COLOR := Color("#dce8c6")
 const STATUS_ICON = preload("res://scripts/ui/task_status_icon.gd")
@@ -80,7 +80,10 @@ func _process(delta: float) -> void:
 		collapse_details()
 
 func get_layout_side() -> String:
-	return "right"
+	return "left"
+
+func entry_rect() -> Rect2:
+	return _task_button.get_global_rect()
 
 func _input(event: InputEvent) -> void:
 	if not _expanded or not is_visible_in_tree():
@@ -101,17 +104,18 @@ func _build() -> void:
 	_task_button.focus_mode = Control.FOCUS_NONE
 	_task_button.icon = SproutTheme.icon(21)
 	_task_button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_task_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_task_button.expand_icon = true
 	_task_button.pressed.connect(_toggle_tasks)
 	add_child(_task_button)
-	_task_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_task_button.position = Vector2(size.x - 170, 16)
+	_task_button.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_task_button.position = Vector2(16, 16)
 	_notification = _make_label("●", 16, Color("#d6493e"))
 	_notification.add_theme_color_override("font_outline_color", Color("#fff4dc"))
 	_notification.add_theme_constant_override("outline_size", 3)
 	add_child(_notification)
-	_notification.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_notification.position = Vector2(size.x - 175, 7)
+	_notification.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_notification.position = Vector2(11, 7)
 	_notification.visible = false
 	_panel = PanelContainer.new()
 	_panel.name = "TaskPanel"
@@ -120,7 +124,7 @@ func _build() -> void:
 	_panel.add_theme_stylebox_override("panel", _box(Color("#fff2d4"), Color("#b99055"), 1, 12))
 	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(_panel)
-	_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_panel.position = _panel_position()
 	_panel.visible = false
 	var outer := VBoxContainer.new()
@@ -173,7 +177,7 @@ func _build() -> void:
 	_update_entry()
 
 func _panel_position() -> Vector2:
-	return Vector2(size.x, 0) + PANEL_POSITION
+	return PANEL_POSITION
 
 func _main_task_style() -> StyleBoxFlat:
 	return _box(Color("#d8b16c"), Color("#987039"), 2, 10)

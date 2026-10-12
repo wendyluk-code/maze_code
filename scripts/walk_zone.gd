@@ -8,6 +8,9 @@ extends Node2D
 @export var preferred_spawn_point := Vector2.ZERO
 
 const FOOTPRINT_EPSILON := 0.5
+## 道具岛只保留视觉边缘附近的阻挡，给主角留出更自然的绕行空间。
+## 外轮廓仍使用完整脚底半径，避免角色走出地图边界。
+@export var prop_collision_inset := 5.0
 
 var polygons: Array = []
 var obstacle_polys: Array = []
@@ -128,10 +131,11 @@ func is_circle_inside(center: Vector2, radius: float, epsilon: float = FOOTPRINT
 			outer_clearance = maxf(outer_clearance, distance_to_polygon_boundary(center, poly))
 	if outer_clearance < radius - epsilon:
 		return false
+	var obstacle_radius := maxf(0.0, radius - prop_collision_inset)
 	for op in obstacle_polys:
 		if Geometry2D.is_point_in_polygon(center, op):
 			return false
-		if distance_to_polygon_boundary(center, op) < radius - epsilon:
+		if distance_to_polygon_boundary(center, op) < obstacle_radius - epsilon:
 			return false
 	return true
 

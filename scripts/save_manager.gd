@@ -5,6 +5,15 @@ extends Node
 const SAVE_PATH := "user://save.json"
 const SLOTS_DIR := "user://saves"
 const SLOT_META_KEY := "_save_slot"
+const MazeRoads := preload("res://data/maze/entry_roads.gd")
+const MAZE_STATE_KEY := "maze_exploration"
+const MAZE_SCENE := "res://scenes/maze_entry.tscn"
+const RESTAURANT_SCENE := "res://scenes/restaurant_map_2d.tscn"
+const ChestCatalog := preload("res://data/maze/entry_chests.gd")
+const GOLD_KEY := "gold"
+const CLAIMED_CHESTS_KEY := "claimed_chests"
+const DigCatalog := preload("res://data/maze/entry_dig_sites.gd")
+const CLAIMED_DIG_SITES_KEY := "claimed_dig_sites"
 var _active_save_path := SAVE_PATH
 var last_load_error := ""
 const PROLOGUE_DONE_KEY := "prologue_done"
@@ -17,6 +26,8 @@ const FIRST_ORDER_SETTLEMENT_KEY := "first_order_settlement"
 const REPUTATION_KEY := "reputation"
 const FIRST_ORDER_REPUTATION := 10
 const COOKING_STATE_KEY := "first_order_cooking"
+const COOKING_GUIDE_KEY := "cooking_guide_seen"
+const TUTORIAL_CHECKPOINT_KEY := "tutorial_checkpoint"
 const PREPARED_DISHES_KEY := "prepared_dishes"
 const UNLOCKED_RECIPES_KEY := "unlocked_recipe_ids"
 const RecipeCatalog := preload("res://scripts/cooking/recipe_catalog.gd")
@@ -36,6 +47,7 @@ const ROCK_SALT_ID := "rock_salt"
 const WRAPUP_KEY := "chapter_1_departure"
 const DEPARTURE_OBJECTIVE := "与芽芽、铁山一同进入迷宫浅层"
 const CH1_CARD_IDS := ["yaya_01", "yaya_02", "yaya_03", "yaya_04", "yaya_05", "yaya_06", "yaya_07", "yaya_08", "tieshan_01", "tieshan_02", "tieshan_03", "tieshan_04", "tieshan_05", "tieshan_06", "tieshan_07", "tieshan_08"]
+const HomeCardArt := preload("res://scripts/ui/components/home_card_art.gd")
 ## 顺序是存档契约；已确认的对白逐句提交，重进从尚未确认的一句继续。
 const WRAPUP_STEPS := ["relief", "meat", "yaya_past", "hero_past", "yaya_yes",
 	"second_serving", "check_store", "warehouse_move", "warehouse_inspect", "yaya_empty",
@@ -80,13 +92,169 @@ func _defaults() -> Dictionary:
 		PREPARED_DISHES_KEY: {FIRST_ORDER_ITEM_ID: {"1": 0, "2": 0, "3": 0}},
 		UNLOCKED_RECIPES_KEY: [],
 		COOKING_STATE_KEY: {"status": "idle", "recipe_id": "", "quality": 0, "pointer": 0.0},
+		COOKING_GUIDE_KEY: false,
+		TUTORIAL_CHECKPOINT_KEY: _empty_tutorial_checkpoint(),
 		FIRST_ORDER_PROGRESS_KEY: {"ingredients_claimed": false, "next_step": "accept_order"},
 		FIRST_ORDER_SETTLEMENT_KEY: {},
 		REPUTATION_KEY: 0,
 		WRAPUP_KEY: _empty_departure(),
 		QUEST_JOURNAL_KEY: QuestRegistry.empty_journal(),
 		"chapter_1_intro": "not_started",
+		MAZE_STATE_KEY: _empty_maze_state(),
+		GOLD_KEY: 0,
+		CLAIMED_CHESTS_KEY: [],
+		CLAIMED_DIG_SITES_KEY: [],
 	}
+
+## 木材数量不静默归零；坏数据保留并阻止发奖，旧档缺字段等价于未领取。
+func dig_reward_state_valid() -> bool:
+	var inventory = _state.get(INVENTORY_KEY)
+	if not inventory is Dictionary:
+		return false
+	var quantity = inventory.get(DigCatalog.ITEM_ID, 0)
+	if typeof(quantity) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(quantity)) \
+			or quantity < 0 or quantity > 9007199254740991 or quantity != floor(float(quantity)):
+		return false
+	var claims = _state.get(CLAIMED_DIG_SITES_KEY, [])
+	if not claims is Array:
+		return false
+	for id in claims:
+		if not id is String or id.is_empty():
+			return false
+	return true
+
+func is_dig_site_claimed(id: String) -> bool:
+	var claims = _state.get(CLAIMED_DIG_SITES_KEY, [])
+	return claims is Array and id in claims
+
+## 木材、一次性领取标记、站位同一事务落盘；失败完整回滚。
+func claim_exploration_dig_site(id: String, point: Vector2) -> Dictionary:
+	var site := DigCatalog.find(id)
+	if site.is_empty() or not can_enter_maze() or maze_exploration_state().region != "maze_entry" \
+			or not MazeRoads.is_walkable(point) or point.distance_to(site.position) > DigCatalog.INTERACT_RADIUS:
+		return {"success": false, "reason": "invalid_site_or_location"}
+	if not dig_reward_state_valid():
+		return {"success": false, "reason": "invalid_reward_state"}
+	var quantity := int(_state[INVENTORY_KEY].get(DigCatalog.ITEM_ID, 0))
+	if quantity > 9007199254740991 - DigCatalog.REWARD:
+		return {"success": false, "reason": "invalid_reward_state"}
+	if is_dig_site_claimed(id):
+		return {"success": false, "reason": "already_claimed"}
+	var previous := _state.duplicate(true)
+	var claims: Array = _state.get(CLAIMED_DIG_SITES_KEY, []).duplicate()
+	claims.append(id)
+	_state[INVENTORY_KEY][DigCatalog.ITEM_ID] = quantity + DigCatalog.REWARD
+	_state[CLAIMED_DIG_SITES_KEY] = claims
+	var location := maze_exploration_state()
+	location.position = [point.x, point.y]
+	_state[MAZE_STATE_KEY] = location
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed"}
+	return {"success": true, "amount": DigCatalog.REWARD, "total": quantity + DigCatalog.REWARD}
+
+## 金币使用 JSON 可精确往返的非负整数。异常字段保留原值，禁止继续发奖。
+func chest_reward_state_valid() -> bool:
+	var amount = _state.get(GOLD_KEY, 0)
+	if typeof(amount) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(amount)) \
+			or amount < 0 or amount > 9007199254740991 or amount != floor(float(amount)):
+		_diagnose("金币字段无效，保留原值并暂停宝箱领取")
+		return false
+	var claims = _state.get(CLAIMED_CHESTS_KEY, [])
+	if not claims is Array:
+		_diagnose("宝箱领取记录无效，保留原值并暂停领取")
+		return false
+	for id in claims:
+		if not id is String or id.is_empty():
+			_diagnose("宝箱领取 ID 无效，保留原记录并暂停领取")
+			return false
+	return true
+
+func gold_balance() -> int:
+	return int(_state.get(GOLD_KEY, 0)) if chest_reward_state_valid() else 0
+
+## 已领取凭证保留首次获币资格，余额归零不收起；旧档只读兼容，不修复坏数据。
+func is_gold_display_unlocked() -> bool:
+	if not chest_reward_state_valid():
+		return false
+	return int(_state.get(GOLD_KEY, 0)) > 0 or not _state.get(CLAIMED_CHESTS_KEY, []).is_empty()
+
+func is_chest_claimed(id: String) -> bool:
+	var claims = _state.get(CLAIMED_CHESTS_KEY, [])
+	return claims is Array and id in claims
+
+## 探索物件事务；不是游戏任务，不产生声望、任务或其他奖励。
+func claim_exploration_chest(id: String, point: Vector2) -> Dictionary:
+	var chest := ChestCatalog.find(id)
+	if chest.is_empty() or not can_enter_maze() or maze_exploration_state().region != "maze_entry" \
+			or not MazeRoads.is_walkable(point) or point.distance_to(chest.position) > ChestCatalog.INTERACT_RADIUS:
+		return {"success": false, "reason": "invalid_chest_or_location"}
+	if not chest_reward_state_valid() or gold_balance() > 9007199254740991 - ChestCatalog.REWARD:
+		return {"success": false, "reason": "invalid_reward_state"}
+	if is_chest_claimed(id):
+		return {"success": false, "reason": "already_claimed"}
+	var previous := _state.duplicate(true)
+	var claims: Array = _state.get(CLAIMED_CHESTS_KEY, []).duplicate()
+	claims.append(id)
+	_state[GOLD_KEY] = gold_balance() + ChestCatalog.REWARD
+	_state[CLAIMED_CHESTS_KEY] = claims
+	var location := maze_exploration_state()
+	location.position = [point.x, point.y]
+	_state[MAZE_STATE_KEY] = location
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed"}
+	return {"success": true, "amount": ChestCatalog.REWARD, "total": gold_balance()}
+
+func _empty_maze_state() -> Dictionary:
+	return {"version": 1, "region": "restaurant", "position": [MazeRoads.SPAWN.x, MazeRoads.SPAWN.y], "chapter_2_started": false}
+
+func can_enter_maze() -> bool:
+	return is_chapter_1_complete() and chapter_1_outro_state() == "done" and not _replaying
+
+## 纯读迁移；老档不假定到过迷宫，坏坐标只恢复石门安全站位。
+func maze_exploration_state() -> Dictionary:
+	var saved = _state.get(MAZE_STATE_KEY, _empty_maze_state())
+	if not saved is Dictionary or saved.get("version") != 1 \
+			or saved.get("region") not in ["restaurant", "maze_entry"] \
+			or not saved.get("chapter_2_started") is bool:
+		_diagnose("迷宫探索记录无效，回退餐厅")
+		return _empty_maze_state()
+	if not can_enter_maze():
+		return _empty_maze_state()
+	var result: Dictionary = saved.duplicate(true)
+	if result.region == "maze_entry" and not result.chapter_2_started:
+		_diagnose("迷宫区域缺少第二章开始记录，回退餐厅")
+		return _empty_maze_state()
+	var coordinates = result.get("position")
+	var valid: bool = coordinates is Array and coordinates.size() == 2
+	if valid:
+		valid = typeof(coordinates[0]) in [TYPE_INT, TYPE_FLOAT] and typeof(coordinates[1]) in [TYPE_INT, TYPE_FLOAT]
+	if valid:
+		valid = MazeRoads.is_walkable(Vector2(coordinates[0], coordinates[1]))
+	if not valid:
+		_diagnose("迷宫站位无效，恢复石门安全点")
+		result.position = [MazeRoads.SPAWN.x, MazeRoads.SPAWN.y]
+	return result
+
+func resume_scene_path() -> String:
+	return MAZE_SCENE if maze_exploration_state().region == "maze_entry" else RESTAURANT_SCENE
+
+## 由成功就绪的迷宫场景提交；保存失败同时回滚区域与开始标记。
+func record_maze_location(region: String, point: Vector2) -> Dictionary:
+	if not can_enter_maze() or region not in ["restaurant", "maze_entry"] or not MazeRoads.is_walkable(point):
+		return {"success": false, "reason": "invalid_location", "created": false}
+	var state := maze_exploration_state()
+	var created: bool = region == "maze_entry" and not state.chapter_2_started
+	var next := {"version": 1, "region": region, "position": [point.x, point.y], "chapter_2_started": state.chapter_2_started or region == "maze_entry"}
+	if _state.get(MAZE_STATE_KEY) == next:
+		return {"success": true, "reason": "unchanged", "created": false}
+	var previous := _state.duplicate(true)
+	_state[MAZE_STATE_KEY] = next
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed", "created": false}
+	return {"success": true, "reason": "saved", "created": created}
 
 func _empty_order() -> Dictionary:
 	return {
@@ -96,6 +264,51 @@ func _empty_order() -> Dictionary:
 		"quantity": 0,
 		"status": ORDER_STATUS_NONE,
 	}
+
+func _empty_tutorial_checkpoint() -> Dictionary:
+	return {"chapter": 1, "next_index": 0, "step_key": "", "line_index": 0}
+
+func _normalize_tutorial_checkpoint(value) -> Dictionary:
+	var checkpoint := _empty_tutorial_checkpoint()
+	if not value is Dictionary:
+		_diagnose("tutorial_checkpoint 类型错误，回退教程起点")
+		return checkpoint
+	var chapter = value.get("chapter", 1)
+	var next_index = value.get("next_index", 0)
+	var step_key = value.get("step_key", "")
+	var line_index = value.get("line_index", 0)
+	if typeof(chapter) not in [TYPE_INT, TYPE_FLOAT] or chapter != 1:
+		_diagnose("tutorial_checkpoint.chapter 无效，回退教程起点")
+		return checkpoint
+	if typeof(next_index) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(next_index)) or next_index < 0 or next_index > 2147483647 or next_index != floor(float(next_index)):
+		_diagnose("tutorial_checkpoint.next_index 无效，回退教程起点")
+		return checkpoint
+	if not step_key is String:
+		_diagnose("tutorial_checkpoint.step_key 类型错误，回退教程起点")
+		return checkpoint
+	if typeof(line_index) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(line_index)) or line_index < 0 or line_index > 2147483647 or line_index != floor(float(line_index)):
+		_diagnose("tutorial_checkpoint.line_index 无效，回退教程起点")
+		return checkpoint
+	checkpoint.next_index = int(next_index)
+	checkpoint.step_key = step_key
+	checkpoint.line_index = int(line_index)
+	return checkpoint
+
+func tutorial_checkpoint() -> Dictionary:
+	return _normalize_tutorial_checkpoint(_state.get(TUTORIAL_CHECKPOINT_KEY)).duplicate(true)
+
+## 对白或教程操作确认后提交下一步；重播只更新副本，不碰正式存档。
+func save_tutorial_checkpoint(next_index: int, step_key: String, line_index := 0) -> bool:
+	if _replaying:
+		return true
+	if next_index < 0 or line_index < 0 or (step_key.is_empty() and next_index > 0):
+		return false
+	var previous := _state.duplicate(true)
+	_state[TUTORIAL_CHECKPOINT_KEY] = {"chapter": 1, "next_index": next_index, "step_key": step_key, "line_index": line_index}
+	if save():
+		return true
+	_state = previous
+	return false
 
 func _empty_departure() -> Dictionary:
 	return {"step": "relief", "empty_warehouse_checked": false, "tieshan_name_revealed": false,
@@ -110,7 +323,7 @@ func _pending_cards() -> Dictionary:
 func _unlocked_cards() -> Dictionary:
 	return {"status": "unlocked", "unlocked": true, "card_ids": CH1_CARD_IDS.duplicate(),
 		"deck_ids": CH1_CARD_IDS.duplicate(),
-		"characters": {"yaya": {"attack": 2, "max_hp": 5}, "tieshan": {"attack": 1, "max_hp": 6}}}
+		"characters": {"yaya": {"attack": 2, "max_hp": 4}, "tieshan": {"attack": 1, "max_hp": 5}}}
 
 func departure_state() -> Dictionary:
 	var saved = _state.get(WRAPUP_KEY)
@@ -182,9 +395,9 @@ func _cards_problem(cards) -> String:
 		if chars is Dictionary and chars.size() == 2 \
 				and yaya is Dictionary and tieshan is Dictionary \
 				and typeof(yaya.get("attack")) in [TYPE_INT, TYPE_FLOAT] and yaya.attack == 2 \
-				and typeof(yaya.get("max_hp")) in [TYPE_INT, TYPE_FLOAT] and yaya.max_hp == 5 \
+				and typeof(yaya.get("max_hp")) in [TYPE_INT, TYPE_FLOAT] and yaya.max_hp == 4 \
 				and typeof(tieshan.get("attack")) in [TYPE_INT, TYPE_FLOAT] and tieshan.attack == 1 \
-				and typeof(tieshan.get("max_hp")) in [TYPE_INT, TYPE_FLOAT] and tieshan.max_hp == 6 \
+				and typeof(tieshan.get("max_hp")) in [TYPE_INT, TYPE_FLOAT] and tieshan.max_hp == 5 \
 				and cards.size() == 5:
 			return ""
 	return "cards schema 无效或卡牌列表不完整"
@@ -192,6 +405,19 @@ func _cards_problem(cards) -> String:
 func cards_state() -> Dictionary:
 	var cards = departure_state().get("cards", _pending_cards())
 	return cards.duplicate(true)
+
+## 原图收藏的数量快照。缺字段的旧档仅兼容已收录角色的已确认首批卡牌；
+## 明确空表/零数量不会重新填满。只读，不因浏览自动解锁或写盘。
+func owned_character_card_counts() -> Dictionary:
+	if _state.has(HomeCardArt.COLLECTION_KEY):
+		var stored = _state[HomeCardArt.COLLECTION_KEY]
+		if HomeCardArt.valid_counts(stored):
+			var counts := {}
+			for id in stored: counts[id] = int(stored[id])
+			return counts
+		_diagnose("原图卡牌拥有数量无效，保留原始记录并显示空列表。")
+		return {}
+	return HomeCardArt.initial_counts(departure_state().get("party", []))
 
 func cards_unlocked() -> bool:
 	return bool(cards_state().get("unlocked", false))
@@ -309,6 +535,9 @@ func advance_departure(expected_step: String) -> Dictionary:
 			state.party = ["yaya", "tieshan"]
 			state.objective = DEPARTURE_OBJECTIVE
 			state.entrance_lit = true
+			# 只在首次收录事务中记录首批卡牌；后续浏览不按素材目录补齐。
+			if not _state.has(HomeCardArt.COLLECTION_KEY):
+				_state[HomeCardArt.COLLECTION_KEY] = HomeCardArt.initial_counts(state.party)
 	_state[WRAPUP_KEY] = state
 	if not save():
 		_state = previous
@@ -353,6 +582,9 @@ func load_data() -> void:
 				_state[WRAPUP_KEY] = _normalize_departure_cards(_state.get(WRAPUP_KEY))
 				# 先核对原始事务结构，不能把错误库存归零后误认作已就绪。
 				_state[WRAPUP_KEY] = departure_state()
+				if not parsed.has(HomeCardArt.COLLECTION_KEY) and not departure_state().party.is_empty():
+					_state[HomeCardArt.COLLECTION_KEY] = owned_character_card_counts()
+					_diagnose("旧档原图卡牌记录补齐已确认首批数量，未写盘。")
 				_state[CURRENT_ORDER_KEY] = _normalize_order(_state.get(CURRENT_ORDER_KEY))
 				_state[INVENTORY_KEY] = _normalize_inventory(_state.get(INVENTORY_KEY))
 				_state[FIRST_ORDER_PROGRESS_KEY] = _normalize_progress(_state.get(FIRST_ORDER_PROGRESS_KEY))
@@ -388,7 +620,9 @@ func load_data() -> void:
 					_state.chapter_1_intro = "not_started"
 				if not _prologue_preview:
 					_migrate_prologue(parsed)
+				_state[TUTORIAL_CHECKPOINT_KEY] = _normalize_tutorial_checkpoint(_state.get(TUTORIAL_CHECKPOINT_KEY))
 				_state[QUEST_JOURNAL_KEY] = _quest_journal()
+				_state[MAZE_STATE_KEY] = maze_exploration_state()
 				return
 			last_load_error = "存档内容无效，顶层必须是字典"
 			_diagnose("存档顶层必须是字典，回退默认状态")
@@ -735,6 +969,18 @@ func _normalize_cooking_state(value) -> Dictionary:
 
 func cooking_state() -> Dictionary:
 	return _normalize_cooking_state(_state.get(COOKING_STATE_KEY)).duplicate(true)
+
+func needs_cooking_guide() -> bool:
+	return not is_chapter_1_done() and is_canonical_first_order(current_order()) \
+		and _state.get(COOKING_GUIDE_KEY, false) != true
+
+func acknowledge_cooking_guide() -> bool:
+	var previous := _state.duplicate(true)
+	_state[COOKING_GUIDE_KEY] = true
+	if save():
+		return true
+	_state = previous
+	return false
 
 ## 只有已扣料且尚未产出这一份首单，才允许中断恢复。
 func _can_recover_cooking() -> bool:

@@ -19,9 +19,20 @@ var _stalled_for := 0.0
 var playback_state := "playing"
 var _e_held := false
 var _continue_armed := false
+var _end_key: TextureRect
 
 func _ready() -> void:
 	add_to_group("prologue")
+	# 片尾字幕已烘焙进图片；只覆盖原 E 键帽，保留原字幕与画面。
+	_end_key = TextureRect.new()
+	_end_key.name = "ContinueKeyIcon"
+	_end_key.texture = preload("res://scripts/ui/components/continue_prompt.gd").key_texture()
+	_end_key.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_end_key.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_end_key.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_end_key.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	end_card.add_child(_end_key)
+	end_card.resized.connect(_layout_end_key)
 	skip_button.focus_mode = Control.FOCUS_NONE
 	skip_button.pressed.connect(request_exit.bind("skip_button"))
 	video.finished.connect(_on_finished)
@@ -47,8 +58,18 @@ func _start_video() -> void:
 	if end_card.texture == null:
 		_playback_failed("片尾画面缺失：" + end_card_path)
 		return
+	_layout_end_key()
 	video.play()
 	print("PROLOGUE playback_started: ", video_path)
+
+func _layout_end_key() -> void:
+	if not is_instance_valid(_end_key) or end_card.texture == null:
+		return
+	var source := end_card.texture.get_size()
+	var factor := minf(end_card.size.x / source.x, end_card.size.y / source.y)
+	var origin := (end_card.size - source * factor) * 0.5
+	_end_key.position = origin + Vector2(531, 554) * factor
+	_end_key.size = Vector2(27, 29) * factor
 
 func _process(delta: float) -> void:
 	if _leaving or playback_state != "playing" or video.stream == null:
@@ -112,7 +133,8 @@ func request_exit(reason: String) -> void:
 	var transition := TRANSITION.new()
 	transition.failed.connect(_on_transition_failed)
 	get_tree().root.add_child(transition)
-	transition.enter_restaurant(RESTAURANT, reason != "already_seen", video)
+	var destination := SaveManager.resume_scene_path() if reason == "already_seen" else RESTAURANT
+	transition.enter_restaurant(destination, reason != "already_seen", video)
 
 func _on_transition_failed() -> void:
 	_leaving = false

@@ -8,8 +8,12 @@ signal cancelled
 const RECIPE_ID := "salt_grilled_rockmane"
 const GaugeScript := preload("res://scripts/cooking/cooking_visual.gd")
 const Judgement := preload("res://scripts/cooking/qte_judgement.gd")
+const POINTER_SPEED_SCALE := 1.125
+const RESULT_HOLD_MSEC := 2000
+const LESSON_SPOTLIGHT := preload("res://scripts/ui/cooking_lesson_spotlight.gdshader")
 const Catalog := preload("res://scripts/cooking/recipe_catalog.gd")
 const DISH_ICON: Texture2D = preload("res://assets/ui/ingredients/salt_grilled_rockmane.png")
+const COOKING_GUIDE_LINE := "【开始烹饪】后，指针会开始移动，在倒计时结束前需要按【结束烹饪】控制指针落下位置，越靠近绿色区域则料理评分越高，所可能带来的餐厅声望越多。"
 
 var recipe_id := RECIPE_ID
 var recipe: Dictionary = {}
@@ -19,9 +23,13 @@ var _finished := false
 var _locked_stars := 0
 var _locked_pointer := 0.0
 var _elapsed := 0.0
-var _round_duration := 3.6
+var _round_duration := 5.0
+var _countdown: Label
+var _lesson_dialog: Control
+var _lesson_blocker: ColorRect
+var _lesson_paused := false
 var _perfect_width := 0.16
-var _good_width := 0.38
+var _good_width := 0.80
 var _gauge: Control
 var _panel: PanelContainer
 var _panel_fill: ColorRect
@@ -38,6 +46,7 @@ var _available_recipe_ids: Array[String] = []
 var _carried: Dictionary = {}
 var _result_popup: Control
 var _pending_result: Dictionary = {}
+var _result_hold_until_msec := 0
 
 func _ready() -> void:
 	add_to_group("cooking_modal")
@@ -82,6 +91,11 @@ func _build() -> void:
 	_gauge = Control.new()
 	_gauge.set_script(GaugeScript)
 	_place(content, _gauge, Rect2(15, 43, 570, 350))
+	_countdown = _label("05:00", 20, SproutTheme.INK)
+	_countdown.visible = false
+	_gauge.add_child(_countdown)
+	_gauge.resized.connect(_layout_countdown)
+	_layout_countdown()
 	_recipe_row = PanelContainer.new()
 	var row_style := StyleBoxFlat.new()
 	row_style.bg_color = Color("#f5e5c6")
@@ -119,6 +133,26 @@ func _build() -> void:
 	_result_popup.set_script(preload("res://scripts/ui/cooking_result_popup.gd"))
 	add_child(_result_popup)
 	_result_popup.confirmed.connect(_on_result_confirmed)
+	_lesson_blocker = ColorRect.new()
+	_lesson_blocker.color = Color(0.03, 0.04, 0.03, 0.68)
+	var spotlight := ShaderMaterial.new()
+	spotlight.shader = LESSON_SPOTLIGHT
+	_lesson_blocker.material = spotlight
+	_lesson_blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_lesson_blocker.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_lesson_blocker)
+	_lesson_blocker.hide()
+	_lesson_dialog = preload("res://scenes/ui/dialog_box.tscn").instantiate()
+	add_child(_lesson_dialog)
+	# 长教学文案给原组件右下角 E 提示留位，不增高对话框。
+	var key_space := Control.new()
+	key_space.custom_minimum_size.x = 48.0
+	key_space.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_lesson_dialog.get_node("Panel/Dialogue").add_child(key_space)
+	# 专属教学由本弹窗处理 E/鼠标，不让继续事件透传到 QTE。
+	_lesson_dialog.set_process_unhandled_input(false)
+	_lesson_dialog.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_lesson_dialog.hide_box()
 
 func _label(value: String, font_size: int, color: Color) -> Label:
 	var label := Label.new()
@@ -146,8 +180,33 @@ func _layout_panel() -> void:
 	_panel.position = (viewport_size - _panel.size * _panel.scale) * 0.5
 	_panel_fill.position = _panel.position + Vector2(9, 9) * _panel.scale
 	_panel_fill.size = (_panel.size - Vector2(18, 18)) * _panel.scale
+	if is_instance_valid(_lesson_dialog):
+		var dialog_width := minf(1092.0, viewport_size.x - 32.0)
+		# 保留原对白组件的124px高度与底部30px间距，只对窄屏收紧宽度。
+		_lesson_dialog.offset_left = -dialog_width * 0.5
+		_lesson_dialog.offset_right = dialog_width * 0.5
+	_update_lesson_focus()
+
+func _update_lesson_focus() -> void:
+	if not is_instance_valid(_lesson_blocker) or not _lesson_blocker.visible:
+		return
+	var spotlight := _lesson_blocker.material as ShaderMaterial
+	var arc_origin: Vector2 = _gauge._design_offset() + GaugeScript.ARC_CENTER * _gauge._design_scale()
+	var center: Vector2 = _lesson_blocker.get_global_transform().affine_inverse() * _gauge.get_global_transform() * arc_origin
+	var factor: float = _gauge._design_scale() * _gauge.get_global_transform().get_scale().x
+	spotlight.set_shader_parameter("overlay_size", _lesson_blocker.size)
+	spotlight.set_shader_parameter("arc_center", center)
+	spotlight.set_shader_parameter("arc_radius", GaugeScript.ARC_RADIUS * factor)
+	spotlight.set_shader_parameter("clear_half_width", 60.0 * factor)
+	spotlight.set_shader_parameter("edge_softness", 10.0 * factor)
+
+func _layout_countdown() -> void:
+	_countdown.size = Vector2(124, 26)
+	_countdown.position = _gauge.countdown_center() - _countdown.size * 0.5
 
 func open_for_order(requested_recipe_id: String = RECIPE_ID) -> void:
+	_result_hold_until_msec = 0
+	_clear_cooking_guide()
 	_result_popup.cancel()
 	_pending_result.clear()
 	_panel.show()
@@ -160,6 +219,7 @@ func open_for_order(requested_recipe_id: String = RECIPE_ID) -> void:
 	_locked_stars = 0
 	_locked_pointer = 0.0
 	_elapsed = 0.0
+	_countdown.hide()
 	_quality_label.text = ""
 	_message.text = ""
 	_start_button.visible = true
@@ -167,7 +227,7 @@ func open_for_order(requested_recipe_id: String = RECIPE_ID) -> void:
 	_finish_button.disabled = true
 	_cancel_button.disabled = false
 	_gauge.set_running(false)
-	_gauge.set_pointer(0.0)
+	_gauge.set_pointer(-1.0)
 	var sm := get_node_or_null("/root/SaveManager")
 	_carried = sm.carried_ingredients() if sm != null else {}
 	_available_recipe_ids.clear()
@@ -175,6 +235,10 @@ func open_for_order(requested_recipe_id: String = RECIPE_ID) -> void:
 		_available_recipe_ids.assign(sm.available_cooking_recipes())
 	recipe_id = requested_recipe_id if requested_recipe_id in _available_recipe_ids else (_available_recipe_ids[0] if not _available_recipe_ids.is_empty() else "")
 	_apply_recipe()
+	# 倒计时在弹窗打开时就显示，开始烹饪后继续从同一5秒初值递减。
+	_countdown.show()
+	_elapsed = 0.0
+	_update_countdown()
 	_render_recipe_choices()
 	_gauge.set_ingredients(_carried)
 	_start_button.disabled = recipe.is_empty()
@@ -200,12 +264,15 @@ func open_for_order(requested_recipe_id: String = RECIPE_ID) -> void:
 		_start_button.disabled = true
 		_finished = true
 		_message.text = "料理已完成，请前往吧台交付"
+	elif sm != null and not recipe.is_empty() and sm.needs_cooking_guide():
+		# 先讲解再由玩家开火；阅读教学不扣料、不启动指针或倒计时。
+		_show_cooking_guide()
 
 func _apply_recipe() -> void:
 	recipe = Catalog.get_recipe(recipe_id)
-	_round_duration = float(recipe.get("round_duration", 3.6))
+	_round_duration = float(recipe.get("round_duration", 5.0))
 	_perfect_width = float(recipe.get("perfect_width", 0.16))
-	_good_width = float(recipe.get("good_width", 0.38))
+	_good_width = float(recipe.get("good_width", 0.80))
 	_gauge.perfect_width = _perfect_width
 	_gauge.good_width = _good_width
 	_gauge.queue_redraw()
@@ -271,6 +338,8 @@ func _select_recipe(id: String) -> void:
 	_render_recipe_choices()
 
 func close_modal() -> void:
+	_result_hold_until_msec = 0
+	_clear_cooking_guide()
 	_result_popup.cancel()
 	_pending_result.clear()
 	_open = false
@@ -289,7 +358,7 @@ func _show_finish_button() -> void:
 			child.disabled = true
 
 func _on_start_pressed() -> void:
-	if not _open or _started or _finished or recipe.is_empty():
+	if not _open or _started or _finished or _lesson_paused or recipe.is_empty():
 		return
 	var sm := get_node_or_null("/root/SaveManager")
 	if sm == null:
@@ -302,23 +371,25 @@ func _on_start_pressed() -> void:
 		return
 	_started = true
 	_elapsed = 0.0
+	_countdown.show()
+	_update_countdown()
 	_show_finish_button()
 	# 已开火时展示本次投入的配方份数，而非扣除后的携带余额。
 	_gauge.set_ingredients(recipe.get("ingredients", {}))
-	_gauge.set_pointer(Judgement.position_at(0.0, _round_duration))
+	_gauge.set_pointer(Judgement.position_at(0.0, _round_duration / POINTER_SPEED_SCALE))
 	_gauge.set_running(true)
 	_message.text = ""
 	cooking_started.emit()
 
 func _on_finish_pressed() -> void:
-	if not _open or not _started or _finished:
+	if not _open or not _started or _finished or _lesson_paused:
 		return
 	if _locked_stars > 0:
-		_finish_result(_locked_stars, _locked_pointer)
+		_finish_result(_locked_stars, _locked_pointer, true)
 	else:
-		_finish_result(Judgement.stars_for_position(_gauge.pointer_position, _perfect_width, _good_width), _gauge.pointer_position)
+		_finish_result(Judgement.stars_for_position(_gauge.pointer_position, _perfect_width, _good_width), _gauge.pointer_position, true)
 
-func _finish_result(stars: int, pointer := -2.0) -> void:
+func _finish_result(stars: int, pointer := -2.0, hold_result := false) -> void:
 	if _finished:
 		return
 	if _locked_stars > 0:
@@ -341,13 +412,23 @@ func _finish_result(stars: int, pointer := -2.0) -> void:
 	_message.text = ""
 	_finish_button.disabled = true
 	_pending_result = result.duplicate(true)
-	_panel.hide()
-	_panel_fill.hide()
-	_result_popup.present(str(recipe.get("name", "料理")), _dish_icon(recipe_id), int(result.get("quality", _locked_stars)))
+	if hold_result:
+		# 成品立即保存，界面保留两秒供玩家看清锁定落点；关闭或重开会清除此等待。
+		_result_hold_until_msec = Time.get_ticks_msec() + RESULT_HOLD_MSEC
+	else:
+		_show_pending_result()
 	cooking_finished.emit(result)
 
-func _on_result_confirmed() -> void:
+func _show_pending_result() -> void:
+	_result_hold_until_msec = 0
 	if not _open or _pending_result.is_empty():
+		return
+	_panel.hide()
+	_panel_fill.hide()
+	_result_popup.present(str(recipe.get("name", "料理")), _dish_icon(recipe_id), int(_pending_result.get("quality", _locked_stars)))
+
+func _on_result_confirmed() -> void:
+	if not _open or not _result_popup.visible or _pending_result.is_empty():
 		return
 	var result := _pending_result.duplicate(true)
 	close_modal()
@@ -360,14 +441,67 @@ func _on_cancel_pressed() -> void:
 	cancelled.emit()
 
 func _process(delta: float) -> void:
-	if not _open or not _started or _finished or _locked_stars > 0:
+	if _result_hold_until_msec > 0:
+		if Time.get_ticks_msec() >= _result_hold_until_msec:
+			_show_pending_result()
 		return
-	_elapsed += delta
-	_gauge.set_pointer(Judgement.position_at(_elapsed, _round_duration))
+	if _lesson_paused:
+		_update_lesson_focus()
+	if not _open or not _started or _finished or _locked_stars > 0 or _lesson_paused:
+		return
+	_elapsed = minf(_elapsed + delta, _round_duration)
+	_gauge.set_pointer(Judgement.position_at(_elapsed, _round_duration / POINTER_SPEED_SCALE))
+	_update_countdown()
 	if _elapsed >= _round_duration:
 		_finish_result(1)
 
+func _update_countdown() -> void:
+	# 秒后保留两位小数，每格代表10毫秒；倒计时归零前不提前显示00:00。
+	var hundredths := ceili(maxf(0.0, _round_duration - _elapsed) * 100.0)
+	_countdown.text = "%02d:%02d" % [hundredths / 100, hundredths % 100]
+
+func _show_cooking_guide() -> void:
+	_lesson_paused = true
+	_start_button.disabled = true
+	_finish_button.disabled = true
+	_gauge.set_tutorial_highlight(true)
+	_lesson_blocker.show()
+	_lesson_dialog.start("芽芽", [COOKING_GUIDE_LINE], preload("res://assets/characters/yaya_portrait.png"))
+	# 一次 E 即可结束教学；整句直接展示，给玩家自行阅读的时间。
+	_lesson_dialog._advance()
+	_lesson_dialog.next_icon.show()
+	_layout_panel()
+
+func _resume_cooking_guide() -> void:
+	if not SaveManager.acknowledge_cooking_guide():
+		_lesson_dialog.start("芽芽", ["教学进度未保存，请按 E 重试。"], preload("res://assets/characters/yaya_portrait.png"))
+		_lesson_dialog._advance()
+		_lesson_dialog.next_icon.show()
+		return
+	_clear_cooking_guide()
+	_message.text = ""
+	_start_button.disabled = recipe.is_empty()
+	_finish_button.disabled = not _started or _finished
+
+func _clear_cooking_guide() -> void:
+	_lesson_paused = false
+	if is_instance_valid(_lesson_dialog):
+		_lesson_dialog.hide_box()
+		_lesson_blocker.hide()
+	if is_instance_valid(_gauge):
+		_gauge.set_tutorial_highlight(false)
+
 func _input(event: InputEvent) -> void:
+	if _open and _result_hold_until_msec > 0:
+		get_viewport().set_input_as_handled()
+		return
+	if _open and _lesson_paused:
+		get_viewport().set_input_as_handled()
+		if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
+			_resume_cooking_guide()
+		elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			_resume_cooking_guide()
+		return
 	if _result_popup.visible:
 		return
 	if not _open or not event is InputEventKey or not event.pressed or event.echo:

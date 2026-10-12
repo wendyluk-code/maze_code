@@ -39,7 +39,7 @@
     },
     "chapter_1_salt_pool": {
       "type": "exploration",
-      "title": "前往迷宫第一层·盐池",
+      "title": "前往迷宫浅层·盐池",
       "accept_condition": {"handler": "chapter_1_ready_to_depart"},
       "completion_condition": {"handler": "verified_region_arrival", "floor": 1, "region_id": "old_salt_pool", "implemented": false},
       "subtasks": []

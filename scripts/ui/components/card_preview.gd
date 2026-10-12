@@ -16,10 +16,12 @@ var _sprout_button: SproutButton
 var _tieshan_button: SproutButton
 var _index_buttons: Array[SproutButton] = []
 var _capture_path := ""
+var _battle_context := false
+const CARDS_PER_FACTION := 9
 
 func _ready() -> void:
 	theme = SproutTheme.make_theme()
-	_cards = DATA.formal_set()
+	_cards = DATA.preview_set()
 	_build()
 	var args := OS.get_cmdline_args()
 	var faction_arg := args.find("--card-preview-faction")
@@ -27,7 +29,7 @@ func _ready() -> void:
 		_faction_index = 1 if args[faction_arg + 1].to_lower() == "tieshan" else 0
 	var index_arg := args.find("--card-preview-index")
 	if index_arg >= 0 and index_arg + 1 < args.size():
-		_card_index = clampi(int(args[index_arg + 1]) - 1, 0, 7)
+		_card_index = clampi(int(args[index_arg + 1]) - 1, 0, CARDS_PER_FACTION - 1)
 	_show_card()
 	var capture_index := args.find("--card-preview-capture")
 	if capture_index >= 0 and capture_index + 1 < args.size():
@@ -64,7 +66,7 @@ func _build() -> void:
 	heading.add_theme_color_override("font_color", SproutTheme.INK)
 	_header_box_add(header_box, heading)
 	_hint = Label.new()
-	_hint.text = "16 张正式设计牌 · 方案B统一卡框展示（数值尚未实战平衡）"
+	_hint.text = "旧内容样例 · 新版卡牌数值待设计"
 	_hint.add_theme_color_override("font_color", SproutTheme.INK_MUTED)
 	_header_box_add(header_box, _hint)
 	var close := _make_button("关闭", 5)
@@ -78,10 +80,18 @@ func _build() -> void:
 	page.add_child(faction_row)
 	_sprout_button = _make_button("芽芽 · 辅助", 0)
 	_tieshan_button = _make_button("铁山 · 守卫", 1)
+	var context_button := _make_button("收录预览", 5)
+	context_button.name = "BattleContextButton"
+	context_button.pressed.connect(func() -> void:
+		_battle_context = not _battle_context
+		context_button.text = "战斗资源预览" if _battle_context else "收录预览"
+		_show_card()
+	)
 	_sprout_button.pressed.connect(func() -> void: _set_faction(0))
 	_tieshan_button.pressed.connect(func() -> void: _set_faction(1))
 	faction_row.add_child(_sprout_button)
 	faction_row.add_child(_tieshan_button)
+	faction_row.add_child(context_button)
 
 	var card_row := HBoxContainer.new()
 	card_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -103,7 +113,7 @@ func _build() -> void:
 	index_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	index_row.add_theme_constant_override("separation", 6)
 	page.add_child(index_row)
-	for index in range(8):
+	for index in range(CARDS_PER_FACTION):
 		var button := _make_button("%02d" % (index + 1), 4)
 		button.pressed.connect(func(i := index) -> void:
 			_card_index = i
@@ -119,7 +129,7 @@ func _build() -> void:
 	_progress.add_theme_color_override("font_color", Color("#fff4dc"))
 	page.add_child(_progress)
 	var input_hint := Label.new()
-	input_hint.text = "操作：点击按钮，或使用 ←/→ 翻页；1–8 直接跳转卡牌"
+	input_hint.text = "操作：点击按钮，或使用 ←/→ 翻页；1–9 直接跳转卡牌；右侧按钮切换战斗资源占位"
 	input_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	input_hint.add_theme_color_override("font_color", Color("#d8ead2"))
 	page.add_child(input_hint)
@@ -139,15 +149,16 @@ func _set_faction(value: int) -> void:
 	_show_card()
 
 func _step(delta: int) -> void:
-	_card_index = posmod(_card_index + delta, 8)
+	_card_index = posmod(_card_index + delta, CARDS_PER_FACTION)
 	_show_card()
 
 func _show_card() -> void:
 	if not is_instance_valid(_card):
 		return
-	var data := _cards[_faction_index * 8 + _card_index]
+	var data := _cards[_faction_index * CARDS_PER_FACTION + _card_index]
 	_card.configure(data)
-	_progress.text = "%s · %s · 第 %d / 8 张" % [data.character_name, data.role, data.number]
+	_card.set_battle_context(_battle_context)
+	_progress.text = "%s · %s · 第 %d / %d 张" % [data.character_name, data.card_type, _card_index + 1, CARDS_PER_FACTION]
 	_sprout_button.disabled = _faction_index == 0
 	_tieshan_button.disabled = _faction_index == 1
 	for i in range(_index_buttons.size()):
@@ -159,7 +170,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_step(1)
 		elif event.keycode == KEY_LEFT:
 			_step(-1)
-		elif event.keycode >= KEY_1 and event.keycode <= KEY_8:
+		elif event.keycode >= KEY_1 and event.keycode <= KEY_9:
 			_card_index = event.keycode - KEY_1
 			_show_card()
 

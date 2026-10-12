@@ -6,6 +6,7 @@ signal map_closed
 var _modal: ColorRect
 var _map_panel: Control
 var _map_image: TextureRect
+var _continue_prompt: HBoxContainer
 var _map_tween: Tween
 var _open := false
 var _locked_player: Node
@@ -50,6 +51,8 @@ func _ready() -> void:
 	_map_image.material = fog
 	panel.add_child(_map_image)
 	_map_image.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_continue_prompt = preload("res://scripts/ui/components/continue_prompt.gd").new()
+	_modal.add_child(_continue_prompt)
 	resized.connect(_layout_map)
 	_layout_map()
 	_install_entrance.call_deferred()
@@ -57,11 +60,13 @@ func _ready() -> void:
 func _layout_map() -> void:
 	if not is_instance_valid(_map_panel):
 		return
-	var width := minf(minf(1200.0, size.x - 64.0), (size.y - 64.0) * 1672.0 / 941.0)
+	var width := minf(minf(1200.0, size.x - 64.0), (size.y - 116.0) * 1672.0 / 941.0)
 	var height := width * 941.0 / 1672.0
 	_map_panel.size = Vector2(width, height)
-	_map_panel.position = (size - _map_panel.size) * 0.5
+	_map_panel.position = Vector2((size.x - width) * 0.5, (size.y - 60.0 - height) * 0.5)
 	_map_panel.pivot_offset = _map_panel.size * 0.5
+	_continue_prompt.position = Vector2(0, size.y - 60)
+	_continue_prompt.size = Vector2(size.x, 36)
 
 func _install_entrance() -> void:
 	var root := get_parent().get_parent()
@@ -141,9 +146,11 @@ func open_map() -> void:
 		_map_tween.kill()
 	_map_panel.scale = Vector2(0.88, 0.06)
 	_map_panel.modulate.a = 0.0
+	_continue_prompt.modulate.a = 0.0
 	_map_tween = create_tween().set_parallel(true)
 	_map_tween.tween_property(_map_panel, "scale", Vector2.ONE, 0.48).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	_map_tween.tween_property(_map_panel, "modulate:a", 1.0, 0.18)
+	_map_tween.tween_property(_continue_prompt, "modulate:a", 1.0, 0.18).set_delay(0.30)
 	_map_tween.chain().tween_callback(func():
 		_map_input_armed = not Input.is_key_pressed(KEY_E) and not Input.is_physical_key_pressed(KEY_E))
 	_locked_player = get_tree().get_first_node_in_group("player")

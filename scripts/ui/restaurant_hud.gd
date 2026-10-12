@@ -1,19 +1,24 @@
 extends CanvasLayer
 ## 常驻声望；章后交互的提示和确认层。
+const Confirmation := preload("res://scripts/ui/components/destination_confirmation.gd")
+const Toast := preload("res://scripts/ui/components/feedback_toast.gd")
+const Transition := preload("res://scripts/ui/components/scene_transition.gd")
+const AdventurerHome := preload("res://scripts/ui/adventurer_home.gd")
+const ResourceCounter := preload("res://scripts/ui/components/resource_counter.gd")
+var reputation_counter: ResourceCounter
+var gold_counter: ResourceCounter
 var reputation_label: Label
-var toast_label: Label
-var confirmation: ColorRect
+var toast_label: Toast
+var confirmation: Confirmation
 var question: Label
 var confirm_button: SproutButton
 var cancel_button: SproutButton
-var _toast_time := 0.0
 var _destination := ""
 var _player: Node
 var _locked_before := false
 var _physics_before := true
 var _warehouse_open := false
 var _cooking_open := false
-var _confirm_armed := false
 
 func _ready() -> void:
 	name = "RestaurantHUD"
@@ -24,63 +29,30 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.theme = SproutTheme.make_theme()
 	add_child(root)
-	reputation_label = Label.new()
-	reputation_label.position = Vector2(24, 22)
-	reputation_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	reputation_label.add_theme_font_size_override("font_size", 22)
-	reputation_label.add_theme_color_override("font_color", SproutTheme.CREAM)
-	reputation_label.add_theme_color_override("font_outline_color", SproutTheme.INK)
-	reputation_label.add_theme_constant_override("outline_size", 4)
-	reputation_label.add_theme_color_override("font_shadow_color", Color(0.12, 0.08, 0.04, 0.55))
-	reputation_label.add_theme_constant_override("shadow_offset_x", 1)
-	reputation_label.add_theme_constant_override("shadow_offset_y", 2)
-	root.add_child(reputation_label)
+	reputation_counter = ResourceCounter.new()
+	reputation_counter.name = "ReputationCounter"
+	reputation_counter.configure(ResourceCounter.REPUTATION)
+	reputation_label = reputation_counter.value_label
+	gold_counter = ResourceCounter.new()
+	gold_counter.name = "GoldCounter"
+	gold_counter.configure(ResourceCounter.GOLD)
+	# 常驻声望归属任务层；确认框与toast仍保留在本HUD的模态层。
+	var tracker := get_tree().get_first_node_in_group("order_tracking")
+	if is_instance_valid(tracker):
+		tracker.add_child(reputation_counter)
+		tracker.add_child(gold_counter)
+	else:
+		root.add_child(reputation_counter)
+		root.add_child(gold_counter)
 	_refresh_reputation()
-	var toast_center := CenterContainer.new()
-	toast_center.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	toast_center.offset_top = 22
-	toast_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(toast_center)
-	toast_label = Label.new()
-	toast_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	toast_label.add_theme_color_override("font_color", SproutTheme.CREAM)
-	var toast_style := StyleBoxFlat.new()
-	toast_style.bg_color = Color(0.03, 0.04, 0.03, 0.82)
-	toast_style.set_corner_radius_all(7)
-	toast_style.content_margin_left = 16
-	toast_style.content_margin_right = 16
-	toast_style.content_margin_top = 10
-	toast_style.content_margin_bottom = 10
-	toast_label.add_theme_stylebox_override("normal", toast_style)
-	toast_center.add_child(toast_label)
-	toast_label.hide()
-	confirmation = ColorRect.new()
-	confirmation.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	confirmation.color = Color(0.03, 0.04, 0.03, 0.65)
+	toast_label = Toast.attach_to(root)
+	confirmation = Confirmation.new()
 	root.add_child(confirmation)
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	confirmation.add_child(center)
-	var panel := PanelContainer.new()
-	center.add_child(panel)
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 24)
-	panel.add_child(column)
-	question = Label.new()
-	question.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	question.add_theme_font_size_override("font_size", 24)
-	column.add_child(question)
-	var buttons := HBoxContainer.new()
-	buttons.add_theme_constant_override("separation", 16)
-	column.add_child(buttons)
-	cancel_button = SproutButton.new().configure("取消").set_icon_visible(false).set_focus_visual(false)
-	confirm_button = SproutButton.new().configure("确认前往").set_icon_visible(false).set_focus_visual(false)
-	buttons.add_child(cancel_button)
-	buttons.add_child(confirm_button)
-	cancel_button.pressed.connect(_close_confirmation)
-	confirm_button.pressed.connect(_confirm_destination)
-	confirmation.hide()
+	question = confirmation.question
+	cancel_button = confirmation.cancel_button
+	confirm_button = confirmation.confirm_button
+	confirmation.cancelled.connect(_close_confirmation)
+	confirmation.confirmed.connect(_confirm_destination)
 	call_deferred("_connect_player")
 
 func _connect_player() -> void:
@@ -97,20 +69,37 @@ func _connect_player() -> void:
 		cooking.cancelled.connect(_cooking_closed)
 		cooking.result_confirmed.connect(func(_result: Dictionary): _cooking_closed())
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	_refresh_reputation()
-	_toast_time = maxf(0, _toast_time - delta)
-	toast_label.visible = _toast_time > 0
 
 func _refresh_reputation() -> void:
-	# 首次成功上菜后才展示；凭证随存档及回放状态恢复，不以声望数值猜进度。
-	reputation_label.text = "声望：%d" % SaveManager.reputation()
-	reputation_label.visible = SaveManager.has_first_order_settlement()
+	if not is_instance_valid(reputation_counter):
+		return
+	# 声望与任务按钮共享父级、绘制层级和透明度；不为任何弹窗单独判断显隐。
+	# 若任务层尚未就绪，先隐藏，避免回退到 HUD 的模态层显示。
+	var tracker := get_tree().get_first_node_in_group("order_tracking")
+	if not is_instance_valid(tracker):
+		reputation_counter.hide()
+		gold_counter.hide()
+		return
+	if reputation_counter.get_parent() != tracker:
+		reputation_counter.reparent(tracker, false)
+		gold_counter.reparent(tracker, false)
+	# 唯一独立门槛：首次成功给铁山上菜；凭证随存档和回放状态恢复。
+	reputation_counter.set_value(SaveManager.reputation())
+	reputation_counter.visible = SaveManager.has_first_order_settlement()
+	gold_counter.set_value(SaveManager.gold_balance())
+	gold_counter.visible = SaveManager.is_gold_display_unlocked()
+	if tracker.has_method("entry_rect"):
+		var entry: Rect2 = tracker.entry_rect()
+		var next_x := entry.end.x + 20.0
+		for counter in [reputation_counter, gold_counter]:
+			counter.position = Vector2(next_x, entry.get_center().y - counter.get_combined_minimum_size().y * 0.5)
+			if counter.visible:
+				next_x += counter.get_combined_minimum_size().x + 20.0
 
 func show_toast(message: String) -> void:
-	toast_label.text = message
-	_toast_time = 3.5
-	toast_label.show()
+	toast_label.show_message(message)
 
 func _on_interacted(target: Node2D) -> void:
 	if TutorialManager.active or not SaveManager.is_chapter_1_done() or SaveManager.chapter_1_outro_state() == "title":
@@ -146,9 +135,12 @@ func _on_interacted(target: Node2D) -> void:
 		"冰柜":
 			_feature_feedback("冷藏", 2000)
 		"迷宫入口":
+			if not SaveManager.can_enter_maze():
+				show_toast("请先完成第一章的出发准备")
+				return
 			_open_confirmation("迷宫")
 		"冒险者之家入口":
-			_open_confirmation("冒险者之家")
+			_go_to_destination("冒险者之家")
 		"魔法汤锅", "料理台":
 			if not SaveManager.has_waiting_diner():
 				show_toast("请先接单并领取食材")
@@ -186,13 +178,9 @@ func _cooking_closed() -> void:
 
 func _open_confirmation(destination: String) -> void:
 	_destination = destination
-	_confirm_armed = false
-	_toast_time = 0.0
-	toast_label.hide()
-	question.text = "是否前往%s？" % destination
+	toast_label.dismiss()
 	_lock_player()
-	confirmation.show()
-	cancel_button.grab_focus()
+	confirmation.open_destination(destination)
 
 func _close_confirmation() -> void:
 	if not confirmation.visible:
@@ -201,36 +189,27 @@ func _close_confirmation() -> void:
 	_unlock_player()
 
 func _confirm_destination() -> void:
+	if not confirmation.visible or Transition.is_active(get_tree()):
+		return
 	_close_confirmation()
-	if _destination == "迷宫":
-		var departure := get_tree().get_first_node_in_group("departure_panel")
-		if is_instance_valid(departure):
-			departure.open_map()
-		return
-	show_toast("冒险者之家暂未开放")
+	_go_to_destination(_destination)
 
-func _input(event: InputEvent) -> void:
-	if not confirmation.visible:
+func _go_to_destination(destination_name: String) -> void:
+	if Transition.is_active(get_tree()) or is_instance_valid(get_tree().get_first_node_in_group("adventurer_home")):
 		return
-	if event is InputEventKey:
-		get_viewport().set_input_as_handled()
-		if not event.pressed and (event.keycode == KEY_E or event.physical_keycode == KEY_E):
-			_confirm_armed = true
-		if event.pressed and not event.echo:
-			if event.keycode == KEY_ESCAPE:
-				_close_confirmation()
-			elif event.keycode == KEY_E and _confirm_armed:
-				_confirm_destination()
-			elif event.keycode in [KEY_TAB, KEY_LEFT, KEY_RIGHT]:
-				if cancel_button.has_focus():
-					confirm_button.grab_focus()
-				else:
-					cancel_button.grab_focus()
-			elif event.keycode in [KEY_ENTER, KEY_KP_ENTER]:
-				if confirm_button.has_focus():
-					_confirm_destination()
-				else:
-					_close_confirmation()
+	toast_label.dismiss()
+	if destination_name == "迷宫":
+		if not SaveManager.can_enter_maze():
+			show_toast("请先完成第一章的出发准备")
+			return
+		# 第二章标记由目标地图就绪后提交；转场失败不会提前开始。
+		var destination := load(SaveManager.MAZE_SCENE) as PackedScene
+		var error := await Transition.change_scene(get_tree(), destination)
+		if error != OK:
+			show_toast("迷宫加载失败，请重试")
+		return
+	if destination_name == "冒险者之家":
+		AdventurerHome.open_page(get_tree())
 
 func _exit_tree() -> void:
 	if _warehouse_open or _cooking_open or (is_instance_valid(confirmation) and confirmation.visible):

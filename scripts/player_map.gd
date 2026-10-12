@@ -1,22 +1,27 @@
 extends CharacterBody2D
-## 手绘地图餐厅主角：屏幕方向移动 + 朝向切图 + 靠近交互点提示
+## 手绘地图餐厅主角：屏幕方向移动 + 四方向逐帧动画 + 靠近交互点提示
 
 signal interacted(target: Node2D)
 
 const SPEED := 260.0
 const INTERACT_RANGE := 95.0
-const BODY_VIS_H := 130.0
 const SPAWN_INIT_PENDING := 0
 const SPAWN_INIT_READY := 1
 const SPAWN_INIT_FAILED := 2
 const SPAWN_INIT_MAX_ATTEMPTS := 2
 
-const TEX_FRONT := preload("res://assets/characters/hero/hero_front.png")
-const TEX_BACK := preload("res://assets/characters/hero/hero_back.png")
-const TEX_SIDE := preload("res://assets/characters/hero/hero_side.png")
+const HeroAnimation := preload("res://scripts/characters/hero_animation.gd")
+const BODY_VIS_H := HeroAnimation.BODY_HEIGHT
+const ANIMATIONS: SpriteFrames = HeroAnimation.ANIMATIONS
+const FRAME_BODY_HEIGHT := HeroAnimation.FRAME_BODY_HEIGHT
+const FRAME_FOOT := HeroAnimation.FRAME_FOOT
 
 var facing := Vector2.DOWN
-var anim_t := 0.0
+var animation_name: StringName = &"front_idle"
+var animation_frame := 0
+var _appearance := HeroAnimation.new()
+var _walking := false
+var _return_from_maze := false
 
 @onready var label: Label = %HintLabel
 @onready var body: Sprite2D = $Body
@@ -31,6 +36,14 @@ var spawn_resolved_in_ready := false
 var _ready_in_progress := false
 ## 教程/剧情锁定时禁止移动与交互
 var input_locked := false
+
+func _enter_tree() -> void:
+	if not is_instance_valid(_appearance.body):
+		_appearance.install(self)
+	# 只消费本次成功转场的入口信息，不写存档或改变第一章出生点。
+	_return_from_maze = bool(get_tree().get_meta("restaurant_return_from_maze", false))
+	if _return_from_maze:
+		get_tree().remove_meta("restaurant_return_from_maze")
 
 func _ready() -> void:
 	add_to_group("player")
@@ -76,14 +89,8 @@ func _physics_process(delta: float) -> void:
 		facing = Vector2.DOWN
 	elif input_dir.y < -0.1:
 		facing = Vector2.UP
+	_walking = input_dir.length() > 0.1
 	_apply_facing()
-
-	if input_dir.length() > 0.1:
-		anim_t += delta
-		body.position.y = -absf(sin(anim_t * 10.0)) * 5.0
-	else:
-		anim_t = 0.0
-		body.position.y = 0.0
 
 func _try_resolve_spawn() -> bool:
 	if spawn_ready:
@@ -103,7 +110,12 @@ func _try_resolve_spawn() -> bool:
 	if walk_zone.polygons.is_empty() or not walk_zone.has_method("get_spawn_point"):
 		spawn_init_state = SPAWN_INIT_FAILED
 		return false
-	var sp: Vector2 = walk_zone.get_spawn_point(collision_radius_world())
+	var sp: Vector2
+	if _return_from_maze:
+		var entry := get_node_or_null("../MazeReturnSpawn") as Node2D
+		sp = entry.global_position if is_instance_valid(entry) else Vector2.ZERO
+	else:
+		sp = walk_zone.get_spawn_point(collision_radius_world())
 	if sp == Vector2.ZERO or not is_walkable_footprint(sp):
 		spawn_init_state = SPAWN_INIT_FAILED
 		return false
@@ -121,7 +133,11 @@ func is_walkable_footprint(point: Vector2) -> bool:
 		return walk_zone.is_circle_inside(point, collision_radius_world())
 	return walk_zone.is_point_inside(point)
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	# 对白会暂停物理帧；显示仍继续待机，不能停在迈步帧或保留旧移动状态。
+	if input_locked or not is_physics_processing():
+		_walking = false
+	_apply_facing(delta)
 	_update_hint()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -186,21 +202,7 @@ func display_name_of(p: Node) -> String:
 			return v
 	return p.name
 
-func _apply_facing() -> void:
-	var flip := false
-	var tex: Texture2D
-	match facing:
-		Vector2.UP:
-			tex = TEX_BACK
-		Vector2.LEFT:
-			tex = TEX_SIDE
-		Vector2.RIGHT:
-			tex = TEX_SIDE
-			flip = true
-		_:
-			tex = TEX_FRONT
-	body.texture = tex
-	body.flip_h = flip
-	var s := BODY_VIS_H / float(tex.get_height())
-	body.scale = Vector2(s, s)
-	body.offset = Vector2(0, -tex.get_height() * 0.5)
+func _apply_facing(delta: float = 0.0) -> void:
+	_appearance.update(facing, _walking and not input_locked and is_physics_processing(), delta)
+	animation_name = _appearance.animation_name
+	animation_frame = _appearance.animation_frame

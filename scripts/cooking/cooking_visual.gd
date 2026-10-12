@@ -7,17 +7,18 @@ const ARC_CENTER := Vector2(768, 180)
 const ARC_RADIUS := Vector2(500, 135)
 const BAND_WIDTH := 48.0
 const POT_SCALE := 0.94
-const POT_OFFSET := Vector2(46.08, 130)
+const POT_OFFSET := Vector2(46.08, 190)
 const POT_PATH := "res://assets/ui/cooking/pot_base.png"
 const FIRE_PATH := "res://assets/ui/cooking/flame.png"
 const ZONE_RED := Color("#ed6457")
 const ZONE_YELLOW := Color("#ffdb69")
 const ZONE_GREEN := Color("#7bc986")
 
-var pointer_position := 0.0
+var pointer_position := -1.0
 var perfect_width := 0.16
-var good_width := 0.38
+var good_width := 0.80
 var running := false
+var tutorial_highlight := false
 var animation_time := 0.0
 var ingredients: Dictionary = {}
 var _icons: Dictionary = {}
@@ -51,7 +52,12 @@ func set_running(value: bool) -> void:
 	running = value
 	if not running:
 		animation_time = 0.0
-	set_process(running)
+	set_process(running and not tutorial_highlight)
+	queue_redraw()
+
+func set_tutorial_highlight(value: bool) -> void:
+	tutorial_highlight = value
+	set_process(running and not tutorial_highlight)
 	queue_redraw()
 
 func set_ingredients(value: Dictionary) -> void:
@@ -100,6 +106,9 @@ func pointer_tip() -> Vector2:
 	# 保留原检测入口：返回菱形中心，也就是与色带中线的交点。
 	return _design_offset() + _arc_centerline((pointer_position + 1.0) * 0.5) * _design_scale()
 
+func countdown_center() -> Vector2:
+	return _design_offset() + Vector2(768, 265) * _design_scale()
+
 func zone_boundaries() -> PackedFloat32Array:
 	# [-1, 1] 的判定半宽映射到 [0, 1]，须再除以二。
 	return PackedFloat32Array([0.0, 0.5 - good_width * 0.25, 0.5 - perfect_width * 0.25, 0.5 + perfect_width * 0.25, 0.5 + good_width * 0.25, 1.0])
@@ -129,6 +138,12 @@ func _draw() -> void:
 	draw_polyline(inner, Color("#fff9e8"), 4.0, true)
 	draw_line(outer[0], inner[0], Color("#fff9e8"), 4.0, true)
 	draw_line(outer[-1], inner[-1], Color("#fff9e8"), 4.0, true)
+	if tutorial_highlight:
+		var glow := PackedVector2Array()
+		for step in range(25):
+			glow.append(_arc_centerline(lerpf(boundaries[2], boundaries[3], float(step) / 24.0)))
+		draw_polyline(glow, Color(0.7, 1.0, 0.66, 0.3), BAND_WIDTH + 34.0, true)
+		_draw_band(boundaries[2], boundaries[3], Color("#a4f39c"))
 	_draw_pointer()
 	draw_set_transform(Vector2.ZERO)
 
@@ -144,6 +159,8 @@ func _draw_band(start: float, end: float, color: Color) -> void:
 func _draw_pointer() -> void:
 	var fraction := (pointer_position + 1.0) * 0.5
 	var center := _arc_centerline(fraction)
+	if tutorial_highlight:
+		draw_circle(center, 51.0, Color(1.0, 0.96, 0.69, 0.3))
 	var normal := _arc_normal(fraction)
 	var tangent := Vector2(-normal.y, normal.x)
 	# 与弧带在同一绘制坐标内沿中线滑动，缩短尖端避免视觉上脱离色带。
