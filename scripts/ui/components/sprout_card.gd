@@ -268,7 +268,8 @@ func _build_material_labels() -> void:
 	_satiety_art = _edge_texture("satiety")
 	_mana_art = _edge_texture("mana")
 	# 金盾只新增独立属性层，原件与edge_v4卡框保持原样。
-	_shield_art = _material_texture("res://assets/ui/card_materials/card_display_v2/gold_shield.png", Rect2(119, 398, 62, 62))
+	# 护盾复用生命值槽：无生命值时落在红框位置，有生命值时上移到蓝框位置。
+	_shield_art = _material_texture("res://assets/ui/card_materials/card_display_v2/gold_shield.png", Rect2(228, 398, 54, 54))
 	_shield_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_material_title = _material_label("", Rect2(58, 223.5, 184, 31), 24)
 	_material_type = _material_label("", Rect2(118, 258.5, 64, 22), 14)
@@ -290,13 +291,23 @@ func _build_material_labels() -> void:
 		label.add_theme_constant_override("outline_size", 2)
 	_satiety_slot.add_theme_color_override("font_color", Color("#462618"))
 	_satiety_slot.add_theme_constant_override("outline_size", 0)
-	_shield_slot = _material_label("", Rect2(130, 414.3, 40, 38), 30)
+	_shield_slot = _material_label("", Rect2(235.4, 414.3, 39, 38), 30)
+	_shield_slot.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_shield_slot.add_theme_font_override("font", number_font)
 	_shield_slot.add_theme_color_override("font_color", Color("#fff7df"))
 	_shield_slot.add_theme_color_override("font_outline_color", Color("#805124"))
 	_shield_slot.add_theme_constant_override("outline_size", 2)
 	for index in 2:
 		_cost_slots.append(_resource_slot(Rect2(115 + index * 75, 287, 70, 23), Color("#f3e6cc")))
+
+func _layout_shield_slot(has_health: bool) -> void:
+	var health_rect := MATERIAL.edge_rect("health")
+	var shield_size := Vector2(54, 54)
+	var lift := 64.0 if has_health else 0.0
+	_shield_art.size = shield_size
+	_shield_art.position = Vector2(health_rect.end.x - shield_size.x, health_rect.end.y - shield_size.y - lift)
+	_shield_slot.size = Vector2(39, 38)
+	_shield_slot.position = _shield_art.position + (shield_size - _shield_slot.size) * 0.5
 
 func _resource_slot(rect: Rect2, fill: Color) -> Label:
 	var slot := _material_label("", rect, 12)
@@ -356,6 +367,7 @@ func _apply_material(data: SproutCardData) -> void:
 	_material_stat_attack.visible = _attack_art.visible
 	_health_art.visible = data.is_role_card or health_text != "-"
 	_material_stat_health.visible = _health_art.visible
+	_layout_shield_slot(_health_art.visible)
 	_material_effect.position.y = EFFECT_TOP if data.is_role_card else 316.0
 	_material_effect.add_theme_font_size_override("font_size", effect_font_size(data))
 	_material_effect.size = Vector2(EFFECT_WIDTH, effect_area_height(data))
