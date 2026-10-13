@@ -66,3 +66,11 @@ Godot视口截图必须在光效queue_redraw之后等待渲染结束，否则连
 正式证据 output/door_fx_integration/visual_ready/：1152×648、1280×720双入口中低亮帧、完整对白、取消恢复与真实移动、收尾结束、之家实际打开/Esc返回、迷宫确认/取消。home_transit_missing_assets=false，无跳过之家验收。
 目标 headless 与 editor 运行器均退出0、无项目错误；仅系统证书读取错误单列为环境输出，目标没有独立基线的Blender配置错误。
 全部测试采用隔离profile，报告实际user_dir在output下，正式全JSON存档指纹一致。主任务逐图核验最终目标图片，git diff --check通过。
+
+## 设计稿还原修正的目标集成（2026-10-13）
+
+此前版本被用户否决，不能沿用首次完成结论。本次审查 c951fbf 后发现遗漏迷宫左缘和之家下缘，退回原任务修正，接收停止写入的 587101164a89c8f693eac73b820bc47399202558。仅增量接入 scripts/ui/entrance_highlight.gd，保留其他任务和用户改动。
+
+恢复植物缝隙的迷宫左缘、之家下缘短段，门框平滑柔光随位置与呼吸变化，光珠扩大柔晕并按批准稿分散。主任务对照两份批准稿查看实际目标截图，恢复上述可见特征；这是代码绘制还原，并非设计稿图片的逐像素复制。
+
+目标实际 GUI output/door_fx_integration/restore_final_20261013：71项通过、0失败，1152×648和1280×720，中/低亮截图、取消恢复移动、之家进入/Esc返回、迷宫确认/取消均通过，之家素材验收未跳过。真实存档全部JSON指纹一致；无项目错误，仅系统证书读取环境错误。目标无头运行 output/door_fx_integration/restore_final_smoke_20261013 退出0，存档不变。git diff --check通过。原分支 editor 的环境限制不作为目标GUI验收替代。
