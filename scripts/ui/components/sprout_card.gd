@@ -94,7 +94,8 @@ func _apply_battle_state() -> void:
 	_mana_slot.text = _number_text(int(_battle_state.get("mana", -1)))
 	_shield_slot.text = str(int(_battle_state.get("shield", 0)))
 	_satiety_slot.add_theme_color_override("font_color", Color("#ad3434") if _battle_state.get("satiety", -1) == 0 else Color("#462618"))
-	_value_label.text = "攻击 %s / 生命 %s / 护盾 %s" % [_material_stat_attack.text, _material_stat_health.text, str(_battle_state.get("shield", 0))]
+	# 卡面正文只由名称、类型和技能组成；护盾仅通过右下图标/数值显示。
+	_value_label.text = ""
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
@@ -233,7 +234,7 @@ func _apply_data(data: SproutCardData) -> void:
 	_cost_label.visible = false
 	_type_label.text = "类型：" + data.card_type
 	_effect_label.text = "效果\n" + data.effect
-	_value_label.text = "核心数值：" + data.value
+	_value_label.text = ""
 	_rarity_label.text = data.rarity
 	_number_label.text = "No.%02d" % data.number
 	_portrait.texture = data.portrait

@@ -89,6 +89,7 @@ func run() -> void:
 			check(view._mana_slot.text == expected[id][4], "魔力原值 " + id)
 			check(view._cost_slots.all(func(slot): return not slot.visible), "无行动费用 " + id)
 			check(not view._cost_label.visible, "通用布局无行动费用 " + id)
+			check(view._value_label.text.is_empty(), "卡面不显示额外核心数值文案 " + id)
 			check(view._material_stat_health.visible == (id == "tieshan_hold"), "不把横线显示0 " + id)
 			check(view._material_stat_attack.visible == (id in ["tieshan_axe", "tieshan_hold"]), "攻击初始显隐 " + id)
 			check(view._shield_art.visible == (id in ["tieshan_guard", "tieshan_axe"]), "技能金盾显隐 " + id)
