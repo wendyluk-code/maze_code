@@ -20,6 +20,10 @@ var step_label: Label
 var active_role := ""
 var last_events: Array = []
 var tutorial_art: Dictionary = {}
+var pending_splits: Dictionary = {}
+var split_phase := ""
+var split_generation := 0
+var split_tween: Tween
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -151,6 +155,13 @@ func _sync() -> void:
 		if not role_nodes.has(id): _new_role(id, _prepare_position(id))
 		var c: Dictionary = battle.characters[id]
 		var field: Control = role_nodes[id]
+		# 规则事务已经提交，演出拥有这些角色的首次显隐和位置。
+		var split_parent: String = id if pending_splits.has(id) else c.parent
+		if pending_splits.has(split_parent):
+			if id == split_parent:
+				(field.get_node("Tag") as Label).text = "等待分裂体" if c.revive < 0 else "复活 %d" % c.revive
+			elif split_phase != "separating": field.hide()
+			continue
 		var replaced: bool = c.source == "slime" and not c.alive and battle.characters.has(id + "1")
 		var retired_child: bool = not c.parent.is_empty() and battle.characters[c.parent].alive
 		field.visible = not retired_child
@@ -283,6 +294,7 @@ func _enemy_turn() -> void:
 	battle.characters[actor].acted = true
 	Rules.strike(battle, actor)
 	last_events = battle.events.duplicate(true)
+	_stage_splits(last_events)
 	await _show_events(last_events)
 	if ending_early: return
 	Rules.end_turn(battle, "enemy")
@@ -298,6 +310,7 @@ func _perform(action: String, target: String) -> void:
 		return
 	state = "resolving"
 	last_events = result.events
+	_stage_splits(last_events)
 	_cancel_selection()
 	_sync()
 	_rebuild_hand()
@@ -350,8 +363,75 @@ func _show_events(events: Array) -> void:
 		elif event.kind == "damage" and role_nodes.has(event.target):
 			_float(role_nodes[event.target], "−%d / 护盾−%d" % [event.amount, event.absorbed], RED)
 		elif event.kind == "slime": _float(role_nodes[event.target], "粘液 · 饱腹−1", GOLD)
+	await _animate_splits()
+	if ending_early: return
 	_sync()
 	await get_tree().create_timer(0.25, false).timeout
+
+func _stage_splits(events: Array) -> void:
+	# 仅消费本次阵亡事件；同步、复活及群伤的多次刷新不会重新启动。
+	for event in events:
+		if event.kind != "death": continue
+		var id: String = event.target
+		if battle.characters[id].source != "slime" or pending_splits.has(id): continue
+		pending_splits[id] = role_nodes[id].position
+	if not pending_splits.is_empty(): split_phase = "waiting"
+
+func _animate_splits() -> void:
+	if pending_splits.is_empty(): return
+	var generation := split_generation
+	split_phase = "dissolving"
+	split_tween = _battle_tween().set_parallel(true)
+	for id in pending_splits:
+		var portrait: Control = role_nodes[id].get_node("Portrait")
+		portrait.pivot_offset = ROLE_SIZE * 0.5
+		fx.dissolve(pending_splits[id] + ROLE_SIZE * 0.5, GREEN)
+		split_tween.tween_property(portrait, "scale", Vector2(0.18, 0.12), 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		split_tween.tween_property(portrait, "modulate:a", 0.0, 0.38)
+	await split_tween.finished
+	if generation != split_generation or ending_early: return
+	split_phase = "separating"
+	split_tween = _battle_tween().set_parallel(true)
+	for id in pending_splits:
+		role_nodes[id].get_node("Portrait").hide()
+		for suffix in ["1", "2"]:
+			var child: Control = role_nodes[id + suffix]
+			child.position = pending_splits[id]
+			child.scale = Vector2.ONE * 0.32
+			child.modulate = Color.WHITE
+			child.modulate.a = 0.0
+			child.show()
+			split_tween.tween_property(child, "position", _prepare_position(id + suffix), 0.6).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			split_tween.tween_property(child, "scale", Vector2.ONE, 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			split_tween.tween_property(child, "modulate:a", 1.0, 0.2)
+	await split_tween.finished
+	if generation != split_generation or ending_early: return
+	_cancel_split_effects()
+	_sync()
+
+func _cancel_split_effects() -> void:
+	split_generation += 1
+	if split_tween and split_tween.is_valid(): split_tween.kill()
+	split_tween = null
+	for id in pending_splits:
+		if not is_instance_valid(role_nodes.get(id)): continue
+		var portrait: Control = role_nodes[id].get_node("Portrait")
+		portrait.scale = Vector2.ONE
+		portrait.modulate = Color.WHITE
+		for suffix in ["1", "2"]:
+			if role_nodes.has(id + suffix):
+				role_nodes[id + suffix].scale = Vector2.ONE
+	pending_splits.clear()
+	split_phase = ""
+	if is_instance_valid(fx): fx.dissolves.clear()
+
+func _exit_tree() -> void:
+	_cancel_split_effects()
+
+func _result(victory: bool) -> void:
+	_cancel_split_effects()
+	_sync()
+	await super._result(victory)
 
 func _role_at(point: Vector2) -> String:
 	for id in role_nodes:
@@ -455,6 +535,8 @@ func _menu_action(action: String) -> void:
 	await _result(false)
 
 func _restart_battle() -> void:
+	ending_early = true
+	_cancel_split_effects()
 	var fresh := (load("res://scenes/battle/yaya_battle_demo.tscn") as PackedScene).instantiate()
 	fresh.return_scene_path = return_scene_path
 	var owner_scene := get_parent()

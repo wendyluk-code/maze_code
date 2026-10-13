@@ -5,6 +5,10 @@ var aim_from := Vector2.ZERO
 var aim_to := Vector2.ZERO
 var aim_valid := false
 var bursts: Array[Dictionary] = []
+var dissolves: Array[Dictionary] = []
+
+func dissolve(at: Vector2, color: Color) -> void:
+	dissolves.append({"at": at, "color": color, "age": 0.0})
 
 func burst(at: Vector2, color: Color, strong := false) -> void:
 	bursts.append({"at": at, "color": color, "age": 0.0, "strong": strong})
@@ -13,9 +17,20 @@ func _process(delta: float) -> void:
 	for item in bursts:
 		item.age += delta
 	bursts = bursts.filter(func(item: Dictionary) -> bool: return item.age < 0.65)
+	for item in dissolves: item.age += delta
+	dissolves = dissolves.filter(func(item: Dictionary) -> bool: return item.age < 0.75)
 	queue_redraw()
 
 func _draw() -> void:
+	# 低透明度叠色水彩点，复用战斗色系，不加载新素材。
+	for item in dissolves:
+		var t: float = item.age / 0.75
+		for i in range(18):
+			var direction := Vector2.from_angle(i * TAU / 18.0)
+			var at: Vector2 = item.at + direction * (18 + t * (38 + i % 4 * 9)) + Vector2(0, -t * 22)
+			var color: Color = item.color
+			color.a = (1.0 - t) * 0.22
+			draw_circle(at, (7 + i % 3 * 4) * (1.0 - t * 0.5), color)
 	if aim_visible:
 		var color := Color("#83e1c4") if aim_valid else Color("#e8d7a7")
 		var bend := (aim_from + aim_to) * 0.5 + Vector2(-55, -65)
