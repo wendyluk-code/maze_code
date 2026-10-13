@@ -16,12 +16,27 @@ const DATA := {
 	"热锅协作": {"type":"法术牌", "desc":"选择一张食材，让另一名己方角色使用并出击。", "stats":"协作出击", "level":"等级 3 · 1 张", "tex":preload("res://assets/ui/battle/cards/yaya/hotpot_collab.png")}
 }
 
+# 数值和技能来自用户提供的《代号：料理迷宫》卡牌设计说明 (1).xlsx。
+# 牌面使用共享 SproutCard 模板，战斗状态由本脚本动态更新。
+const TUTORIAL_CARDS := {
+ "强力": {"id":"tieshan_strong","faction":"tieshan","character_name":"铁山","role":"守卫","title":"强力","card_type":"战斗牌","effect":"铁山永久增加1攻击力。","value":"攻击+1","cost":"1","number":3},
+ "守护": {"id":"tieshan_guard","faction":"tieshan","character_name":"铁山","role":"守卫","title":"守护","card_type":"战斗牌","effect":"若己方战斗区有其他角色，此牌+3攻击力。","value":"攻击+3（满足条件）·护盾+4","cost":"1","number":4},
+ "魔力一击": {"id":"yaya_magic_hit","faction":"sprout","character_name":"芽芽","role":"法师","title":"魔力一击","card_type":"法术牌","effect":"对一个敌方角色造成3点伤害。","value":"伤害3","cost":"1","number":3},
+ "坚守不移": {"id":"tieshan_hold","faction":"tieshan","character_name":"铁山","role":"守卫","title":"坚守不移","card_type":"赋形牌","effect":"当铁山在战斗区时，己方其他角色免疫伤害。","value":"攻击2·生命8","cost":"1","number":7,"attack":2,"health":8},
+ "魔力之风": {"id":"yaya_magic_wind","faction":"sprout","character_name":"芽芽","role":"法师","title":"魔力之风","card_type":"法术牌","effect":"对所有敌方角色造成1点伤害。","value":"群体伤害1","cost":"1","number":4},
+ "治愈之风": {"id":"yaya_heal_wind","faction":"sprout","character_name":"芽芽","role":"法师","title":"治愈之风","card_type":"法术牌","effect":"为所有己方角色恢复3点生命，溢出部分转化为护盾。","value":"群体治疗3","cost":"1","number":7},
+ "恢复": {"id":"yaya_restore","faction":"sprout","character_name":"芽芽","role":"法师","title":"恢复","card_type":"法术牌","effect":"为一个己方角色恢复2生命。","value":"治疗2","cost":"1","number":1},
+ "斧冲": {"id":"tieshan_axe","faction":"tieshan","character_name":"铁山","role":"守卫","title":"斧冲","card_type":"战斗牌","effect":"直接攻击敌方牌手。","value":"攻击+2·护盾+1","cost":"1","number":2}
+}
+
 const Effects = preload("res://scripts/battle/battle_effects.gd")
 const SideHud = preload("res://scripts/battle/battle_side_hud.gd")
 const Toast = preload("res://scripts/ui/components/feedback_toast.gd")
 const SproutAction = preload("res://scripts/ui/components/sprout_button.gd")
 const BattleMenu = preload("res://scripts/battle/battle_menu.gd")
 const ContinuePrompt = preload("res://scripts/ui/components/continue_prompt.gd")
+const CardView = preload("res://scripts/ui/components/sprout_card.gd")
+const CardData = preload("res://scripts/ui/components/sprout_card_data.gd")
 const VICTORY_RESULT: Texture2D = preload("res://assets/ui/battle/results/victory_wordmark_v1.png")
 const DEFEAT_RESULT: Texture2D = preload("res://assets/ui/battle/results/defeat_wordmark_v1.png")
 const CREAM := Color("#fff5df")
@@ -39,7 +54,7 @@ const PREPARE_CENTER := LEAF_CENTER + Vector2(-148, 150)
 const COMBAT_CENTER := LEAF_CENTER + Vector2(0, 91)
 const DECK_SIZE := Vector2(72, 88)
 const ATTACK_DRAG_DISTANCE := 24.0
-const SPELLS := ["小小掌勺人", "温火照料", "温火照料", "战地小厨", "热锅协作"]
+const SPELLS := ["强力", "守护", "恢复", "恢复", "魔力之风"]
 @export var tutorial_battle := true
 # 0按对局类型取默认生命；教学/剧情场景可分别覆盖双方初始生命。
 @export_range(0, 30, 1) var player_starting_health := 0
@@ -198,8 +213,21 @@ func _button(parent: Node, value: String, rect: Rect2, callback: Callable) -> Bu
 	return button
 
 func _texture(id: String) -> Texture2D:
-	# 原素材完整显示，包括卡框、文字、数值和透明留白。
-	return DATA[id].tex
+	# 角色图仍用于战场；手牌与起手牌由 SproutCard 模板渲染。
+	if DATA.has(id): return DATA[id].tex
+	return preload("res://assets/characters/tieshan/tieshan_portrait.png") if TUTORIAL_CARDS.get(id, {}).get("faction", "") == "tieshan" else preload("res://assets/characters/yaya_portrait.png")
+
+func _card_data(id: String) -> CardData:
+	var raw: Dictionary = TUTORIAL_CARDS.get(id, {})
+	if raw.is_empty():
+		return CardData.new({"id": id, "character_name": id, "title": id, "card_type": "角色牌", "effect": "", "portrait_path": "res://assets/characters/yaya_portrait.png"})
+	var values := raw.duplicate(true)
+	values["is_role_card"] = values.get("card_type", "") == "角色牌"
+	values["portrait_path"] = "res://assets/characters/tieshan/tieshan_portrait.png" if values.get("faction", "") == "tieshan" else "res://assets/characters/yaya_portrait.png"
+	values["portrait"] = load(values["portrait_path"]) as Texture2D
+	values["satiety_cost"] = 1
+	values["mana_cost"] = 0
+	return CardData.new(values)
 
 func _art(parent: Node, id: String, rect: Rect2) -> Control:
 	var art := TextureRect.new()
@@ -219,11 +247,25 @@ func _card(parent: Node, id: String, rect: Rect2) -> Control:
 	card.pivot_offset = rect.size * 0.5
 	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(card)
+	var view := CardView.new()
+	view.name = "TemplateCard"
+	view.configure(_card_data(id))
+	view.set_battle_context(true)
+	view.position = Vector2.ZERO
+	view.size = rect.size
+	view.scale = rect.size / CardView.CARD_SIZE
+	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(view)
 	var glow := _panel(card, Rect2(Vector2(-3, -3), rect.size + Vector2(6, 6)), Color(0.5, 0.85, 0.72, 0.13), GOLD, 2, 9)
 	glow.name = "Glow"
 	glow.hide()
-	var art := _art(card, id, Rect2(Vector2.ZERO, rect.size))
+	# 旧交互代码依赖 Art 节点作为拖拽占位；真实牌面由 TemplateCard 提供。
+	var art := TextureRect.new()
 	art.name = "Art"
+	art.size = rect.size
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art.modulate.a = 0.0
+	card.add_child(art)
 	return card
 
 func _back(parent: Node, rect: Rect2, for_player: bool) -> Panel:
@@ -353,6 +395,10 @@ func _make_field(enemy: bool, at: Vector2) -> Control:
 	# 原卡完整显示；单角色演示的实时生命统一显示在左侧头像徽章。
 	var tag := _text(field, "", Rect2(-100, 120 if not enemy else 44, 94, 30), 14, INK, true)
 	tag.name = "Tag"
+	var stats := _text(field, "", Rect2(-86, -36 if enemy else 196, 210, 30), 13, CREAM, true)
+	stats.name = "Stats"
+	stats.add_theme_color_override("font_outline_color", INK)
+	stats.add_theme_constant_override("outline_size", 3)
 	_set_field_art(field, "芽芽")
 	return field
 
@@ -586,8 +632,12 @@ func _show_preview(id: String, reason := "") -> void:
 	if hand_expanded:
 		preview.hide()
 		return
-	(preview_art as TextureRect).texture = _texture(id)
-	preview_text.text = "%s\n%s · %s\n\n%s" % [id, DATA[id].type, DATA[id].level, DATA[id].desc]
+	preview_art.texture = _texture(id)
+	if TUTORIAL_CARDS.has(id):
+		var d: Dictionary = TUTORIAL_CARDS[id]
+		preview_text.text = "%s\n%s\n\n%s" % [id, d.card_type, d.effect]
+	else:
+		preview_text.text = "%s\n%s · %s\n\n%s" % [id, DATA[id].type, DATA[id].level, DATA[id].desc]
 	if not reason.is_empty(): preview_text.text += "\n\n" + reason
 	preview.show()
 
@@ -1025,6 +1075,12 @@ func _update_hud() -> void:
 	if is_instance_valid(battle_menu): battle_menu.gear.disabled = state == "result" or ending_early
 	hint.text = ""
 	(player_field.get_node("Tag") as Label).text = "" if not player_attacked else "已出击"
+	if player_field.has_node("Stats"):
+		var pstats := player_field.get_node("Stats") as Label
+		pstats.text = "攻击 %d  生命 %d  饱腹 %d  护盾 %d" % [2, 5, 6, 0]
+	if enemy_field.has_node("Stats"):
+		var estats := enemy_field.get_node("Stats") as Label
+		estats.text = "攻击 2  生命 5"
 
 func _float(target: Control, value: String, color: Color, offset := Vector2.ZERO) -> void:
 	var label := _text(board, value, Rect2(target.position + Vector2(-50, 28) + offset, Vector2(232, 50)), 30 if value == "−2" else 22, color, true)
