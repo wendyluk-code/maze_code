@@ -32,9 +32,11 @@ func _inspect_split(id: String) -> void:
 	while is_instance_valid(ui) and ui.split_phase == "waiting": await process_frame
 	if not is_instance_valid(ui): return
 	await create_timer(0.12).timeout
+	# 在渲染帧末采样，确保同帧新建Tween已更新，避免首帧素材加载耗时造成采样抢先。
+	await RenderingServer.frame_post_draw
 	check(ui.split_phase == "dissolving", "母体退场具有连续可见时段 " + id)
 	var portrait: Control = ui.role_nodes[id].get_node("Portrait")
-	check(portrait.visible and portrait.scale.x < 1.0 and portrait.modulate.a > 0.0, "母体收缩、渐隐中间帧 " + id)
+	check(portrait.visible and portrait.scale.x < 1.0 and portrait.modulate.a > 0.0, "母体收缩、渐隐中间帧 %s scale=%s alpha=%s" % [id, portrait.scale, portrait.modulate.a])
 	check(not ui.role_nodes[id + "1"].visible and not ui.role_nodes[id + "2"].visible, "退场时子体尚未出现 " + id)
 	await _shot(id + "_dissolving")
 	if id == "slime_a":

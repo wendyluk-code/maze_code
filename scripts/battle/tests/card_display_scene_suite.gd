@@ -54,7 +54,10 @@ func draft_checks() -> void:
 		check(ui.draft_cards[i].size == Vector2(228, 380), "起手放大 " + str(i))
 		check(ui.draft_cards[i].position.x >= last_right, "五牌没有相互遮挡 " + str(i))
 		last_right = ui.draft_cards[i].position.x + ui.draft_cards[i].size.x
-		check(last_right <= 1280 and ui.draft_cards[i].position.y + 380 < ui.replace_buttons[i].position.y, "卡面与操作完整可见 " + str(i))
+		var draft: Control = ui.draft_cards[i]
+		var frame_bottom := SproutCard.MATERIAL.edge_rect("frame").end.y / SproutCard.CARD_SIZE.y
+		var visible_bottom: float = draft.position.y + draft.pivot_offset.y + (draft.size.y * frame_bottom - draft.pivot_offset.y) * draft.scale.y
+		check(last_right <= 1280 and visible_bottom < ui.replace_buttons[i].position.y, "可见卡框与操作不重叠 " + str(i))
 		if view._data.id == "tieshan_guard": check(not view._material_stat_attack.visible, "起手守护条件UI隐藏")
 		await click(ui.draft_cards[i].position + Vector2(114, 150))
 		check(ui.draft_selected == i, "五牌实际鼠标命中 " + str(i))

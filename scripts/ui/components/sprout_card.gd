@@ -7,12 +7,15 @@ const LAYOUT_VERSION := "edge_icons_v4"
 const EFFECT_FONT_SIZE := 20
 const EFFECT_MIN_FONT_SIZE := 18
 const EFFECT_WIDTH := 220.0
+const READABLE_EFFECT_WIDTH := 164.0
+const EFFECT_TEXT_INSET := 8.0
 const EFFECT_TOP := 297.0
 const EFFECT_STATS_HEIGHT := 95.0
 const EFFECT_SPELL_HEIGHT := 143.0
 const INK := Color("#3f2a1d")
 const CREAM := Color("#fff4dc")
 const MATERIAL := preload("res://scripts/ui/components/sprout_card_material.gd")
+const ART_CATALOG := preload("res://scripts/ui/components/card_art_catalog.gd")
 const SPROUT_BG := Color("#d9e8bb")
 const SPROUT_BORDER := Color("#6d985f")
 const TIESHAN_BG := Color("#d9b18c")
@@ -70,6 +73,11 @@ var _shield_slot: Label
 var _cost_slots: Array[Label] = []
 var _ability_details_enabled := false
 var _battle_context := false
+var _readable_battle_text := false
+
+func set_readable_battle_text(enabled: bool) -> void:
+	_readable_battle_text = enabled
+	if is_node_ready() and _data: _apply_material(_data)
 var _battle_state: Dictionary = {}
 var _skill_resolution: Dictionary = {}
 
@@ -278,6 +286,11 @@ func _build_material_labels() -> void:
 	_material_effect = _material_label("", Rect2((CARD_SIZE.x - EFFECT_WIDTH) / 2, EFFECT_TOP, EFFECT_WIDTH, EFFECT_STATS_HEIGHT), EFFECT_FONT_SIZE)
 	_material_effect.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_material_effect.add_theme_constant_override("line_spacing", 0)
+	# 字形绘制保留安全留白；实际换行宽度扣除左右相同的内边距。
+	var effect_style := StyleBoxEmpty.new()
+	effect_style.content_margin_left = EFFECT_TEXT_INSET
+	effect_style.content_margin_right = EFFECT_TEXT_INSET
+	_material_effect.add_theme_stylebox_override("normal", effect_style)
 	_material_stat_attack = _material_label("", Rect2(22.8, 414.3, 39, 38), 32)
 	_material_stat_health = _material_label("", Rect2(235.4, 414.3, 39, 38), 32)
 	_satiety_slot = _material_label("", Rect2(252.1, 93.7, 39, 38), 30)
@@ -338,6 +351,9 @@ func _apply_material(data: SproutCardData) -> void:
 	var source := data.material_path
 	if source.is_empty():
 		source = MATERIAL.path_for(data.character_name, data.title, data.card_type, data.is_role_card)
+	# 有统一插画的怪物同样使用已批准模板，而不是回退通用卡面。
+	if source.is_empty() and not ART_CATALOG.path_for(data.id).is_empty():
+		source = MATERIAL.YAYA_ROLE
 	var art_path := MATERIAL.art_path_for(source)
 	if art_path.is_empty() or not ResourceLoader.exists(art_path):
 		_generic_content.visible = true
@@ -347,6 +363,10 @@ func _apply_material(data: SproutCardData) -> void:
 	_material_root.visible = true
 	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	_material_art.texture = data.illustration_override if data.illustration_override else load(art_path) as Texture2D
+	var art_id: String = {"yaya_role": "yaya", "tieshan_role": "tieshan"}.get(data.id, data.id)
+	var unified_art := ART_CATALOG.path_for(art_id)
+	if not unified_art.is_empty() and ResourceLoader.exists(unified_art):
+		_material_art.texture = load(unified_art) as Texture2D
 	if not data.illustration_path.is_empty() and ResourceLoader.exists(data.illustration_path):
 		_material_art.texture = load(data.illustration_path) as Texture2D
 	_apply_art_window()
@@ -369,10 +389,26 @@ func _apply_material(data: SproutCardData) -> void:
 	_health_art.visible = data.is_role_card or health_text != "-"
 	_material_stat_health.visible = _health_art.visible
 	_layout_shield_slot(_health_art.visible)
-	_material_effect.position.y = EFFECT_TOP if data.is_role_card else 316.0
+	_material_effect.position = Vector2((CARD_SIZE.x - EFFECT_WIDTH) / 2, EFFECT_TOP if data.is_role_card else 316.0)
 	_material_effect.add_theme_font_size_override("font_size", effect_font_size(data))
 	_material_effect.size = Vector2(EFFECT_WIDTH, effect_area_height(data))
 	_material_effect.set_deferred("size", Vector2(EFFECT_WIDTH, effect_area_height(data)))
+	if _readable_battle_text:
+		# 战斗牌优先利用标题下方空白，增大正文实际像素；不改技能原文。
+		var text_width := READABLE_EFFECT_WIDTH
+		var text_height := 118.0
+		var font_size := 30
+		while font_size > 18:
+			var paragraph := TextParagraph.new()
+			paragraph.break_flags = TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
+			paragraph.width = text_width - EFFECT_TEXT_INSET * 2
+			paragraph.add_string(effect_display_text(data), SproutTheme.FONT_CN, font_size)
+			if paragraph.get_size().y <= text_height: break
+			font_size -= 1
+		_material_effect.position = Vector2((CARD_SIZE.x - text_width) / 2, 280)
+		_material_effect.size = Vector2(text_width, text_height)
+		_material_effect.set_deferred("size", Vector2(text_width, text_height))
+		_material_effect.add_theme_font_size_override("font_size", font_size)
 	_material_stat_attack.text = attack_text
 	_material_stat_health.text = health_text
 	_material_stat_attack.add_theme_font_size_override("font_size", 32 if data.attack < 10 else 26)
@@ -430,6 +466,9 @@ func _apply_art_window() -> void:
 	shader_material.set_shader_parameter("source_extent", extent)
 	shader_material.set_shader_parameter("cover_scale", cover)
 
+func battle_stats_for_text(data: SproutCardData) -> bool:
+	return _battle_context and data.is_role_card
+
 static func _number_text(value: int) -> String:
 	return str(value) if value >= 0 else "—"
 
@@ -475,7 +514,7 @@ static func _effect_text_height(data: SproutCardData, font_size: int) -> float:
 	# 与Label中文智能换行一致；离树Label还没有主题布局，不能用于测高。
 	var paragraph := TextParagraph.new()
 	paragraph.break_flags = TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
-	paragraph.width = EFFECT_WIDTH
+	paragraph.width = EFFECT_WIDTH - EFFECT_TEXT_INSET * 2
 	paragraph.add_string(effect_display_text(data), SproutTheme.FONT_CN, font_size)
 	return paragraph.get_size().y
 

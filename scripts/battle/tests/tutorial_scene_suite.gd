@@ -94,10 +94,26 @@ func capture(label: String) -> void:
 		var field: Control = ui.role_nodes[id]
 		if not field.visible or not field.get_node("Portrait").visible: continue
 		var rect := Rect2(field.position, field.size)
-		check(Rect2(Vector2.ZERO, ui.CANVAS).encloses(rect), "角色完整位于画布 " + id)
+		var frame_rect := SproutCard.MATERIAL.edge_rect("frame")
+		var visible_rect := Rect2(field.position + frame_rect.position * field.size / SproutCard.CARD_SIZE, frame_rect.size * field.size / SproutCard.CARD_SIZE)
+		check(Rect2(Vector2.ZERO, ui.CANVAS).encloses(visible_rect), "角色可见卡框完整位于画布 " + id)
 		check(not rect.intersects(Rect2(ui.player_hud.position, ui.player_hud.size)) and not rect.intersects(Rect2(ui.enemy_hud.position, ui.enemy_hud.size)), "角色不遮挡头像 " + id)
 		for other in visible_roles: check(not rect.intersects(other), "角色槽位无重叠 " + id)
 		visible_roles.append(rect)
+		var template: SproutCard = field.get_node("Portrait/TemplateCard")
+		var expected_art: String = ui.tutorial_art.get(ui.card_data(id).id, "")
+		if not expected_art.is_empty(): check(template._material_art.texture.resource_path == expected_art, "角色使用新版对应插画 " + id)
+		var paragraph := TextParagraph.new()
+		paragraph.break_flags = TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
+		paragraph.width = template._material_effect.size.x - template.EFFECT_TEXT_INSET * 2
+		paragraph.add_string(template._material_effect.text, SproutTheme.FONT_CN, template._material_effect.get_theme_font_size("font_size"))
+		check(paragraph.get_size().y <= template._material_effect.size.y, "放大技能正文不超框 " + id)
+		check(is_equal_approx(template._material_effect.position.x, template.CARD_SIZE.x - template._material_effect.position.x - template._material_effect.size.x), "正文左右留白对称 " + id)
+		var content_rect := Rect2(template._material_effect.position + Vector2(template.EFFECT_TEXT_INSET, 0), template._material_effect.size - Vector2(template.EFFECT_TEXT_INSET * 2, 0))
+		if template._shield_art.visible:
+			check(not content_rect.intersects(Rect2(template._shield_art.position, template._shield_art.size)), "正文安全区不与护盾重叠 " + id)
+	check(ui._prepare_position("slime_a").y < ui._role_position(false, true).y and ui._prepare_position("yaya").y > ui._role_position(true, true).y, "准备区位于战斗区外侧")
+	check(is_equal_approx(ui._role_position(false, true).y - ui._prepare_position("slime_a").y, ui._prepare_position("yaya").y - ui._role_position(true, true).y), "准备区错层距离上下对称")
 	check(is_equal_approx(ui._prepare_position("yaya").x + ui._prepare_position("tieshan").x + ui.ROLE_SIZE.x, 1320), "我方左右对称")
 	check(is_equal_approx(ui._prepare_position("slime_a").x + ui._prepare_position("slime_b").x + ui.ROLE_SIZE.x, 1320), "敌方左右对称")
 	if ui.battle.characters.has("slime_b2"):

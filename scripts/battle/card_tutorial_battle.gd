@@ -162,8 +162,6 @@ func card_data(id: String) -> CardData:
 	var raw: Dictionary = Rules.data()[source].duplicate(true)
 	var art_path := str(tutorial_art.get(source, ""))
 	if not art_path.is_empty(): raw["illustration_path"] = art_path
-	if source == "tieshan_axe": raw["effect"] += "\n本次攻击+2，护盾+1。"
-	if source == "tieshan_guard": raw["effect"] += "\n护盾+4。"
 	raw["portrait"] = _monster_portrait() if raw.faction == "monster" else null
 	# 怪物复用同一已批准卡框，已有精灵作为插画；后续美术只替换插画引用。
 	if raw.faction == "monster":
@@ -186,6 +184,7 @@ func _card_data(id: String) -> CardData:
 func _card(parent: Node, id: String, rect: Rect2) -> Control:
 	var card := super._card(parent, id, rect)
 	var view: SproutCard = card.get_node("TemplateCard")
+	view.set_readable_battle_text(true)
 	card.resized.connect(func(): view.scale = card.size / CardView.CARD_SIZE)
 	return card
 
@@ -202,6 +201,7 @@ func _art(parent: Node, id: String, rect: Rect2) -> Control:
 	var view := CardView.new()
 	view.name = "TemplateCard"
 	view.configure(card_data(id))
+	view.set_readable_battle_text(true)
 	view.set_battle_context(battle.characters.has(id))
 	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	wrapper.add_child(view)
@@ -231,7 +231,8 @@ func _prepare_position(id: String) -> Vector2:
 	# 固定血脉槽位：分裂体替代父体，阵亡不压缩其他角色的位置。
 	var xs := {"yaya": 400, "tieshan": 752, "slime_a": 400, "slime_b": 752,
 		"slime_a1": 400, "slime_a2": 222, "slime_b1": 752, "slime_b2": 930}
-	return Vector2(xs[id], 364 if battle.characters[id].side == "player" else 76)
+	# 双方围绕y=360镜像，准备区比同方战斗区向外错开48像素。
+	return Vector2(xs[id], 412 if battle.characters[id].side == "player" else 28)
 
 func _sync() -> void:
 	hand_cards.assign(battle.hand)
