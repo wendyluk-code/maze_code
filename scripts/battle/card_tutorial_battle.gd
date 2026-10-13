@@ -171,7 +171,7 @@ func card_data(id: String) -> CardData:
 		raw["is_role_card"] = true
 		raw["card_type"] = "角色牌" if c.form.is_empty() else "赋形牌"
 		raw["character_name"] = _role_name(id) if raw.faction == "monster" else Rules.data()[c.source].character_name
-		raw["title"] = _role_name(id)
+		if c.form.is_empty(): raw["title"] = _role_name(id)
 		raw["satiety_max"] = c.satiety_max
 		raw["mana_enabled"] = c.mana >= 0
 		if not c.form.is_empty(): raw["effect"] += "\n" + Rules.data()[c.source].effect

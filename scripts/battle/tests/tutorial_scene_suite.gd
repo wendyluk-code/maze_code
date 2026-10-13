@@ -101,6 +101,8 @@ func capture(label: String) -> void:
 		for other in visible_roles: check(not rect.intersects(other), "角色槽位无重叠 " + id)
 		visible_roles.append(rect)
 		var template: SproutCard = field.get_node("Portrait/TemplateCard")
+		if not ui.battle.characters[id].form.is_empty():
+			check(template._material_title.text == Rules.data()[ui.battle.characters[id].form].title, "赋形角色显示赋形牌名称 " + id)
 		var expected_art: String = ui.tutorial_art.get(ui.card_data(id).id, "")
 		if not expected_art.is_empty(): check(template._material_art.texture.resource_path == expected_art, "角色使用新版对应插画 " + id)
 		var paragraph := TextParagraph.new()

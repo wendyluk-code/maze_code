@@ -379,7 +379,7 @@ func _apply_material(data: SproutCardData) -> void:
 	if not data.illustration_path.is_empty() and ResourceLoader.exists(data.illustration_path):
 		_material_art.texture = load(data.illustration_path) as Texture2D
 	_apply_art_window()
-	_material_title.text = data.title if not data.is_role_card else data.character_name
+	_material_title.text = data.title if not data.is_role_card or data.card_type == "赋形牌" else data.character_name
 	_material_type.text = data.card_type
 	_material_effect.text = effect_display_text(data)
 	var title_size := 24
@@ -405,7 +405,8 @@ func _apply_material(data: SproutCardData) -> void:
 	if _readable_battle_text:
 		# 战斗牌优先利用标题下方空白，增大正文实际像素；不改技能原文。
 		var text_width := READABLE_EFFECT_WIDTH
-		var text_height := 118.0
+		# 正文延伸到卡框底部内侧；左右图标已外移，保留中央完整文字区域。
+		var text_height := 170.0
 		var font_size := 30
 		while font_size > 18:
 			var paragraph := TextParagraph.new()
