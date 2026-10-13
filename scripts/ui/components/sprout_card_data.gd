@@ -34,6 +34,8 @@ var satiety_cost: int
 var mana_cost: int
 var portable_dish: String
 var dish_category: String
+## Excel原始显示值；费用仍保留正数供业务扣减，显示值绝不参与结算。
+var display_values: Dictionary = {}
 
 func _init(values: Dictionary = {}) -> void:
 	id = str(values.get("id", "card_placeholder"))
@@ -68,6 +70,7 @@ func _init(values: Dictionary = {}) -> void:
 	mana_cost = int(values.get("mana_cost", 0))
 	portable_dish = str(values.get("portable_dish", "待定"))
 	dish_category = str(values.get("dish_category", ""))
+	display_values = values.get("display_values", {}).duplicate(true)
 
 static func _read_catalog() -> Array[SproutCardData]:
 	var result: Array[SproutCardData] = []
@@ -140,6 +143,7 @@ static func replace_placeholder(data: Array[SproutCardData], replacements: Dicti
 			"mana_initial": item.mana_initial, "satiety_cost": item.satiety_cost,
 			"mana_cost": item.mana_cost, "portable_dish": item.portable_dish,
 			"dish_category": item.dish_category,
+			"display_values": item.display_values.duplicate(true),
 		}
 		var replacement: Dictionary = replacements.get(item.id, {})
 		for key in replacement:

@@ -25,7 +25,14 @@
       "is_role_card": true,
       "faction": "sprout",
       "source_sheet": "角色卡牌",
-      "source_row": 2
+      "source_row": 2,
+      "display_values": {
+        "attack": "2",
+        "health": "5",
+        "shield": "-",
+        "satiety": "6",
+        "mana": "3"
+      }
     },
     "yaya_restore": {
       "id": "yaya_restore",
@@ -45,7 +52,14 @@
       "is_role_card": false,
       "faction": "sprout",
       "source_sheet": "角色卡牌",
-      "source_row": 3
+      "source_row": 3,
+      "display_values": {
+        "attack": "-",
+        "health": "-",
+        "shield": "-",
+        "satiety": "-1",
+        "mana": "-1"
+      }
     },
     "yaya_magic_hit": {
       "id": "yaya_magic_hit",
@@ -65,7 +79,14 @@
       "is_role_card": false,
       "faction": "sprout",
       "source_sheet": "角色卡牌",
-      "source_row": 5
+      "source_row": 5,
+      "display_values": {
+        "attack": "-",
+        "health": "-",
+        "shield": "-",
+        "satiety": "-2",
+        "mana": "-2"
+      }
     },
     "yaya_magic_wind": {
       "id": "yaya_magic_wind",
@@ -85,7 +106,14 @@
       "is_role_card": false,
       "faction": "sprout",
       "source_sheet": "角色卡牌",
-      "source_row": 6
+      "source_row": 6,
+      "display_values": {
+        "attack": "-",
+        "health": "-",
+        "shield": "-",
+        "satiety": "-2",
+        "mana": "-2"
+      }
     },
     "yaya_heal_wind": {
       "id": "yaya_heal_wind",
@@ -105,7 +133,14 @@
       "is_role_card": false,
       "faction": "sprout",
       "source_sheet": "角色卡牌",
-      "source_row": 7
+      "source_row": 7,
+      "display_values": {
+        "attack": "-",
+        "health": "-",
+        "shield": "-",
+        "satiety": "-3",
+        "mana": "-3"
+      }
     },
     "tieshan": {
       "id": "tieshan",
@@ -125,7 +160,14 @@
       "is_role_card": true,
       "faction": "tieshan",
       "source_sheet": "角色卡牌",
-      "source_row": 11
+      "source_row": 11,
+      "display_values": {
+        "attack": "1",
+        "health": "7",
+        "shield": "-",
+        "satiety": "8",
+        "mana": "-"
+      }
     },
     "tieshan_axe": {
       "id": "tieshan_axe",
@@ -145,7 +187,14 @@
       "is_role_card": false,
       "faction": "tieshan",
       "source_sheet": "角色卡牌",
-      "source_row": 12
+      "source_row": 12,
+      "display_values": {
+        "attack": "+2",
+        "health": "-",
+        "shield": "+1",
+        "satiety": "-1",
+        "mana": "-"
+      }
     },
     "tieshan_strong": {
       "id": "tieshan_strong",
@@ -165,7 +214,14 @@
       "is_role_card": false,
       "faction": "tieshan",
       "source_sheet": "角色卡牌",
-      "source_row": 13
+      "source_row": 13,
+      "display_values": {
+        "attack": "-",
+        "health": "-",
+        "shield": "-",
+        "satiety": "-1",
+        "mana": "-"
+      }
     },
     "tieshan_guard": {
       "id": "tieshan_guard",
@@ -187,7 +243,14 @@
       "source_sheet": "角色卡牌",
       "source_row": 14,
       "conditional_attack": 3,
-      "source_attack_text": "+3（如满足条件）"
+      "source_attack_text": "+3（如满足条件）",
+      "display_values": {
+        "attack": "+3（如满足条件）",
+        "health": "-",
+        "shield": "+4",
+        "satiety": "-1",
+        "mana": "-"
+      }
     },
     "tieshan_hold": {
       "id": "tieshan_hold",
@@ -207,7 +270,14 @@
       "is_role_card": false,
       "faction": "tieshan",
       "source_sheet": "角色卡牌",
-      "source_row": 17
+      "source_row": 17,
+      "display_values": {
+        "attack": "2",
+        "health": "8",
+        "shield": "-",
+        "satiety": "-2",
+        "mana": "-"
+      }
     },
     "slime": {
       "id": "slime",
@@ -227,7 +297,14 @@
       "is_role_card": true,
       "faction": "monster",
       "source_sheet": "怪物卡牌（教学、剧情用）",
-      "source_row": 2
+      "source_row": 2,
+      "display_values": {
+        "attack": "2",
+        "health": "5",
+        "shield": "-",
+        "satiety": "-",
+        "mana": "-"
+      }
     },
     "small_slime": {
       "id": "small_slime",
@@ -247,7 +324,14 @@
       "is_role_card": true,
       "faction": "monster",
       "source_sheet": "怪物卡牌（教学、剧情用）",
-      "source_row": 3
+      "source_row": 3,
+      "display_values": {
+        "attack": "1",
+        "health": "4",
+        "shield": "-",
+        "satiety": "-",
+        "mana": "-"
+      }
     }
   }
 }

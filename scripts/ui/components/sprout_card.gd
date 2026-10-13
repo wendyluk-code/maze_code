@@ -53,6 +53,13 @@ var _cost_slots: Array[Label] = []
 var _ability_details_enabled := false
 var _battle_context := false
 var _battle_state: Dictionary = {}
+var _skill_resolution: Dictionary = {}
+
+## 仅在使用事务成功后传入条件结果；不预判、不改变业务状态。
+func set_skill_resolution(values: Dictionary) -> void:
+	_skill_resolution = values.duplicate(true)
+	if is_node_ready() and _data:
+		_apply_material(_data)
 
 ## 显示层副本：不修改共享原始卡牌数据，也不参与战斗结算。
 func set_battle_state(values: Dictionary) -> void:
@@ -62,7 +69,7 @@ func set_battle_state(values: Dictionary) -> void:
 		_apply_battle_state()
 
 func _apply_battle_state() -> void:
-	if not _battle_context or _battle_state.is_empty(): return
+	if not _battle_context or _battle_state.is_empty() or not _data.is_role_card: return
 	_material_stat_attack.text = str(_battle_state.get("attack", _data.attack))
 	_material_stat_health.text = str(_battle_state.get("hp", _data.health))
 	_satiety_slot.text = _number_text(int(_battle_state.get("satiety", -1)))
@@ -89,6 +96,8 @@ func _ready() -> void:
 		_apply_data(_data)
 
 func configure(data: SproutCardData) -> SproutCard:
+	if _data == null or _data.id != data.id:
+		_skill_resolution.clear()
 	_data = data
 	if is_node_ready():
 		_apply_data(data)
@@ -202,7 +211,8 @@ func _apply_data(data: SproutCardData) -> void:
 	_character_label.text = data.character_name
 	_role_label.text = "定位：" + data.role
 	_title_label.text = data.title
-	_cost_label.text = "" if data.cost.is_empty() else "费用\n" + data.cost
+	_cost_label.text = ""
+	_cost_label.visible = false
 	_type_label.text = "类型：" + data.card_type
 	_effect_label.text = "效果\n" + data.effect
 	_value_label.text = "核心数值：" + data.value
@@ -312,41 +322,43 @@ func _apply_material(data: SproutCardData) -> void:
 	var title_width := SproutTheme.FONT_CN.get_string_size(_material_title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, title_size).x
 	_title_leaf_left.position.x = 150 - title_width / 2 - 21
 	_title_leaf_right.position.x = 150 + title_width / 2 + 7
-	var stats := data.is_role_card or data.card_type == "赋形牌"
-	for node in [_attack_art, _health_art, _material_stat_attack, _material_stat_health]:
-		node.visible = stats
+	var attack_text := display_number(data, "attack")
+	var health_text := display_number(data, "health")
+	if attack_text.contains("条件"):
+		attack_text = attack_text.get_slice("（", 0) if _skill_resolution.get("conditional_attack_active", false) else "-"
+	_attack_art.visible = data.is_role_card or attack_text != "-"
+	_material_stat_attack.visible = _attack_art.visible
+	_health_art.visible = data.is_role_card or health_text != "-"
+	_material_stat_health.visible = _health_art.visible
 	_material_effect.position.y = EFFECT_TOP if data.is_role_card else 316.0
 	_material_effect.add_theme_font_size_override("font_size", effect_font_size(data))
 	_material_effect.size = Vector2(EFFECT_WIDTH, effect_area_height(data))
 	_material_effect.set_deferred("size", Vector2(EFFECT_WIDTH, effect_area_height(data)))
-	_material_stat_attack.text = str(data.attack)
-	_material_stat_health.text = str(data.health)
+	_material_stat_attack.text = attack_text
+	_material_stat_health.text = health_text
 	_material_stat_attack.add_theme_font_size_override("font_size", 32 if data.attack < 10 else 26)
 	_material_stat_health.add_theme_font_size_override("font_size", 32 if data.health < 10 else 26)
 	var skill := data.card_type in ["赋形牌", "法术牌", "战斗牌"]
 	# 收录角色显示基础资源，技能显示消耗；战斗资源先设占位，再由状态副本覆盖。
-	var battle_stats := _battle_context and stats
+	var battle_stats := _battle_context and data.is_role_card
 	_satiety_slot.visible = data.is_role_card or skill
 	_satiety_slot.add_theme_color_override("font_color", Color("#462618"))
-	_satiety_slot.text = _number_text(data.satiety_max if data.is_role_card else data.satiety_cost)
+	_satiety_slot.text = display_number(data, "satiety")
 	if battle_stats:
 		_satiety_slot.text = "—"
-	_mana_slot.visible = data.mana_enabled if data.is_role_card or battle_stats else (skill and data.mana_cost != 0)
-	_mana_slot.text = _number_text(data.mana_initial if data.is_role_card else data.mana_cost)
+	_mana_slot.visible = data.mana_enabled if data.is_role_card else (skill and display_number(data, "mana") != "-")
+	_mana_slot.text = display_number(data, "mana")
 	if battle_stats:
 		_mana_slot.text = "—"
 	_satiety_art.visible = _satiety_slot.visible
 	_mana_art.visible = _mana_slot.visible
 	_satiety_slot.add_theme_font_size_override("font_size", 30 if _satiety_slot.text.length() <= 1 else 24)
 	_mana_slot.add_theme_font_size_override("font_size", 30 if _mana_slot.text.length() <= 1 else 24)
-	_shield_slot.visible = _battle_context and stats
-	_shield_slot.text = "护盾\n—"
+	_shield_slot.visible = battle_stats or display_number(data, "shield") != "-"
+	_shield_slot.text = "护盾\n" + ("—" if battle_stats else display_number(data, "shield"))
 	for slot in _cost_slots:
 		slot.visible = false
 	if not data.is_role_card:
-		_cost_slots[0].visible = true
-		_cost_slots[0].position.x = 75 if data.card_type == "料理" else 115
-		_cost_slots[0].text = "行动 " + (data.cost if not data.cost.is_empty() else "—")
 		if data.card_type == "料理":
 			_cost_slots[1].visible = true
 			_cost_slots[1].position.x = 155
@@ -355,6 +367,17 @@ func _apply_material(data: SproutCardData) -> void:
 
 static func _number_text(value: int) -> String:
 	return str(value) if value >= 0 else "—"
+
+static func display_number(data: SproutCardData, key: String) -> String:
+	if data.display_values.has(key):
+		return str(data.display_values[key])
+	match key:
+		"attack": return str(data.attack) if data.is_role_card or data.card_type == "赋形牌" else "-"
+		"health": return str(data.health) if data.is_role_card or data.card_type == "赋形牌" else "-"
+		"shield": return "-"
+		"satiety": return _number_text(data.satiety_max) if data.is_role_card else (str(-data.satiety_cost) if data.satiety_cost >= 0 else "-")
+		"mana": return _number_text(data.mana_initial) if data.is_role_card else (str(-data.mana_cost) if data.mana_cost != 0 else "-")
+	return "-"
 
 static func effect_area_height(data: SproutCardData) -> float:
 	if data.is_role_card:
