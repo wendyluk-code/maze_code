@@ -1,5 +1,5 @@
 extends Node2D
-## 复用对白暗幕上方的入口节点，细暖金线贴门框内缘。
+## 复用对白暗幕上方的入口节点，仅以柔亮光珠提示入口。
 const BREATH_SECONDS := 3.6
 var outline := PackedVector2Array([
 	Vector2(1301, 960), Vector2(1305, 831), Vector2(1313, 805),
@@ -66,10 +66,6 @@ func _draw() -> void:
 	if not is_instance_valid(background) or background.texture == null:
 		return
 	# 背景与植物只使用原场景绘制，避免纹理重绘形成硬边亮斑。
-	for edge in inner_edges:
-		_draw_edge(edge, Color(1.0, 0.66, 0.18, 0.05 + 0.025 * strength), 7.0)
-		_draw_edge(edge, Color(1.0, 0.76, 0.29, 0.18 + 0.08 * strength), 4.0)
-		_draw_edge(edge, Color(1.0, 0.86, 0.46, 0.76 + 0.18 * strength), 1.65)
 	for index in motes.size():
 		var phase := fposmod(elapsed / 4.8 + float(index) * 0.23, 1.0)
 		var point := motes[index] + Vector2(sin(phase * TAU + index) * 0.7, -phase * 5.0)
