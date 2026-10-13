@@ -78,6 +78,7 @@ func draft_checks() -> void:
 func run() -> void:
 	DirAccess.make_dir_recursive_absolute("res://output/card_display_02")
 	DirAccess.make_dir_recursive_absolute("res://output/bt_ui_02")
+	DirAccess.make_dir_recursive_absolute("res://output/bt_fx_01")
 	root.size = Vector2i(1152, 648) if OS.get_cmdline_user_args().has("small") else Vector2i(1280, 720)
 	for active in [false, true]:
 		expected_condition = active
