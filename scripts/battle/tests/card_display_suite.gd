@@ -61,7 +61,11 @@ func run() -> void:
 			check(not view._cost_label.visible, "通用布局无行动费用 " + id)
 			check(view._material_stat_health.visible == (id == "tieshan_hold"), "不把横线显示0 " + id)
 			check(view._material_stat_attack.visible == (id in ["tieshan_axe", "tieshan_hold"]), "攻击初始显隐 " + id)
-			if id == "tieshan_guard": check(view._shield_slot.text.ends_with("+4"), "守护护盾原值")
+			check(view._shield_art.visible == (id in ["tieshan_guard", "tieshan_axe"]), "技能金盾显隐 " + id)
+			check(not view._shield_slot.text.contains("护盾"), "护盾槽只显示数值 " + id)
+			check(view._shield_art.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_CENTERED, "金盾等比缩放 " + id)
+			if id == "tieshan_guard": check(view._shield_slot.text == "+4", "守护护盾原值")
+			if id == "tieshan_axe": check(view._shield_slot.text == "+1", "斧冲护盾原值")
 		await capture("skills_%d" % page)
 	for child in stage.get_children(): child.queue_free()
 	await process_frame
@@ -70,7 +74,7 @@ func run() -> void:
 	role.set_battle_context(true)
 	role.set_battle_state({"attack": 6, "hp": 3, "shield": 4, "satiety": 0, "mana": -1})
 	check(role._material_stat_attack.text == "6" and role._material_stat_health.text == "3", "角色攻击生命实时")
-	check(role._satiety_slot.text == "0" and role._shield_slot.text.ends_with("4"), "角色饱腹护盾实时")
+	check(role._satiety_slot.text == "0" and role._shield_slot.text == "4" and role._shield_art.visible, "角色饱腹护盾实时")
 	for active in [false, true]:
 		var state := Rules.new_state()
 		Rules.begin_turn(state, "player")
@@ -91,6 +95,7 @@ func run() -> void:
 	check(not guard._material_stat_attack.visible, "清除事务展示后恢复隐藏")
 	role.set_battle_state({"attack": 2, "hp": 7, "shield": 0, "satiety": 4, "mana": -1})
 	check(role._material_stat_attack.text == "2" and role._material_stat_health.text == "7" and role._satiety_slot.text == "4", "实时数字二次刷新")
+	check(role._shield_slot.text == "0", "角色护盾实时归零")
 	var report := {"checks": checks, "failures": failures, "resolution": str(root.size)}
 	FileAccess.open("res://output/card_display_02/%d_report.json" % root.size.x, FileAccess.WRITE).store_string(JSON.stringify(report, "  "))
 	print(JSON.stringify(report))
