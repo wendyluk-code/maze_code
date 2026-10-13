@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "illustrations": {
+    "tieshan_strong": "res://assets/ui/card_materials/tutorial_art_v2/power.png",
+    "tieshan_guard": "res://assets/ui/card_materials/tutorial_art_v2/guard.png",
+    "yaya_magic_hit": "res://assets/ui/card_materials/tutorial_art_v2/magic_strike.png",
+    "tieshan_hold": "res://assets/ui/card_materials/tutorial_art_v2/steadfast.png",
+    "yaya_magic_wind": "res://assets/ui/card_materials/tutorial_art_v2/magic_wind.png",
+    "yaya_heal_wind": "res://assets/ui/card_materials/tutorial_art_v2/healing_wind.png",
+    "yaya_restore": "res://assets/ui/card_materials/tutorial_art_v2/recover.png",
+    "tieshan_axe": "res://assets/ui/card_materials/tutorial_art_v2/axe_charge.png"
+  }
+}

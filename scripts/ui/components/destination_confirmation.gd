@@ -10,7 +10,7 @@ var _armed := false
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	color = Color(0.03, 0.04, 0.03, 0.65)
+	color = preload("res://scripts/ui/components/modal_style.gd").BACKDROP
 	theme = SproutTheme.make_theme()
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	var center := CenterContainer.new()

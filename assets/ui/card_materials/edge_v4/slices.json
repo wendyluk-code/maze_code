@@ -1,0 +1,324 @@
+{
+  "status": "用户已批准；共享卡面与CardAuthoring使用",
+  "layout_version": "edge_icons_v4",
+  "source_canvas": [
+    971,
+    1619
+  ],
+  "design_canvas": [
+    300,
+    500
+  ],
+  "source_sha256": {
+    "approved.png": "3beb7fdbdd757ed2ae35071b953e584db94c577af60be4d970e8c6941b4ef54f",
+    "clean_base.png": "dda2514dffccce2a91cf6d8db94705a5e3aed824d7eef4c00c689ee06a295361",
+    "empty_badges.png": "16dc686ebe37f7992fd6a87d8522290e69d16d8ffad2e112b630e0cab0b20f69"
+  },
+  "layers": [
+    {
+      "name": "卡框与空白文案底板",
+      "file": "layers/frame.png",
+      "rect_px": [
+        71,
+        91,
+        828,
+        1413
+      ],
+      "rect_300x500": [
+        21.936,
+        28.104,
+        255.819,
+        436.38
+      ],
+      "z_index": 1,
+      "id": "frame"
+    },
+    {
+      "name": "芽芽插画（可替换）",
+      "file": "layers/illustration_yaya.png",
+      "rect_px": [
+        93,
+        112,
+        784,
+        675
+      ],
+      "rect_300x500": [
+        28.733,
+        34.589,
+        242.225,
+        208.462
+      ],
+      "z_index": 0,
+      "id": "illustration_yaya"
+    },
+    {
+      "name": "攻击 · 绿叶",
+      "file": "layers/attack.png",
+      "rect_px": [
+        52,
+        1286,
+        166,
+        204
+      ],
+      "rect_300x500": [
+        16.066,
+        397.159,
+        51.287,
+        63.002
+      ],
+      "z_index": 3,
+      "id": "attack"
+    },
+    {
+      "name": "血量 · 红色水滴",
+      "file": "layers/health.png",
+      "rect_px": [
+        746,
+        1291,
+        161,
+        201
+      ],
+      "rect_300x500": [
+        230.484,
+        398.703,
+        49.743,
+        62.075
+      ],
+      "z_index": 3,
+      "id": "health"
+    },
+    {
+      "name": "饱腹 · 紫黑包裹饭团",
+      "file": "layers/satiety.png",
+      "rect_px": [
+        799,
+        285,
+        159,
+        172
+      ],
+      "rect_300x500": [
+        246.859,
+        88.017,
+        49.125,
+        53.119
+      ],
+      "z_index": 3,
+      "id": "satiety"
+    },
+    {
+      "name": "魔力 · 圆弧底蓝火",
+      "file": "layers/mana.png",
+      "rect_px": [
+        809,
+        467,
+        151,
+        212
+      ],
+      "rect_300x500": [
+        249.949,
+        144.225,
+        46.653,
+        65.473
+      ],
+      "z_index": 3,
+      "id": "mana"
+    },
+    {
+      "name": "牌名左叶饰",
+      "file": "layers/title_leaf_left.png",
+      "rect_px": [
+        332,
+        762,
+        45,
+        50
+      ],
+      "rect_300x500": [
+        102.575,
+        235.33,
+        13.903,
+        15.442
+      ],
+      "z_index": 2,
+      "id": "title_leaf_left"
+    },
+    {
+      "name": "牌名右叶饰",
+      "file": "layers/title_leaf_right.png",
+      "rect_px": [
+        593,
+        762,
+        44,
+        50
+      ],
+      "rect_300x500": [
+        183.213,
+        235.33,
+        13.594,
+        15.442
+      ],
+      "z_index": 2,
+      "id": "title_leaf_right"
+    },
+    {
+      "name": "类型左分隔线",
+      "file": "layers/type_rule_left.png",
+      "rect_px": [
+        228,
+        863,
+        144,
+        15
+      ],
+      "rect_300x500": [
+        70.443,
+        266.523,
+        44.49,
+        4.632
+      ],
+      "z_index": 2,
+      "id": "type_rule_left"
+    },
+    {
+      "name": "类型右分隔线",
+      "file": "layers/type_rule_right.png",
+      "rect_px": [
+        599,
+        864,
+        142,
+        14
+      ],
+      "rect_300x500": [
+        185.067,
+        266.831,
+        43.872,
+        4.324
+      ],
+      "z_index": 2,
+      "id": "type_rule_right"
+    }
+  ],
+  "dynamic_text": {
+    "title": {
+      "center_px": [
+        485,
+        773
+      ]
+    },
+    "type": {
+      "center_px": [
+        485,
+        879
+      ]
+    },
+    "effect": {
+      "rect_px": [
+        190,
+        969,
+        590,
+        268
+      ],
+      "font_size_at_300": 20,
+      "min_font_size_at_300": 18
+    },
+    "attack": {
+      "center_px": [
+        137,
+        1403
+      ]
+    },
+    "health": {
+      "center_px": [
+        825,
+        1403
+      ]
+    },
+    "satiety": {
+      "center_px": [
+        879,
+        365
+      ]
+    },
+    "mana": {
+      "center_px": [
+        883,
+        608
+      ]
+    }
+  },
+  "rules": [
+    "数值图标只绘数字，无属性名称、上限斜线或周边叶饰。",
+    "魔力按角色配置显隐。",
+    "不将示例数值2/4/6/3写入素材或新角色设计。",
+    "不拉伸单独的外框，整张按300×500等比缩放。",
+    "批准切片原样复制；旧版素材保留，运行时使用edge_v4。"
+  ],
+  "cleanup": "imagegen移除文字/数字并补齐遮挡区域；Python仅描边抠图、记录位置、排版检查。",
+  "asset_sha256": {
+    "layers/frame.png": "3e2ec6235ef217570d84c82a713409b6c5585ad58222fb13ab46bafb5c43d6b9",
+    "layers/illustration_yaya.png": "20d40733667b58696ae7c3cd0b8167db49c66ce8bd6559d501444cb780189c87",
+    "layers/attack.png": "ea4f81cf5cd5f7e82e5639849ee610b75d848cac0efe33a460b2bb209f442a2c",
+    "layers/health.png": "292a337ac846a3523f6084f16438c90c0a9b1935cb17cc7b28ffc706787ab9ab",
+    "layers/satiety.png": "c8e84e2bf9fa825857fa22aec9a0b4a7f3953b1f41ba62e5aadcf8491f6a86fd",
+    "layers/mana.png": "51702513eb22099266cbed096d89a9bfc78902ff2e3623342100ce82f51cb318",
+    "layers/title_leaf_left.png": "934a47489c7b601c2dc2d02f43a3b3849f7b499a1edaac8b9b6642d3ac27f03f",
+    "layers/title_leaf_right.png": "5751124cdd0a61b80fc9f95d479e13ef410189925f15149275d9028bdfc03369",
+    "layers/type_rule_left.png": "080ead3977576a4e099dc24172b3c32ec27555669eee6e9b4091e0ad9feafa40",
+    "layers/type_rule_right.png": "ab9e3952544b5573fa62c25fd6dc1b63b1c92e5f905db679f1cff6a84c82314b"
+  },
+  "adapted_illustrations": {
+    "small_spoon_person": {
+      "source": "assets/ui/card_materials/art_small_spoon_person.png",
+      "source_sha256": "eeabb1202b56d7917a46a3220248ee9267702fcb36ccaa8bbb3b9f024903d562",
+      "crop": [
+        110,
+        130,
+        760,
+        654
+      ],
+      "file": "layers/illustration_small_spoon_person.png"
+    },
+    "warm_care": {
+      "source": "assets/ui/card_materials/art_warm_care.png",
+      "source_sha256": "18566485471be1856e7f718b383cc241d6794b7f3e12111287a6f50a4530992d",
+      "crop": [
+        110,
+        130,
+        760,
+        654
+      ],
+      "file": "layers/illustration_warm_care.png"
+    },
+    "field_kitchen": {
+      "source": "assets/ui/card_materials/art_field_kitchen.png",
+      "source_sha256": "f856f4373f6a762fbf8e457cdc13788a5ad435a1b535b49dbd736fc86f62d081",
+      "crop": [
+        110,
+        130,
+        760,
+        654
+      ],
+      "file": "layers/illustration_field_kitchen.png"
+    },
+    "hotpot_collab": {
+      "source": "assets/ui/card_materials/art_hotpot_collab.png",
+      "source_sha256": "b9db5e561357a82b0e44dc6cd51a1e283656d20218c1cffdf87f18a6eb68c62b",
+      "crop": [
+        110,
+        130,
+        760,
+        654
+      ],
+      "file": "layers/illustration_hotpot_collab.png"
+    },
+    "tieshan": {
+      "source": "assets/ui/card_materials/art_tieshan.png",
+      "source_sha256": "5ae6140334519f793697ddfefb5e50b3a7c0993bccb1b4d7e28b8b467a2c589a",
+      "crop": [
+        110,
+        130,
+        760,
+        654
+      ],
+      "file": "layers/illustration_tieshan.png"
+    }
+  }
+}

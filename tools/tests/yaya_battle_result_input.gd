@@ -64,7 +64,7 @@ func _run_results() -> void:
 func _finish_menu() -> void:
 	await _control_click(battle.battle_menu.gear)
 	await _control_click(battle.battle_menu.finish_button)
-	await _control_click(battle.battle_menu.confirmation._confirm_button)
+	await _control_click(battle.battle_menu.confirmation.confirm_button)
 
 func _result_checks(outcome: String) -> void:
 	if outcome in ["forfeit", "opening_forfeit"]:

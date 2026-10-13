@@ -1,6 +1,10 @@
 extends Control
-## 战斗角落信息：只显示头像、生命数值与水滴，不持有规则。
+## 战斗角落信息：透明水彩头像框、生命徽章和瓷勺行动点，只显示规则状态。
 const PORTRAIT = preload("res://assets/characters/yaya_portrait.png")
+const AVATAR_FRAME = preload("res://assets/ui/battle/side_hud/avatar_frame_v1.png")
+const HEALTH_BADGE = preload("res://assets/ui/battle/side_hud/health_badge_v1.png")
+const SPOON_READY = preload("res://assets/ui/battle/side_hud/spoon_ready_v1.png")
+const SPOON_SPENT = preload("res://assets/ui/battle/side_hud/spoon_spent_v1.png")
 const INK := Color("#345356")
 const GOLD := Color("#d5ad5e")
 var hp := -1
@@ -11,6 +15,8 @@ var hp_flash := 0.0
 var fill_motion: Tween
 var health_motion: Tween
 var hp_label: Label
+var ready_spoons: Array[TextureRect] = []
+var health_badge: TextureRect
 
 func _ready() -> void:
 	size = Vector2(210, 120)
@@ -19,8 +25,8 @@ func _ready() -> void:
 	portrait.texture = PORTRAIT
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	portrait.position = Vector2(10, 18)
-	portrait.size = Vector2(84, 84)
+	portrait.position = Vector2(13, 18)
+	portrait.size = Vector2(82, 82)
 	portrait.name = "Avatar"
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var shader := Shader.new()
@@ -29,19 +35,28 @@ func _ready() -> void:
 	material.shader = shader
 	portrait.material = material
 	add_child(portrait)
-	# 生命徽章后加在头像之上，避免肖像遮住数字底色。
-	var badge := Panel.new()
-	badge.position = Vector2(62, 72)
-	badge.size = Vector2(44, 44)
-	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("#954c4b")
-	style.border_color = GOLD
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(22)
-	badge.add_theme_stylebox_override("panel", style)
-	add_child(badge)
-	hp_label = _label("", Rect2(62, 72, 44, 44), 26, Color("#fff5df"), true)
+	_texture("AvatarFrame", AVATAR_FRAME, Rect2(-11, 4, 126, 111))
+	# 徽章与数字独立，受伤、治疗及失败结算继续使用实时生命值。
+	health_badge = _texture("HealthBadge", HEALTH_BADGE, Rect2(61, 71, 49, 49))
+	hp_label = _label("", Rect2(63, 73, 45, 45), 26, Color("#fff5df"), true)
+	for i in range(2):
+		var rect := Rect2(124 + i * 40, 29, 35, 47)
+		_texture("SpoonSpent%d" % i, SPOON_SPENT, rect)
+		var ready := _texture("SpoonReady%d" % i, SPOON_READY, rect)
+		ready.modulate.a = fill[i]
+		ready_spoons.append(ready)
+
+func _texture(node_name: String, texture: Texture2D, rect: Rect2) -> TextureRect:
+	var node := TextureRect.new()
+	node.name = node_name
+	node.texture = texture
+	node.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	node.stretch_mode = TextureRect.STRETCH_SCALE
+	node.position = rect.position
+	node.size = rect.size
+	node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(node)
+	return node
 
 func _label(value: String, rect: Rect2, font_size: int, color: Color, centered := false) -> Label:
 	var node := Label.new()
@@ -75,37 +90,13 @@ func sync(health: int, ap: int, current: bool) -> void:
 
 func _set_fill(value: float, index: int) -> void:
 	fill[index] = value
-	queue_redraw()
+	ready_spoons[index].modulate.a = value
 
 func _set_flash(value: float) -> void:
 	hp_flash = value
+	health_badge.modulate = Color.WHITE.lerp(Color("#ffb7a2"), value * 0.45)
 	queue_redraw()
 
 func _draw() -> void:
-	var center := Vector2(52, 60)
-	if active: draw_circle(center, 53, Color(0.36,0.79,0.74,0.17))
-	draw_circle(center, 48, Color("#29494d"))
-	draw_arc(center, 49, 0, TAU, 96, GOLD if active else Color("#839b91"), 2, true)
-	draw_arc(center, 45, 0, TAU, 96, Color("#e3c888"), 1, true)
-	if hp_flash > 0:
-		draw_arc(center, 51 + 5 * (1 - hp_flash), 0, TAU, 96, Color(0.86,0.59,0.43,hp_flash), 3, true)
-	for i in range(2):
-		var origin := Vector2(137 + i * 38, 50)
-		var outline := PackedVector2Array()
-		# 尖端向上，圆腹向下；由三段贝塞尔曲线组成真正的水滴轮廓。
-		var top := Vector2(0,-21)
-		var right := Vector2(13,5)
-		var left := Vector2(-13,5)
-		for j in range(13):
-			var t := j / 12.0
-			outline.append(origin + top.bezier_interpolate(Vector2(3,-10),Vector2(13,-5),right,t))
-		for j in range(1,17):
-			outline.append(origin + right.bezier_interpolate(Vector2(13,24),Vector2(-13,24),left,j/16.0))
-		for j in range(1,13):
-			outline.append(origin + left.bezier_interpolate(Vector2(-13,-5),Vector2(-3,-10),top,j/12.0))
-		var lit := Color("#53cbbb") if active else Color("#8eaaa5")
-		var empty := Color("#d3e2d9")
-		draw_colored_polygon(outline, empty.lerp(lit, fill[i]))
-		draw_polyline(outline, GOLD if active else Color("#829991"), 1.8, true)
-		if fill[i] > 0.02:
-			draw_arc(origin + Vector2(1,4), 8, 2.8, 4.2, 12, Color(0.93,1,0.96,fill[i]*0.85), 2, true)
+	# 深色头像底保留在透明框下方，现有头像始终由场景提供。
+	draw_circle(Vector2(54, 59), 43, Color("#29494d"))

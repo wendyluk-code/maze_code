@@ -115,7 +115,7 @@ func _menu_run() -> void:
 		await _pause(1.35)
 		await _control_click(battle.battle_menu.gear)
 		await _control_click(battle.battle_menu.finish_button)
-		await _control_click(battle.battle_menu.confirmation._confirm_button)
+		await _control_click(battle.battle_menu.confirmation.confirm_button)
 		_check(battle.state == "result" and battle.player_hp == 0 and not get_tree().paused, "敌方行动中确认结束立即锁定失败结果")
 		var step_at_end: int = battle.enemy_step
 		await _pause(1.25)
@@ -133,7 +133,7 @@ func _menu_run() -> void:
 		await _enter_battle()
 		await _control_click(battle.battle_menu.gear)
 		await _control_click(battle.battle_menu.finish_button)
-		await _control_click(battle.battle_menu.confirmation._confirm_button)
+		await _control_click(battle.battle_menu.confirmation.confirm_button)
 		await _pause(1.3)
 		_check(battle.state == "result" and not is_instance_valid(battle.draft), "开场结束后旧抽签计时器不再进入选牌")
 		await _pause(1.8)

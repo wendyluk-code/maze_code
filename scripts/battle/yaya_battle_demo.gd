@@ -361,7 +361,7 @@ func _build_board() -> void:
 	preview.hide()
 	dim = ColorRect.new()
 	dim.size = CANVAS
-	dim.color = Color(0.025, 0.08, 0.10, 0.68)
+	dim.color = preload("res://scripts/ui/components/modal_style.gd").BACKDROP
 	dim.z_index = 90
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	board.add_child(dim)

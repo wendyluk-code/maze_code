@@ -4,7 +4,7 @@ signal opened
 signal action_confirmed(action: String)
 
 const Action = preload("res://scripts/ui/components/sprout_button.gd")
-const Modal = preload("res://scripts/ui/components/sprout_modal.gd")
+const Confirmation = preload("res://scripts/ui/components/destination_confirmation.gd")
 const ThemeLibrary = preload("res://scripts/ui/components/sprout_theme.gd")
 var gear: Button
 var shield: ColorRect
@@ -23,7 +23,7 @@ func _ready() -> void:
 	size = Vector2(1280, 720)
 	shield = ColorRect.new()
 	shield.size = size
-	shield.color = Color(0, 0, 0, 0.12)
+	shield.color = preload("res://scripts/ui/components/modal_style.gd").BACKDROP
 	shield.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(shield)
 	shield.gui_input.connect(func(event: InputEvent):
@@ -62,22 +62,22 @@ func _ready() -> void:
 	rows.add_theme_constant_override("separation", 8)
 	dropdown.add_child(rows)
 	restart_button = Action.new().configure("重开战斗").set_icon_visible(false).set_focus_visual(false)
-	finish_button = Action.new().configure("结束战斗").set_icon_visible(false).set_focus_visual(false)
+	finish_button = Action.new().configure("退出战斗").set_icon_visible(false).set_focus_visual(false)
 	rows.add_child(restart_button)
 	rows.add_child(finish_button)
 	restart_button.pressed.connect(_ask.bind("restart"))
 	finish_button.pressed.connect(_ask.bind("finish"))
 	dropdown.hide()
-	confirmation = Modal.new()
+	confirmation = Confirmation.new()
 	confirmation.z_index = 20
 	add_child(confirmation)
-	# 战斗确认窗的说明与操作组居中，保留公共弹窗默认布局。
-	confirmation._body_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	confirmation._body_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	var confirmation_actions := confirmation._cancel_button.get_parent() as HBoxContainer
-	confirmation_actions.alignment = BoxContainer.ALIGNMENT_CENTER
-	confirmation.confirmed.connect(func(): accepted_action = pending_action)
-	confirmation.closed.connect(_confirmation_closed)
+	confirmation.confirmed.connect(func():
+		accepted_action = pending_action
+		confirmation.hide()
+		_confirmation_closed())
+	confirmation.cancelled.connect(func():
+		confirmation.hide()
+		_confirmation_closed())
 
 func _toggle() -> void:
 	if is_open:
@@ -92,14 +92,17 @@ func _toggle() -> void:
 	restart_button.grab_focus()
 
 func _ask(action: String) -> void:
+	shield.self_modulate.a = 0.0
 	pending_action = action
 	accepted_action = ""
 	dropdown.hide()
+	confirmation.open_destination("")
 	if action == "restart":
-		confirmation.show_modal("重开战斗", "确定重新开始本场战斗吗？\n当前战斗进度将被清空。", "重开战斗")
+		confirmation.question.text = "是否重开战斗？"
+		confirmation.confirm_button.text = "确认重开"
 	else:
-		confirmation.show_modal("结束战斗", "确定结束本场战斗吗？\n本场将按失败结算，演出结束后按 E 返回上一级页面。", "结束战斗")
-	confirmation._cancel_button.grab_focus()
+		confirmation.question.text = "是否退出战斗？"
+		confirmation.confirm_button.text = "确认退出"
 
 func _confirmation_closed() -> void:
 	var action := accepted_action
@@ -113,6 +116,7 @@ func close_menu() -> void:
 	if not is_open: return
 	is_open = false
 	shield.hide()
+	shield.self_modulate.a = 1.0
 	dropdown.hide()
 	get_tree().paused = previous_pause
 	gear.grab_focus()
@@ -122,21 +126,12 @@ func _exit_tree() -> void:
 
 func _input(event: InputEvent) -> void:
 	if not is_open or not event is InputEventKey: return
+	# 确认框自行处理取消、焦点切换和松开E后的确认，避免同一输入处理两次。
+	if confirmation.visible: return
 	get_viewport().set_input_as_handled()
 	if not event.pressed or event.echo: return
-	if confirmation.visible:
-		var buttons: Array[Control] = [confirmation._cancel_button, confirmation._confirm_button, confirmation._close_button]
-		if event.keycode == KEY_ESCAPE:
-			confirmation._on_cancel_pressed()
-		elif event.keycode in [KEY_TAB, KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN]:
-			var index := buttons.find(get_viewport().gui_get_focus_owner())
-			buttons[posmod(index + (-1 if event.shift_pressed or event.keycode in [KEY_LEFT, KEY_UP] else 1), buttons.size())].grab_focus()
-		elif event.keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE]:
-			if confirmation._confirm_button.has_focus(): confirmation._on_confirm_pressed()
-			else: confirmation._on_cancel_pressed()
-	else:
-		if event.keycode == KEY_ESCAPE: close_menu()
-		elif event.keycode in [KEY_TAB, KEY_UP, KEY_DOWN]:
-			(finish_button if restart_button.has_focus() else restart_button).grab_focus()
-		elif event.keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE]:
-			_ask("finish" if finish_button.has_focus() else "restart")
+	if event.keycode == KEY_ESCAPE: close_menu()
+	elif event.keycode in [KEY_TAB, KEY_UP, KEY_DOWN]:
+		(finish_button if restart_button.has_focus() else restart_button).grab_focus()
+	elif event.keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE]:
+		_ask("finish" if finish_button.has_focus() else "restart")

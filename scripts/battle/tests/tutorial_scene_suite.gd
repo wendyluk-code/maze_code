@@ -63,6 +63,10 @@ func drag(point: Vector2, destination: Vector2) -> void:
 
 func capture(label: String) -> void:
 	await create_timer(1.0).timeout # 等待数值飘字收起，保留可读的稳定画面。
+	for hud in [ui.player_hud, ui.enemy_hud]:
+		check(hud.hp_label.text == str(maxi(0, hud.hp)), "牌手生命数字同步 " + label)
+		for i in range(2):
+			check(is_equal_approx(hud.ready_spoons[i].modulate.a, 1.0 if i < hud.points else 0.0), "瓷勺行动点同步 %s/%d" % [label, i])
 	await process_frame
 	await RenderingServer.frame_post_draw
 	var path := "res://output/card_tutorial_01/%s_%s.png" % [str(root.size.x), label]
@@ -116,7 +120,7 @@ func run() -> void:
 	await click(menu_point)
 	check(ui.battle_menu.confirmation.visible, "重开确认窗可见")
 	await capture("menu_confirmation")
-	var cancel: Control = ui.battle_menu.confirmation._cancel_button
+	var cancel: Control = ui.battle_menu.confirmation.cancel_button
 	menu_point = ui.board.get_global_transform_with_canvas().affine_inverse() * cancel.get_global_rect().get_center()
 	await click(menu_point)
 	check(not paused and not ui.battle_menu.is_open and ui.battle == menu_snapshot, "取消恢复输入且状态不变")
@@ -126,7 +130,7 @@ func run() -> void:
 	restart = ui.battle_menu.restart_button
 	menu_point = ui.board.get_global_transform_with_canvas().affine_inverse() * restart.get_global_rect().get_center()
 	await click(menu_point)
-	var accept: Control = ui.battle_menu.confirmation._confirm_button
+	var accept: Control = ui.battle_menu.confirmation.confirm_button
 	menu_point = ui.board.get_global_transform_with_canvas().affine_inverse() * accept.get_global_rect().get_center()
 	await click(menu_point)
 	await process_frame
@@ -222,7 +226,7 @@ func run() -> void:
 	var finish_button: Control = ui.battle_menu.finish_button
 	menu_point = ui.board.get_global_transform_with_canvas().affine_inverse() * finish_button.get_global_rect().get_center()
 	await click(menu_point)
-	accept = ui.battle_menu.confirmation._confirm_button
+	accept = ui.battle_menu.confirmation.confirm_button
 	menu_point = ui.board.get_global_transform_with_canvas().affine_inverse() * accept.get_global_rect().get_center()
 	await click(menu_point)
 	if not await wait_state("result"): finish(); return

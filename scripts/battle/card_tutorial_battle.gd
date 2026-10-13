@@ -2,10 +2,8 @@ extends "res://scripts/battle/yaya_battle_demo.gd"
 ## CARD-TUTORIAL-01：复用原战场、签牌、手牌动画、菜单与结果演出。
 
 const Rules = preload("res://scripts/battle/tutorial_rules.gd")
-const CardView = preload("res://scripts/ui/components/sprout_card.gd")
-const CardData = preload("res://scripts/ui/components/sprout_card_data.gd")
 const LESSONS := [
-	"战斗牌会立即出击。强力永久增加攻击；守护获得4护盾，先抵挡伤害。角色底部为攻击与生命，右侧为饱腹度与魔力。左下两枚水滴是行动点。",
+	"战斗牌会立即出击。强力永久增加攻击；守护获得4护盾，先抵挡伤害。角色底部为攻击与生命，右侧为饱腹度与魔力。左下两枚瓷勺是行动点。",
 	"法术无需出击，也可选择准备区角色。用魔力一击攻击史莱姆A。每次用牌消耗1行动点，并支付牌面饱腹、魔力费用。",
 	"赋形直接采用新攻击与生命，保留永久增益和原技能。用坚守不移后，向上拖动铁山普通出击：消耗1行动点、1饱腹。",
 	"先用强力，再普通出击。战斗牌不占用全队每回合一次的普通出击；角色交战同时互伤。小小史莱姆阵亡也会触发粘液。",
@@ -20,9 +18,14 @@ var lesson_label: Label
 var step_label: Label
 var active_role := ""
 var last_events: Array = []
+var tutorial_art: Dictionary = {}
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_PAUSABLE
+	var art_file := FileAccess.open("res://data/battle/tutorial_art.json", FileAccess.READ)
+	if art_file:
+		var parsed = JSON.parse_string(art_file.get_as_text())
+		if parsed is Dictionary: tutorial_art = parsed.get("illustrations", {})
 	battle = Rules.new_state()
 	theme = SproutTheme.make_theme()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -59,6 +62,8 @@ func card_data(id: String) -> CardData:
 	var c: Dictionary = battle.characters.get(id, {}) if battle else {}
 	if not c.is_empty(): source = c.form if not c.form.is_empty() else c.source
 	var raw: Dictionary = Rules.data()[source].duplicate(true)
+	var art_path := str(tutorial_art.get(source, ""))
+	if not art_path.is_empty(): raw["illustration_path"] = art_path
 	if source == "tieshan_axe": raw["effect"] += "\n本次攻击+2，护盾+1。"
 	if source == "tieshan_guard": raw["effect"] += "\n护盾+4。"
 	raw["portrait"] = _monster_portrait() if raw.faction == "monster" else null
@@ -75,6 +80,16 @@ func card_data(id: String) -> CardData:
 		raw["mana_enabled"] = c.mana >= 0
 		if not c.form.is_empty(): raw["effect"] += "\n" + Rules.data()[c.source].effect
 	return CardData.new(raw)
+
+func _card_data(id: String) -> CardData:
+	# 起手牌和战斗手牌沿用父类的共享模板节点，数据统一读取教学规则。
+	return card_data(id)
+
+func _card(parent: Node, id: String, rect: Rect2) -> Control:
+	var card := super._card(parent, id, rect)
+	var view: SproutCard = card.get_node("TemplateCard")
+	card.resized.connect(func(): view.scale = card.size / CardView.CARD_SIZE)
+	return card
 
 func _role_name(id: String) -> String:
 	var names := {"yaya": "芽芽", "tieshan": "铁山", "slime_a": "史莱姆A", "slime_b": "史莱姆B", "slime_a1": "小小史莱姆A1", "slime_a2": "小小史莱姆A2", "slime_b1": "小小史莱姆B1", "slime_b2": "小小史莱姆B2"}
@@ -179,7 +194,7 @@ func _replace_card(index: int) -> void:
 	await out.finished
 	if ending_early: return
 	hand_cards.assign(battle.hand)
-	(card.get_node("Art/TemplateCard") as SproutCard).configure(card_data(hand_cards[index]))
+	(card.get_node("TemplateCard") as SproutCard).configure(card_data(hand_cards[index]))
 	var intro := _battle_tween()
 	intro.tween_property(card, "scale:x", 1.0, 0.22)
 	await intro.finished
