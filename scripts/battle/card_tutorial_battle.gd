@@ -15,6 +15,7 @@ const LESSONS := [
 var battle: Dictionary
 var role_nodes: Dictionary = {}
 var lesson_label: Label
+var lesson_panel: Panel
 var step_label: Label
 var active_role := ""
 var last_events: Array = []
@@ -37,9 +38,10 @@ func _ready() -> void:
 	resized.connect(_fit)
 	_fit()
 	_build_board()
-	_panel(battlefield, Rect2(24, 310, 248, 252), Color(0.99, 0.96, 0.87, 0.93), GOLD)
-	step_label = _text(battlefield, "", Rect2(37, 320, 223, 45), 19)
-	lesson_label = _text(battlefield, "", Rect2(37, 370, 223, 182), 17)
+	lesson_panel = _panel(battlefield, Rect2(24, 370, 248, 192), Color(0.99, 0.96, 0.87, 0.93), GOLD)
+	step_label = _text(lesson_panel, "", Rect2(13, 10, 223, 36), 17)
+	lesson_label = _text(lesson_panel, "", Rect2(13, 51, 223, 135), 15)
+	preview.visibility_changed.connect(func(): lesson_panel.visible = not preview.visible)
 	lesson_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lesson_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	step_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -130,11 +132,10 @@ func _new_role(id: String, at: Vector2) -> Control:
 	return field
 
 func _prepare_position(id: String) -> Vector2:
-	if id == "yaya": return _role_position(true, false)
-	if id == "tieshan": return _role_position(true, false) + Vector2(-142, 0)
-	var order := ["slime_a", "slime_b", "slime_a1", "slime_a2", "slime_b1", "slime_b2"]
-	var xs := [435, 293, 151, 775, 917, 1059]
-	return Vector2(xs[order.find(id)], 105)
+	# 固定血脉槽位：分裂体替代父体，阵亡不压缩其他角色的位置。
+	var xs := {"yaya": 400, "tieshan": 752, "slime_a": 400, "slime_b": 752,
+		"slime_a1": 400, "slime_a2": 222, "slime_b1": 752, "slime_b2": 930}
+	return Vector2(xs[id], 364 if battle.characters[id].side == "player" else 76)
 
 func _sync() -> void:
 	hand_cards.assign(battle.hand)
@@ -150,17 +151,24 @@ func _sync() -> void:
 		if not role_nodes.has(id): _new_role(id, _prepare_position(id))
 		var c: Dictionary = battle.characters[id]
 		var field: Control = role_nodes[id]
+		var replaced: bool = c.source == "slime" and not c.alive and battle.characters.has(id + "1")
+		var retired_child: bool = not c.parent.is_empty() and battle.characters[c.parent].alive
+		field.visible = not retired_child
+		field.get_node("Portrait").visible = not replaced
+		# 父体的复活反馈保留在牌外，父体不再占用分裂体卡面。
+		var tag: Label = field.get_node("Tag")
+		tag.position.y = -44 if replaced else -18
 		field.position = _role_position(c.side == "player", true) if battle.zones[c.side] == id else _prepare_position(id)
 		field.modulate = Color.WHITE if c.alive else Color(0.65, 0.65, 0.65, 0.55)
 		var view: SproutCard = field.get_node("Portrait/TemplateCard")
 		view.configure(card_data(id))
 		view.set_battle_state({"attack": Rules.attack_value(c), "hp": c.hp, "satiety": c.satiety, "mana": c.mana, "shield": c.shield})
-		var status := "战斗区" if battle.zones[c.side] == id else "准备区"
+		var status := ""
 		if not c.alive:
 			status = "等待分裂体" if c.revive < 0 else ("复活 %d" % c.revive if c.revive > 0 else "已阵亡")
-		elif c.satiety == 0: status += " · 饥饿"
+		elif c.satiety == 0: status = "饥饿"
 		if c.alive and c.shield > 0:
-			status = ("饥饿" if c.satiety == 0 else status) + " · 护盾%d" % c.shield
+			status += (" · " if not status.is_empty() else "") + "护盾%d" % c.shield
 		(field.get_node("Tag") as Label).text = status
 	_update_hud()
 
@@ -210,25 +218,7 @@ func _playable(index: int) -> String:
 	return Rules.validate(battle, id, target)
 
 func _layout_hand() -> void:
-	# 展开时完整显示卡面，不放大到覆盖准备区角色的目标区域。
-	for i in range(hand_nodes.size()):
-		var node: Control = hand_nodes[i]
-		if not is_instance_valid(node): continue
-		var raised := i == selected if hand_expanded else (i == hovered and not dragging)
-		var pose := _hand_pose(i, hand_nodes.size())
-		var destination: Vector2 = _expanded_hand_pose(i, hand_nodes.size()) + (Vector2(0, -10) if raised else Vector2.ZERO) if hand_expanded else pose.position + (Vector2(0, -100) if raised else Vector2.ZERO)
-		var zoom := (1.05 if raised else 1.0) if hand_expanded else (1.12 if raised else 1.0)
-		var previous: Tween = node.get_meta("motion") if node.has_meta("motion") else null
-		if previous and previous.is_valid(): previous.kill()
-		var tween := _battle_tween().set_parallel(true)
-		node.set_meta("motion", tween)
-		tween.tween_property(node, "position", destination, 0.13)
-		tween.tween_property(node, "rotation", 0.0 if raised or hand_expanded else pose.angle, 0.13)
-		tween.tween_property(node, "scale", Vector2.ONE * zoom, 0.13)
-		node.z_index = (85 if raised else 70 + i) if hand_expanded else (45 if raised else 10 + i)
-		node.visible = not (dragging and i == selected)
-		node.modulate = Color.WHITE if _playable(i).is_empty() else Color(0.76, 0.79, 0.78, 1)
-		node.get_node("Glow").visible = false
+	super._layout_hand()
 
 func _show_preview(id: String, reason := "") -> void:
 	if hand_expanded:
@@ -365,7 +355,7 @@ func _show_events(events: Array) -> void:
 
 func _role_at(point: Vector2) -> String:
 	for id in role_nodes:
-		if _hit(role_nodes[id], point): return id
+		if role_nodes[id].visible and role_nodes[id].get_node("Portrait").visible and _hit(role_nodes[id], point): return id
 	return ""
 
 func _input(event: InputEvent) -> void:

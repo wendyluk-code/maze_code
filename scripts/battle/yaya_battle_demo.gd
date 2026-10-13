@@ -47,7 +47,7 @@ const RED := Color("#d97a72")
 const CANVAS := Vector2(1280, 720)
 const HAND_SIZE := Vector2(126, 210)
 const DRAFT_CARD_SIZE := Vector2(190, 316)
-const ROLE_SIZE := Vector2(116, 194)
+const ROLE_SIZE := Vector2(168, 280)
 # 当前底图荷叶的视觉中心，换底图时重新校准；双方区域围绕此点镜像。
 const LEAF_CENTER := Vector2(638, 342)
 const PREPARE_CENTER := LEAF_CENTER + Vector2(-148, 150)
@@ -300,7 +300,7 @@ func _build_board() -> void:
 	battlefield.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	board.add_child(battlefield)
 	enemy_hud = SideHud.new()
-	enemy_hud.position = Vector2(28, 20)
+	enemy_hud.position = Vector2(8, 20)
 	battlefield.add_child(enemy_hud)
 	player_hud = SideHud.new()
 	player_hud.position = Vector2(28, 580)
@@ -319,7 +319,7 @@ func _build_board() -> void:
 	for i in range(5):
 		var pose := _hand_pose(i, 5)
 		var at: Vector2 = pose.position
-		at.y = CANVAS.y - at.y - HAND_SIZE.y
+		at.y = CANVAS.y - at.y - HAND_SIZE.y - 60
 		_back(enemy_backs, Rect2(at, HAND_SIZE), false).rotation = -pose.angle
 	for for_player in [false, true]:
 		var at := _deck_position(for_player)
@@ -348,13 +348,14 @@ func _build_board() -> void:
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.z_index = 65
 	preview = Control.new()
-	preview.position = Vector2(30, 155)
-	preview.size = Vector2(420, 405)
+	preview.position = Vector2(8, 155)
+	preview.size = Vector2(210, 350)
 	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	preview.z_index = 60
 	board.add_child(preview)
-	preview_art = _art(preview, "芽芽", Rect2(0, 0, 206, 344))
+	preview_art = _card(preview, "芽芽", Rect2(0, 0, 210, 350))
 	var details := _panel(preview, Rect2(218, 28, 183, 285), Color(0.08,0.17,0.17,0.94), GOLD)
+	details.hide() # 查看只展示同一完整卡面，反馈仍由既有短暂提示承担。
 	preview_text = _text(details, "", Rect2(14, 12, 155, 260), 17, CREAM)
 	preview_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	preview_text.vertical_alignment = VERTICAL_ALIGNMENT_TOP
@@ -395,7 +396,7 @@ func _make_field(enemy: bool, at: Vector2) -> Control:
 	# 原卡完整显示；单角色演示的实时生命统一显示在左侧头像徽章。
 	var tag := _text(field, "", Rect2(-100, 120 if not enemy else 44, 94, 30), 14, INK, true)
 	tag.name = "Tag"
-	var stats := _text(field, "", Rect2(-86, -36 if enemy else 196, 210, 30), 13, CREAM, true)
+	var stats := _text(field, "", Rect2(0, -36 if enemy else ROLE_SIZE.y + 2, ROLE_SIZE.x, 30), 12, CREAM, true)
 	stats.name = "Stats"
 	stats.add_theme_color_override("font_outline_color", INK)
 	stats.add_theme_constant_override("outline_size", 3)
@@ -403,9 +404,7 @@ func _make_field(enemy: bool, at: Vector2) -> Control:
 	return field
 
 func _role_position(for_player: bool, in_battle: bool) -> Vector2:
-	var center := COMBAT_CENTER if in_battle else PREPARE_CENTER
-	if not for_player: center.y = LEAF_CENTER.y * 2.0 - center.y
-	return center - ROLE_SIZE * 0.5
+	return Vector2(576 if in_battle else (400 if for_player else 752), 364 if for_player else 76)
 
 func _deck_position(for_player: bool) -> Vector2:
 	return Vector2(1228, LEAF_CENTER.y + (80 if for_player else -80) - DECK_SIZE.y * 0.5)
@@ -443,6 +442,10 @@ func _opening() -> void:
 		if ending_early: return
 		for child in seal.get_children(): child.queue_free()
 		var first := initiative_player_first if i == 1 else not initiative_player_first
+		if not first:
+			# 原后手文字保持原笔画；干净浅青底复用签牌的细框风格。
+			var clean := _panel(seal, Rect2(Vector2.ZERO, seal.size), Color("#d9eee5"), Color("#8cb6a5"), 1, 5)
+			(clean.get_theme_stylebox("panel") as StyleBoxFlat).shadow_size = 0
 		var face := TextureRect.new()
 		face.name = "Face"
 		face.texture = FIRST_FACE if first else SECOND_FACE
@@ -451,12 +454,18 @@ func _opening() -> void:
 		face.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 		face.size = seal.size
 		face.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if not first:
+			var ink_shader := Shader.new()
+			ink_shader.code = "shader_type canvas_item; void fragment() { vec4 c = texture(TEXTURE, UV); float ink = 1.0 - smoothstep(0.42, 0.55, dot(c.rgb, vec3(0.299, 0.587, 0.114))); COLOR = vec4(c.rgb, c.a * ink); }"
+			var ink_material := ShaderMaterial.new()
+			ink_material.shader = ink_shader
+			face.material = ink_material
 		seal.add_child(face)
 		_text(seal, "我方" if i == 1 else "敌方", Rect2(0, 244, 144, 28), 17, CREAM, true)
 		var reveal := _battle_tween()
 		reveal.tween_property(seal, "scale:x", 1.0, 0.18)
 		_sound(610 if first else 440)
-		fx.burst(seal.position + seal.size * 0.5, GOLD if first else GREEN)
+		# 签牌只保留原干净正面；不在文字周围叠加揭晓纹圈。
 		await reveal.finished
 		if ending_early: return
 	await get_tree().create_timer(0.95, false).timeout
@@ -572,10 +581,10 @@ func _confirm_draft() -> void:
 
 func _hand_pose(index: int, count: int) -> Dictionary:
 	var middle := (count - 1) * 0.5
-	var spread := minf(52, 300.0 / maxf(count - 1, 1))
+	var spread := minf(32, 180.0 / maxf(count - 1, 1))
 	var offset := index - middle
 	var fan := offset / maxf(middle, 1)
-	return {"position": Vector2(1050 + offset * spread - HAND_SIZE.x * 0.5, 614 + fan * fan * 8.0), "angle": fan * 0.07}
+	return {"position": Vector2(1100 + offset * spread - HAND_SIZE.x * 0.5, 614 + fan * fan * 8.0), "angle": fan * 0.07}
 
 func _expanded_hand_pose(index: int, count: int) -> Vector2:
 	# 最多七张一排；牌多时增加上排，保证完整卡面不互相盖住。
@@ -603,18 +612,18 @@ func _layout_hand() -> void:
 	for i in range(hand_nodes.size()):
 		var node := hand_nodes[i]
 		if not is_instance_valid(node): continue
-		var raised := i == selected if hand_expanded else (i == hovered and not dragging)
+		var raised := not dragging and (i == selected or (selected < 0 and i == hovered))
 		var pose := _hand_pose(i, hand_nodes.size())
-		var destination: Vector2 = _expanded_hand_pose(i, hand_nodes.size()) + (Vector2(0, -20) if raised else Vector2.ZERO) if hand_expanded else pose.position + (Vector2(0, -100) if raised else Vector2.ZERO)
-		var zoom := (1.28 if raised else 1.12) if hand_expanded else (1.12 if raised else 1.0)
+		var destination: Vector2 = pose.position + (Vector2(0, -70) if raised else Vector2.ZERO)
+		var zoom := 1.05 if raised else 1.0
 		var existing: Tween = node.get_meta("motion") if node.has_meta("motion") else null
 		if existing and existing.is_valid(): existing.kill()
 		var tween := _battle_tween().set_parallel(true)
 		node.set_meta("motion", tween)
 		tween.tween_property(node, "position", destination, 0.13).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		tween.tween_property(node, "rotation", 0.0 if raised or hand_expanded else pose.angle, 0.13)
+		tween.tween_property(node, "rotation", 0.0 if raised else pose.angle, 0.13)
 		tween.tween_property(node, "scale", Vector2.ONE * zoom, 0.13)
-		node.z_index = (85 if raised else 70 + i) if hand_expanded else (45 if raised else 10 + i)
+		node.z_index = 45 if raised else 10 + i
 		node.visible = not (dragging and i == selected)
 		node.modulate = Color.WHITE if _playable(i).is_empty() else Color(0.76,0.79,0.78,1)
 		var glow: Panel = node.get_node("Glow")
@@ -632,7 +641,7 @@ func _show_preview(id: String, reason := "") -> void:
 	if hand_expanded:
 		preview.hide()
 		return
-	preview_art.texture = _texture(id)
+	(preview_art.get_node("TemplateCard") as SproutCard).configure(_card_data(id))
 	if TUTORIAL_CARDS.has(id):
 		var d: Dictionary = TUTORIAL_CARDS[id]
 		preview_text.text = "%s\n%s\n\n%s" % [id, d.card_type, d.effect]
@@ -646,9 +655,9 @@ func _select_card(index: int) -> void:
 	var reason := _playable(index)
 	_restore_role()
 	selected = index
-	hand_expanded = true
+	hand_expanded = false
 	attack_selected = false
-	preview.hide()
+	_show_preview(hand_cards[index], reason)
 	hint.text = ""
 	if not reason.is_empty(): _toast(reason)
 	target_highlight.hide()

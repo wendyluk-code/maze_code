@@ -67,36 +67,67 @@ func capture(label: String) -> void:
 		check(hud.hp_label.text == str(maxi(0, hud.hp)), "牌手生命数字同步 " + label)
 		for i in range(2):
 			check(is_equal_approx(hud.ready_spoons[i].modulate.a, 1.0 if i < hud.points else 0.0), "瓷勺行动点同步 %s/%d" % [label, i])
+	var visible_roles: Array[Rect2] = []
+	for id in ui.role_nodes:
+		var field: Control = ui.role_nodes[id]
+		if not field.visible or not field.get_node("Portrait").visible: continue
+		var rect := Rect2(field.position, field.size)
+		check(Rect2(Vector2.ZERO, ui.CANVAS).encloses(rect), "角色完整位于画布 " + id)
+		check(not rect.intersects(Rect2(ui.player_hud.position, ui.player_hud.size)) and not rect.intersects(Rect2(ui.enemy_hud.position, ui.enemy_hud.size)), "角色不遮挡头像 " + id)
+		for other in visible_roles: check(not rect.intersects(other), "角色槽位无重叠 " + id)
+		visible_roles.append(rect)
+	check(is_equal_approx(ui._prepare_position("yaya").x + ui._prepare_position("tieshan").x + ui.ROLE_SIZE.x, 1320), "我方左右对称")
+	check(is_equal_approx(ui._prepare_position("slime_a").x + ui._prepare_position("slime_b").x + ui.ROLE_SIZE.x, 1320), "敌方左右对称")
+	if ui.battle.characters.has("slime_b2"):
+		check(ui._prepare_position("slime_a2").x < ui._prepare_position("slime_a1").x and ui._prepare_position("slime_b2").x > ui._prepare_position("slime_b1").x, "四名敌方左右各二，固定血脉槽位")
 	await process_frame
 	await RenderingServer.frame_post_draw
-	var path := "res://output/card_tutorial_01/%s_%s.png" % [str(root.size.x), label]
+	var path := "res://output/bt_ui_02/%s_%s.png" % [str(root.size.x), label]
 	var result := root.get_texture().get_image().save_png(path)
 	check(result == OK, "实际渲染截图 " + label)
 	evidence.append({"label": label, "path": path, "state": ui.battle.duplicate(true)})
 
 func select_card(id: String) -> bool:
-	# 点击扇形手牌展开，再点击展开后的指定牌。
-	if not ui.hand_expanded:
-		var last: Control = ui.hand_nodes.back()
-		await click(last.position + Vector2(95, 42))
-		await create_timer(0.3).timeout
+	# 每张牌的左侧露出区直接命中，保留原扇形，不先展开整组。
+	await click(Vector2(300, 600))
 	var index: int = ui.hand_cards.find(id)
 	if not check(index >= 0, "手牌存在 " + id): return false
 	var card: Control = ui.hand_nodes[index]
-	await click(card.position + Vector2(63, 50))
+	await click(card.position + Vector2(16, 25))
 	await create_timer(0.25).timeout
+	check(not ui.hand_expanded and ui.preview.visible, "选单牌保留扇形并显示完整预览")
+	check(not ui.preview_text.get_parent().visible and not ui.lesson_panel.visible, "预览无旁侧重复说明")
+	check(card.position.y < ui._hand_pose(index, ui.hand_nodes.size()).position.y, "所选单牌凸出")
+	for i in range(ui.hand_nodes.size()):
+		if i != index: check(ui.hand_nodes[i].position.is_equal_approx(ui._hand_pose(i, ui.hand_nodes.size()).position), "未选手牌保持原扇形槽位")
+	if evidence.filter(func(item): return item.label == "single_card").is_empty(): await capture("single_card")
 	return check(ui.selected >= 0 and ui.hand_cards[ui.selected] == id, "点击选中 " + id)
 
 func run() -> void:
 	started = Time.get_ticks_msec()
-	DirAccess.make_dir_recursive_absolute("res://output/card_tutorial_01")
+	DirAccess.make_dir_recursive_absolute("res://output/bt_ui_02")
 	var resolution := Vector2i(1280, 720)
 	if OS.get_cmdline_user_args().has("small"): resolution = Vector2i(1152, 648)
 	root.size = resolution
-	scene = load("res://scenes/battle/yaya_battle_demo.tscn").instantiate()
-	root.add_child(scene)
-	current_scene = scene
+	change_scene_to_file("res://scenes/start_screen.tscn")
+	await scene_changed
+	await create_timer(0.5).timeout
+	var entry: Button = current_scene.battle_button
+	for down in [true, false]:
+		var event := InputEventMouseButton.new()
+		event.button_index = MOUSE_BUTTON_LEFT
+		event.position = entry.get_global_rect().get_center()
+		event.pressed = down
+		Input.parse_input_event(event)
+		await process_frame
+	await scene_changed
+	scene = current_scene
+	check(scene.scene_file_path == "res://scenes/battle/yaya_battle_demo.tscn", "真实开始页鼠标入口")
 	ui = scene.get_child(0)
+	await create_timer(1.45).timeout
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://output/bt_ui_02/%d_initiative.png" % root.size.x)
 	if not await wait_state("draft"): finish(); return
 	check(ui.initiative_player_first, "教学固定我方先手")
 	await create_timer(0.5).timeout
@@ -166,7 +197,7 @@ func run() -> void:
 	if not await select_card("tieshan_strong"): finish(); return
 	snapshot = ui.battle.duplicate(true)
 	var hand_card: Control = ui.hand_nodes[ui.selected]
-	await drag(hand_card.position + Vector2(63, 80), Vector2(1200, 500))
+	await drag(hand_card.position + Vector2(16, 25), Vector2(1200, 500))
 	check(ui.battle == snapshot and ui.selected == -1 and not ui.dragging, "取消拖牌恢复输入且不消耗资源")
 	for turn in range(1, 9):
 		if turn == 8:
@@ -238,9 +269,9 @@ func run() -> void:
 	finish()
 
 func finish() -> void:
-	var path := "res://output/card_tutorial_01/scene_report_%d.json" % root.size.x
+	var path := "res://output/bt_ui_02/scene_report_%d.json" % root.size.x
 	var file := FileAccess.open(path, FileAccess.WRITE)
-	file.store_string(JSON.stringify({"checks": checks, "failures": failures, "evidence": evidence, "elapsed_ms": Time.get_ticks_msec() - started}, "\t"))
+	file.store_string(JSON.stringify({"checks": checks, "failures": failures, "evidence": evidence, "user_data_dir": OS.get_user_data_dir(), "elapsed_ms": Time.get_ticks_msec() - started}, "\t"))
 	file.close()
 	print("CARD_TUTORIAL_SCENE checks=%d failures=%d" % [checks, failures.size()])
 	quit(0 if failures.is_empty() else 1)
