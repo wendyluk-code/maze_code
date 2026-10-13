@@ -3,6 +3,7 @@ extends Control
 signal continue_requested
 signal reveal_finished
 var cards: Array[TextureRect] = []
+const CardArtCatalog = preload("res://scripts/ui/components/card_art_catalog.gd")
 var _veil: ColorRect
 var _join_message: Label
 var _prompt: HBoxContainer
@@ -22,22 +23,30 @@ func _ready() -> void:
 	_veil.color = Color(0.025, 0.035, 0.03, 0.70)
 	_veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_veil)
-	var paths := ["res://assets/ui/party_cards/yaya.png", "res://assets/ui/party_cards/tieshan.png"]
-	var regions := [Rect2(70, 90, 834, 1422), Rect2(70, 58, 834, 1450)]
+	var records := CardArtCatalog.display_records()
 	for index in 2:
-		var texture := AtlasTexture.new()
-		texture.atlas = load(paths[index])
-		texture.region = regions[index]
-		texture.filter_clip = true
 		var card := TextureRect.new()
 		card.name = "YayaCard" if index == 0 else "TieshanCard"
-		card.texture = texture
-		card.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 		card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		card.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cards.append(card)
 		add_child(card)
+		var role_id := "yaya" if index == 0 else "tieshan"
+		for record in records:
+			if str(record.get("id", "")) != role_id:
+				continue
+			var values: Dictionary = record.duplicate(true)
+			values["illustration_path"] = CardArtCatalog.path_for(role_id)
+			var template := SproutCard.new()
+			template.name = "TemplateCard"
+			template.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			card.add_child(template)
+			template.configure(SproutCardData.new(values))
+			template.size = SproutCard.CARD_SIZE
+			# 正文复用公共可读布局，其对称内边距由共享组件负责。
+			if template.has_method("set_readable_battle_text"):
+				template.call("set_readable_battle_text", true)
+			break
 	_join_message = _label("芽芽、铁山加入队伍", 30)
 	_join_message.add_theme_color_override("font_color", Color("fff1cd"))
 	_join_message.add_theme_color_override("font_outline_color", Color("493626"))
@@ -66,11 +75,14 @@ func _layout() -> void:
 	if cards.size() != 2:
 		return
 	var height := minf(540.0, minf(size.y * 0.70, size.x * 0.58))
-	var card_size := Vector2(height * 0.586, height)
+	var card_size := Vector2(height * 0.6, height)
 	for index in 2:
 		var card := cards[index]
 		var direction := -1.0 if index == 0 else 1.0
 		card.size = card_size
+		var template := card.get_node_or_null("TemplateCard") as SproutCard
+		if template:
+			template.scale = Vector2.ONE * (height / 500.0)
 		card.pivot_offset = Vector2(card_size.x * 0.5, card_size.y)
 		var spread := lerpf(10.0, card_size.x * 0.56, _progress)
 		var anchor := Vector2(size.x * 0.5 + direction * spread, minf(size.y * 0.81, size.y - 124.0) + (1.0 - _progress) * 25.0)

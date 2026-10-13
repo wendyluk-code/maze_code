@@ -8,6 +8,18 @@
     "yaya_magic_wind": "res://assets/ui/card_materials/tutorial_art_v3/magic_wind.png",
     "yaya_heal_wind": "res://assets/ui/card_materials/tutorial_art_v3/healing_wind.png",
     "yaya_restore": "res://assets/ui/card_materials/tutorial_art_v3/recover.png",
-    "tieshan_axe": "res://assets/ui/card_materials/tutorial_art_v3/axe_charge.png"
+    "tieshan_axe": "res://assets/ui/card_materials/tutorial_art_v3/axe_charge.png",
+    "yaya": "res://assets/ui/card_materials/remaining_art_v1/yaya.png",
+    "tieshan": "res://assets/ui/card_materials/remaining_art_v1/tieshan.png",
+    "yaya_magic_double": "res://assets/ui/card_materials/remaining_art_v1/yaya_magic_double.png",
+    "yaya_revive": "res://assets/ui/card_materials/remaining_art_v1/yaya_revive.png",
+    "yaya_abundant": "res://assets/ui/card_materials/remaining_art_v1/yaya_abundant.png",
+    "yaya_redemption": "res://assets/ui/card_materials/remaining_art_v1/yaya_redemption.png",
+    "tieshan_lift": "res://assets/ui/card_materials/remaining_art_v1/tieshan_lift.png",
+    "tieshan_break": "res://assets/ui/card_materials/remaining_art_v1/tieshan_break.png",
+    "tieshan_empty": "res://assets/ui/card_materials/remaining_art_v1/tieshan_empty.png",
+    "tieshan_ready": "res://assets/ui/card_materials/remaining_art_v1/tieshan_ready.png",
+    "slime": "res://assets/ui/card_materials/remaining_art_v1/slime.png",
+    "small_slime": "res://assets/ui/card_materials/remaining_art_v1/small_slime.png"
   }
 }
