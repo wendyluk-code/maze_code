@@ -17,6 +17,23 @@ const SPROUT_BG := Color("#d9e8bb")
 const SPROUT_BORDER := Color("#6d985f")
 const TIESHAN_BG := Color("#d9b18c")
 const TIESHAN_BORDER := Color("#8d5841")
+const ART_WINDOW_SHADER := """
+shader_type canvas_item;
+uniform sampler2D window_mask : filter_linear, repeat_disable;
+uniform vec2 source_origin = vec2(0.0);
+uniform vec2 source_extent = vec2(1.0);
+uniform vec2 cover_scale = vec2(1.0);
+varying vec4 art_modulate;
+void vertex() {
+	art_modulate = COLOR;
+}
+void fragment() {
+	vec2 window_uv = (UV - source_origin) / source_extent;
+	vec2 source_uv = source_origin + ((window_uv - vec2(0.5)) * cover_scale + vec2(0.5)) * source_extent;
+	COLOR = texture(TEXTURE, source_uv) * art_modulate;
+	COLOR.a *= texture(window_mask, window_uv).a;
+}
+"""
 
 var _data: SproutCardData
 var _portrait: TextureRect
@@ -320,6 +337,7 @@ func _apply_material(data: SproutCardData) -> void:
 	_material_art.texture = data.illustration_override if data.illustration_override else load(art_path) as Texture2D
 	if not data.illustration_path.is_empty() and ResourceLoader.exists(data.illustration_path):
 		_material_art.texture = load(data.illustration_path) as Texture2D
+	_apply_art_window()
 	_material_title.text = data.title if not data.is_role_card else data.character_name
 	_material_type.text = data.card_type
 	_material_effect.text = effect_display_text(data)
@@ -373,6 +391,31 @@ func _apply_material(data: SproutCardData) -> void:
 			_cost_slots[1].position.x = 155
 			_cost_slots[1].text = {"可携带": "可携带", "不可携带": "不可携带"}.get(data.portable_dish, "携带待定")
 	_apply_battle_state()
+
+func _apply_art_window() -> void:
+	# 原批准插画的透明alpha即开窗轮廓；只读复用，不重画卡框或素材。
+	var shader_material := _material_art.material as ShaderMaterial
+	if shader_material == null:
+		shader_material = ShaderMaterial.new()
+		var shader := Shader.new()
+		shader.code = ART_WINDOW_SHADER
+		shader_material.shader = shader
+		shader_material.set_shader_parameter("window_mask", load(MATERIAL.EDGE_ROOT + "layers/illustration_yaya.png"))
+		_material_art.material = shader_material
+	var texture := _material_art.texture
+	var source_size := texture.get_size()
+	var origin := Vector2.ZERO
+	var extent := Vector2.ONE
+	if texture is AtlasTexture:
+		source_size = texture.region.size
+		origin = texture.region.position / texture.atlas.get_size()
+		extent = source_size / texture.atlas.get_size()
+	var source_aspect := source_size.x / source_size.y
+	var window_aspect := _material_art.size.x / _material_art.size.y
+	var cover := Vector2(window_aspect / source_aspect, 1) if source_aspect > window_aspect else Vector2(1, source_aspect / window_aspect)
+	shader_material.set_shader_parameter("source_origin", origin)
+	shader_material.set_shader_parameter("source_extent", extent)
+	shader_material.set_shader_parameter("cover_scale", cover)
 
 static func _number_text(value: int) -> String:
 	return str(value) if value >= 0 else "—"

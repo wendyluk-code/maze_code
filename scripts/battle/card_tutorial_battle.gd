@@ -24,6 +24,22 @@ var pending_splits: Dictionary = {}
 var split_phase := ""
 var split_generation := 0
 var split_tween: Tween
+const READABLE_DRAFT_SIZE := Vector2(228, 380)
+
+func _update_draft() -> void:
+	super._update_draft()
+	# 五张完整卡面居中一排；选中只轻抬，不压住相邻卡面或调整按钮。
+	for i in range(draft_cards.size()):
+		var current := i == draft_selected and state == "draft"
+		var card := draft_cards[i]
+		card.size = READABLE_DRAFT_SIZE
+		card.pivot_offset = READABLE_DRAFT_SIZE * 0.5
+		card.position = Vector2(38 + i * 244, 174 if current else 190)
+		card.scale = Vector2.ONE * (1.025 if current else 1.0)
+		card.get_node("Art").size = READABLE_DRAFT_SIZE
+		card.get_node("Glow").size = READABLE_DRAFT_SIZE + Vector2(6, 6)
+		replace_buttons[i].position = Vector2(94 + i * 244, 594)
+	confirm_button.position.y = 652
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -303,6 +319,8 @@ func _enemy_turn() -> void:
 
 func _perform(action: String, target: String) -> void:
 	if state != "player_turn": return
+	# 只读记录成功使用前的条件；规则事务仍按既有时序结算。
+	var conditional_attack_active: bool = action == "tieshan_guard" and battle.zones.player not in ["", "tieshan"]
 	var result := Rules.transact(battle, action, target)
 	if not result.success:
 		_toast(result.reason)
@@ -316,6 +334,8 @@ func _perform(action: String, target: String) -> void:
 	_rebuild_hand()
 	if action != "attack":
 		var fly := _art(board, action, Rect2(Vector2(820, 450), HAND_SIZE))
+		fly.name = "SkillResolutionCard"
+		(fly.get_node("TemplateCard") as SproutCard).set_skill_resolution({"conditional_attack_active": conditional_attack_active})
 		fly.z_index = 160
 		var cast := _battle_tween().set_parallel(true)
 		cast.tween_property(fly, "position", Vector2(800, 300), 0.22)

@@ -1,7 +1,7 @@
 """只读提取用户表格，生成本关数值快照；不读取旧 catalog。
 
 用法：python scripts/battle/tests/extract_tutorial_cards.py --source <原表路径>
-默认只校验，不写入。显式 --write 才更新快照，并保留后续美术插画引用。
+默认逐字段校验运算值及原始显示值，不写入。显式 --write 才更新快照，并保留后续美术插画引用。
 """
 import argparse
 import hashlib
@@ -50,6 +50,11 @@ def extract(source):
                 "cost": "" if role else "1", "is_role_card": role,
                 "faction": "sprout" if row[0] == "芽芽" else ("tieshan" if row[0] == "铁山" else "monster"),
                 "source_sheet": sheet.title, "source_row": row_number,
+                # 保留单元格原始符号/横线；运算字段仍沿用正数支付费用。
+                "display_values": dict(zip(
+                    ("attack", "health", "shield", "satiety", "mana"),
+                    (str(value) for value in row[4:9]),
+                )),
             }
             if card_id == "tieshan_guard":
                 attack_text = str(row[4])
