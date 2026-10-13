@@ -7,7 +7,7 @@ const LAYOUT_VERSION := "edge_icons_v4"
 const EFFECT_FONT_SIZE := 20
 const EFFECT_MIN_FONT_SIZE := 18
 const EFFECT_WIDTH := 220.0
-const READABLE_EFFECT_WIDTH := 164.0
+const READABLE_EFFECT_WIDTH := 196.0
 const EFFECT_TEXT_INSET := 8.0
 const EFFECT_TOP := 297.0
 const EFFECT_STATS_HEIGHT := 95.0
@@ -306,7 +306,7 @@ func _build_material_labels() -> void:
 	_satiety_slot.add_theme_color_override("font_color", Color("#462618"))
 	_satiety_slot.add_theme_constant_override("outline_size", 0)
 	_shield_slot = _material_label("", Rect2(235.4, 414.3, 39, 38), 30)
-	_shield_slot.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_shield_slot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_shield_slot.add_theme_font_override("font", number_font)
 	_shield_slot.add_theme_color_override("font_color", Color("#fff7df"))
 	_shield_slot.add_theme_color_override("font_outline_color", Color("#805124"))
@@ -316,10 +316,19 @@ func _build_material_labels() -> void:
 
 func _layout_shield_slot(has_health: bool) -> void:
 	var health_rect := MATERIAL.edge_rect("health")
+	var right_edge := maxf(MATERIAL.edge_rect("satiety").end.x, MATERIAL.edge_rect("mana").end.x)
+	var health_shift := right_edge - health_rect.end.x
+	_health_art.position.x = health_rect.position.x + health_shift
+	_material_stat_health.position.x = 235.4 + health_shift
+	# 攻击图标与右侧资源图标围绕卡片中心对称出框，数字随原图同量移动。
+	var attack_rect := MATERIAL.edge_rect("attack")
+	var attack_left := CARD_SIZE.x - right_edge
+	_attack_art.position.x = attack_left
+	_material_stat_attack.position.x = 22.8 + attack_left - attack_rect.position.x
 	var shield_size := Vector2(54, 54)
 	var lift := 64.0 if has_health else 0.0
 	_shield_art.size = shield_size
-	_shield_art.position = Vector2(health_rect.end.x - shield_size.x, health_rect.end.y - shield_size.y - lift)
+	_shield_art.position = Vector2(right_edge - shield_size.x, health_rect.end.y - shield_size.y - lift)
 	_shield_slot.size = Vector2(39, 38)
 	_shield_slot.position = _shield_art.position + (shield_size - _shield_slot.size) * 0.5
 
