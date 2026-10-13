@@ -2,25 +2,16 @@ extends "res://scripts/battle/yaya_battle_demo.gd"
 ## CARD-TUTORIAL-01：复用原战场、签牌、手牌动画、菜单与结果演出。
 
 const Rules = preload("res://scripts/battle/tutorial_rules.gd")
-const LESSONS := [
-	"战斗牌会立即出击。强力永久增加攻击；守护获得4护盾，先抵挡伤害。角色底部为攻击与生命，右侧为饱腹度与魔力。左下两枚瓷勺是行动点。",
-	"法术无需出击，也可选择准备区角色。用魔力一击攻击史莱姆A。每次用牌消耗1行动点，并支付牌面饱腹、魔力费用。",
-	"赋形直接采用新攻击与生命，保留永久增益和原技能。用坚守不移后，向上拖动铁山普通出击：消耗1行动点、1饱腹。",
-	"先用强力，再普通出击。战斗牌不占用全队每回合一次的普通出击；角色交战同时互伤。小小史莱姆阵亡也会触发粘液。",
-	"魔力之风伤害所有敌方角色，包括准备区与战斗区。法术不触发粘液。可保留行动点结束回合，未主动行动者恢复2饱腹。",
-	"治愈之风治疗全体，溢出转为护盾。随后铁山普通出击。两个分裂体都阵亡后，原史莱姆才开始3回合复活倒计时。",
-	"恢复只治疗一个己方角色，溢出不转护盾。为铁山恢复后结束回合，让他休息。饱腹为0时攻击−2、受伤+2，恢复正数即解除。",
-	"B2仍在战斗区，普通攻击会被挡住。斧冲直接攻击敌方牌手，本次攻击+2、护盾+1。牌手生命归零立即获胜。"
-]
 var battle: Dictionary
 var role_nodes: Dictionary = {}
-var lesson_label: Label
-var lesson_panel: Panel
-var step_label: Label
 var active_role := ""
 var last_events: Array = []
 var tutorial_art: Dictionary = {}
 var pending_splits: Dictionary = {}
+const BattleGuide = preload("res://scripts/battle/battle_guide.gd")
+const GuideSteps = preload("res://scripts/battle/battle_guide_steps.gd")
+var guide: Control
+var guide_key := ""
 var split_phase := ""
 var split_generation := 0
 var split_tween: Tween
@@ -58,13 +49,10 @@ func _ready() -> void:
 	resized.connect(_fit)
 	_fit()
 	_build_board()
-	lesson_panel = _panel(battlefield, Rect2(24, 370, 248, 192), Color(0.99, 0.96, 0.87, 0.93), GOLD)
-	step_label = _text(lesson_panel, "", Rect2(13, 10, 223, 36), 17)
-	lesson_label = _text(lesson_panel, "", Rect2(13, 51, 223, 135), 15)
-	preview.visibility_changed.connect(func(): lesson_panel.visible = not preview.visible)
-	lesson_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	lesson_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	step_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	guide = BattleGuide.new()
+	board.add_child(guide)
+	guide.explanation_finished.connect(_guide_practice)
+	guide.sentence_changed.connect(func(_focus: String): _refresh_guide())
 	# 敌方牌手与敌方角色分开；头像用已有怪物精灵，不使用芽芽冒充。
 	var avatar := enemy_hud.get_node("Avatar") as TextureRect
 	avatar.texture = _monster_portrait()
@@ -77,6 +65,94 @@ func _monster_portrait() -> Texture2D:
 	atlas.atlas = preload("res://assets/monsters/slime/slime_crawl_4directions.png")
 	atlas.region = Rect2(0, 0, atlas.atlas.get_width() / 4.0, atlas.atlas.get_height() / 4.0)
 	return atlas
+
+func _begin_guide_step() -> void:
+	guide_key = "%d:%d" % [battle.turn, battle.step]
+	_cancel_selection()
+	state = "guide_explain"
+	_update_hud()
+	guide.begin(GuideSteps.lines(battle.turn, battle.step))
+	_refresh_guide()
+
+func _guide_practice() -> void:
+	if ending_early or state != "guide_explain": return
+	state = "player_turn"
+	var action := Rules.expected(battle)
+	var instruction := "点击结束回合" if action == "end" else ("向上拖动铁山出击\n拖回原处或右键取消" if action == "attack" else "选择%s，再点击%s\n右键可取消" % [Rules.data()[action].title, "史莱姆A" if action == "yaya_magic_hit" else ("敌方角色" if action == "yaya_magic_wind" else "铁山")])
+	guide.practice(instruction)
+	_update_hud()
+	_refresh_guide()
+
+func _process(_delta: float) -> void:
+	if not is_instance_valid(guide) or not guide.visible: return
+	# 菜单继承原暂停；孔洞按实际变换同步，不把角色或预览抬到遮罩前面。
+	_refresh_guide()
+
+func _guide_rect(node: Control, margin := 6.0) -> Rect2:
+	var transform := board.get_global_transform_with_canvas().affine_inverse() * node.get_global_transform_with_canvas()
+	return (transform * Rect2(Vector2.ZERO, node.size)).grow(margin).intersection(Rect2(Vector2.ZERO, CANVAS))
+
+func _guide_role(id: String) -> Rect2:
+	return _guide_rect(role_nodes[id], 8) if role_nodes.has(id) else Rect2()
+
+func _refresh_guide() -> void:
+	if not is_instance_valid(guide) or not guide.visible: return
+	var rects: Array[Rect2] = []
+	var point := Rect2()
+	var focus: String = guide.focus
+	if guide.explaining:
+		var tieshan: SproutCard = role_nodes.tieshan.get_node("Portrait/TemplateCard")
+		var yaya: SproutCard = role_nodes.yaya.get_node("Portrait/TemplateCard")
+		match focus:
+			"health":
+				rects.assign([_guide_rect(player_hud), _guide_rect(enemy_hud)])
+			"enemy": rects.append(_guide_rect(enemy_hud))
+			"ap":
+				for spoon in player_hud.ready_spoons: rects.append(_guide_rect(spoon, 8))
+			"stats":
+				rects.assign([_guide_rect(tieshan._material_stat_attack, 12), _guide_rect(tieshan._material_stat_health, 12)])
+			"shield": rects.append(_guide_rect(tieshan._shield_art, 5))
+			"resources": rects.assign([_guide_rect(tieshan._satiety_slot, 12), _guide_rect(yaya._mana_slot, 12)])
+			"zones": rects.assign([_guide_role("tieshan"), _guide_rect(combat_slots[1])])
+			"yaya": rects.append(_guide_role("yaya"))
+			"tieshan": rects.append(_guide_role("tieshan"))
+			"allies": rects.assign([_guide_role("yaya"), _guide_role("tieshan")])
+			"slimes":
+				for id in role_nodes:
+					if battle.characters[id].side == "enemy" and role_nodes[id].visible:
+						rects.append(_guide_rect(role_nodes[id], 20))
+			"end": rects.append(_guide_rect(end_button))
+			"hand":
+				var index := hand_cards.find(Rules.expected(battle))
+				if index >= 0: rects.append(_guide_rect(hand_nodes[index], 5))
+	else:
+		var action := Rules.expected(battle)
+		if action == "end":
+			rects.append(_guide_rect(end_button))
+		elif action == "attack":
+			rects.append(_guide_role("tieshan"))
+			rects.append(_guide_rect(combat_slots[1]))
+		else:
+			var index := hand_cards.find(action)
+			if selected >= 0:
+				if action == "yaya_magic_hit": rects.append(_guide_role("slime_a"))
+				elif action == "yaya_magic_wind":
+					for id in role_nodes:
+						if battle.characters[id].side == "enemy" and battle.characters[id].alive: rects.append(_guide_role(id))
+				else: rects.append(_guide_role("tieshan"))
+			elif index >= 0:
+				# 露出的左上部分就是实际点击区，避免指针指到扇形下的邻牌。
+				var card := _guide_rect(hand_nodes[index], 2)
+				point = Rect2(card.position, Vector2(25, mini(60, card.size.y)))
+			rects.append(Rect2(930, 532, 280, 188))
+			if preview.visible: rects.append(_guide_rect(preview, 3))
+			if is_instance_valid(drag_card): rects.append(_guide_rect(drag_card))
+	if not point.has_area() and not rects.is_empty(): point = rects[0]
+	if focus in ["slimes", "ap"] and guide.explaining:
+		# 分裂槽位在母体两侧；指示放在整个敌阵外缘，避免压住相邻子体。
+		for rect in rects: point = point.merge(rect)
+	rects.append(_guide_rect(battle_menu.gear))
+	guide.highlight(rects, point)
 
 func card_data(id: String) -> CardData:
 	if id == "芽芽": id = "yaya"
@@ -205,17 +281,8 @@ func _update_hud() -> void:
 	player_hud.sync(battle.player_hp, battle.ap, battle.owner == "player" and state != "draft")
 	enemy_hud.sync(battle.enemy_hp, battle.enemy_ap, battle.owner == "enemy")
 	end_button.disabled = not active
-	end_button.text = "结束\n回合" if active else ("敌方\n回合" if state == "enemy_turn" else "请稍候")
+	end_button.text = "结束\n回合" if active or state == "guide_explain" else ("敌方\n回合" if state == "enemy_turn" else "请稍候")
 	if is_instance_valid(battle_menu): battle_menu.gear.disabled = state == "result" or ending_early
-	if not is_instance_valid(lesson_label): return
-	if battle.turn == 0:
-		step_label.text = "牌手生命：我方30 / 敌方10"
-		lesson_label.text = "角色替牌手阻挡攻击。角色生命归零会阵亡；牌手生命归零才决定胜负。先调整起手牌，随后开始教学。"
-		return
-	var next := Rules.expected(battle)
-	var next_text: String = "结束回合" if next == "end" else ("向上拖动铁山" if next == "attack" else Rules.data().get(next, {}).get("title", ""))
-	step_label.text = "第%d回合 · %s" % [battle.turn, next_text]
-	lesson_label.text = LESSONS[mini(7, battle.turn - 1)]
 
 func _replace_card(index: int) -> void:
 	if state != "draft" or index != draft_selected: return
@@ -286,6 +353,7 @@ func _start_player_turn(_first := false) -> void:
 	state = "player_turn"
 	_sync()
 	_rebuild_hand()
+	_begin_guide_step()
 
 func _end_turn() -> void:
 	if state != "player_turn": return
@@ -294,6 +362,7 @@ func _end_turn() -> void:
 		_toast(result.reason)
 		return
 	state = "ending"
+	guide.cancel()
 	_cancel_selection()
 	_sync()
 	await _enemy_turn()
@@ -327,6 +396,7 @@ func _perform(action: String, target: String) -> void:
 		_cancel_selection()
 		return
 	state = "resolving"
+	guide.cancel()
 	last_events = result.events
 	_stage_splits(last_events)
 	_cancel_selection()
@@ -358,6 +428,7 @@ func _perform(action: String, target: String) -> void:
 	state = "player_turn"
 	_update_hud()
 	_layout_hand()
+	_begin_guide_step()
 
 func _show_events(events: Array) -> void:
 	_sync()
@@ -446,9 +517,11 @@ func _cancel_split_effects() -> void:
 	if is_instance_valid(fx): fx.dissolves.clear()
 
 func _exit_tree() -> void:
+	if is_instance_valid(guide): guide.cancel()
 	_cancel_split_effects()
 
 func _result(victory: bool) -> void:
+	guide.cancel()
 	_cancel_split_effects()
 	_sync()
 	await super._result(victory)
@@ -464,6 +537,12 @@ func _input(event: InputEvent) -> void:
 		super._input(event)
 		return
 	if ending_early or (is_instance_valid(battle_menu) and battle_menu.is_open): return
+	if state == "guide_explain":
+		# 齿轮仍由原菜单接收；其余输入只翻对白，透明孔洞也不操作背景。
+		if event is InputEventMouseButton and _hit(battle_menu.gear, board.get_global_transform_with_canvas().affine_inverse() * event.position): return
+		guide.consume(event)
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 		_cancel_selection()
 		return
@@ -556,6 +635,7 @@ func _menu_action(action: String) -> void:
 
 func _restart_battle() -> void:
 	ending_early = true
+	guide.cancel()
 	_cancel_split_effects()
 	var fresh := (load("res://scenes/battle/yaya_battle_demo.tscn") as PackedScene).instantiate()
 	fresh.return_scene_path = return_scene_path

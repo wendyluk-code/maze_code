@@ -21,8 +21,30 @@ func check(value: bool, message: String) -> bool:
 func wait_state(value: String, seconds := 12.0) -> bool:
 	var until := Time.get_ticks_msec() + int(seconds * 1000)
 	while is_instance_valid(ui) and ui.state != value and Time.get_ticks_msec() < until:
+		if value == "player_turn" and ui.state == "guide_explain":
+			await read_guide()
+			# 逐句输入的阅读时间不计入演出状态超时。
+			until = Time.get_ticks_msec() + int(seconds * 1000)
 		await process_frame
 	return check(is_instance_valid(ui) and ui.state == value, "等待场景状态 %s，实际%s" % [value, ui.state if is_instance_valid(ui) else "已释放"])
+
+func guide_key(down: bool, echo := false) -> void:
+	var event := InputEventKey.new()
+	event.keycode = KEY_E
+	event.pressed = down
+	event.echo = echo
+	Input.parse_input_event(event)
+	await process_frame
+
+func read_guide() -> void:
+	# 适配真实对白输入；不跳教学、不直接调用 _advance 或战斗业务。
+	var limit := Time.get_ticks_msec() + 15000
+	while is_instance_valid(ui) and ui.state == "guide_explain" and Time.get_ticks_msec() < limit:
+		await guide_key(false)
+		await guide_key(true)
+		await guide_key(false)
+		await create_timer(0.04).timeout
+	check(is_instance_valid(ui) and ui.state == "player_turn", "逐句对白完成后只开放本步操作")
 
 func click(point: Vector2) -> void:
 	var global: Vector2 = ui.board.get_global_transform_with_canvas() * point
@@ -96,7 +118,7 @@ func select_card(id: String) -> bool:
 	await click(card.position + Vector2(16, 25))
 	await create_timer(0.25).timeout
 	check(not ui.hand_expanded and ui.preview.visible, "选单牌保留扇形并显示完整预览")
-	check(not ui.preview_text.get_parent().visible and not ui.lesson_panel.visible, "预览无旁侧重复说明")
+	check(not ui.preview_text.get_parent().visible and not ui.guide.dialog.visible, "预览无旁侧重复说明")
 	check(card.position.y < ui._hand_pose(index, ui.hand_nodes.size()).position.y, "所选单牌凸出")
 	for i in range(ui.hand_nodes.size()):
 		if i != index: check(ui.hand_nodes[i].position.is_equal_approx(ui._hand_pose(i, ui.hand_nodes.size()).position), "未选手牌保持原扇形槽位")
