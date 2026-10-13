@@ -9,6 +9,8 @@ var id: String
 var faction: String
 var character_name: String
 var portrait: Texture2D
+var illustration_override: Texture2D
+var illustration_path: String
 var portrait_path: String
 var material_path: String
 var role: String
@@ -40,6 +42,8 @@ func _init(values: Dictionary = {}) -> void:
 	portrait_path = str(values.get("portrait_path", ""))
 	material_path = str(values.get("material_path", ""))
 	portrait = values.get("portrait", null) as Texture2D
+	illustration_override = values.get("illustration_override", null) as Texture2D
+	illustration_path = str(values.get("illustration_path", ""))
 	role = str(values.get("role", "辅助"))
 	title = str(values.get("title", ""))
 	cost = str(values.get("cost", ""))
@@ -126,6 +130,7 @@ static func replace_placeholder(data: Array[SproutCardData], replacements: Dicti
 		var values := {
 			"id": item.id, "faction": item.faction, "character_name": item.character_name,
 			"portrait": item.portrait, "portrait_path": item.portrait_path, "role": item.role,
+			"illustration_path": item.illustration_path, "illustration_override": item.illustration_override,
 			"material_path": item.material_path,
 			"title": item.title, "cost": item.cost, "card_type": item.card_type,
 			"effect": item.effect, "value": item.value, "rarity": item.rarity,

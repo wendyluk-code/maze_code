@@ -74,7 +74,7 @@ var player_hud: Control
 var enemy_hud: Control
 var toast: Label
 var preview: Control
-var preview_art: TextureRect
+var preview_art: Control
 var preview_text: Label
 var target_highlight: Panel
 var player_field: Control
@@ -97,7 +97,7 @@ var pointer := Vector2.ZERO
 var held := false
 var dragging := false
 var attack_selected := false
-var drag_card: TextureRect
+var drag_card: Control
 var initiative_player_first := true
 var player_hp := 30
 var player_max_hp := 30
@@ -117,6 +117,14 @@ var turn_owner_player := true
 var audio: AudioStreamPlayer
 
 func _ready() -> void:
+	if tutorial_battle:
+		# 教学使用独立规则控制器；旧非教学演示继续保留。
+		var tutorial := Control.new()
+		tutorial.set_script(load("res://scripts/battle/card_tutorial_battle.gd"))
+		tutorial.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		tutorial.return_scene_path = return_scene_path
+		add_child(tutorial)
+		return
 	process_mode = Node.PROCESS_MODE_PAUSABLE
 	player_max_hp = player_starting_health if player_starting_health > 0 else (10 if tutorial_battle else 30)
 	enemy_max_hp = enemy_starting_health if enemy_starting_health > 0 else (5 if tutorial_battle else 30)
@@ -193,7 +201,7 @@ func _texture(id: String) -> Texture2D:
 	# 原素材完整显示，包括卡框、文字、数值和透明留白。
 	return DATA[id].tex
 
-func _art(parent: Node, id: String, rect: Rect2) -> TextureRect:
+func _art(parent: Node, id: String, rect: Rect2) -> Control:
 	var art := TextureRect.new()
 	art.texture = _texture(id)
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -578,7 +586,7 @@ func _show_preview(id: String, reason := "") -> void:
 	if hand_expanded:
 		preview.hide()
 		return
-	preview_art.texture = _texture(id)
+	(preview_art as TextureRect).texture = _texture(id)
 	preview_text.text = "%s\n%s · %s\n\n%s" % [id, DATA[id].type, DATA[id].level, DATA[id].desc]
 	if not reason.is_empty(): preview_text.text += "\n\n" + reason
 	preview.show()
@@ -1062,8 +1070,8 @@ func _result(victory: bool) -> void:
 	wordmark.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	wordmark.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	wordmark.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	wordmark.position = Vector2(230, 95)
-	wordmark.size = Vector2(820, 500)
+	wordmark.position = Vector2(312, 145)
+	wordmark.size = Vector2(656, 400)
 	wordmark.pivot_offset = wordmark.size * 0.5
 	wordmark.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	wordmark.modulate.a = 0

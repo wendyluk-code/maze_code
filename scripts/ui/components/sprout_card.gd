@@ -52,6 +52,24 @@ var _shield_slot: Label
 var _cost_slots: Array[Label] = []
 var _ability_details_enabled := false
 var _battle_context := false
+var _battle_state: Dictionary = {}
+
+## 显示层副本：不修改共享原始卡牌数据，也不参与战斗结算。
+func set_battle_state(values: Dictionary) -> void:
+	_battle_state = values.duplicate(true)
+	if is_node_ready() and _data:
+		_apply_material(_data)
+		_apply_battle_state()
+
+func _apply_battle_state() -> void:
+	if not _battle_context or _battle_state.is_empty(): return
+	_material_stat_attack.text = str(_battle_state.get("attack", _data.attack))
+	_material_stat_health.text = str(_battle_state.get("hp", _data.health))
+	_satiety_slot.text = _number_text(int(_battle_state.get("satiety", -1)))
+	_mana_slot.text = _number_text(int(_battle_state.get("mana", -1)))
+	_shield_slot.text = "护盾\n%d" % int(_battle_state.get("shield", 0))
+	_satiety_slot.add_theme_color_override("font_color", Color("#ad3434") if _battle_state.get("satiety", -1) == 0 else Color("#462618"))
+	_value_label.text = "攻击 %s / 生命 %s / 护盾 %s" % [_material_stat_attack.text, _material_stat_health.text, str(_battle_state.get("shield", 0))]
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
@@ -281,7 +299,9 @@ func _apply_material(data: SproutCardData) -> void:
 	_generic_content.visible = false
 	_material_root.visible = true
 	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
-	_material_art.texture = load(art_path) as Texture2D
+	_material_art.texture = data.illustration_override if data.illustration_override else load(art_path) as Texture2D
+	if not data.illustration_path.is_empty() and ResourceLoader.exists(data.illustration_path):
+		_material_art.texture = load(data.illustration_path) as Texture2D
 	_material_title.text = data.title if not data.is_role_card else data.character_name
 	_material_type.text = data.card_type
 	_material_effect.text = effect_display_text(data)
@@ -304,9 +324,10 @@ func _apply_material(data: SproutCardData) -> void:
 	_material_stat_attack.add_theme_font_size_override("font_size", 32 if data.attack < 10 else 26)
 	_material_stat_health.add_theme_font_size_override("font_size", 32 if data.health < 10 else 26)
 	var skill := data.card_type in ["赋形牌", "法术牌", "战斗牌"]
-	# 收录角色显示基础资源，技能显示消耗；战斗中的角色/赋形资源仍为待接入占位。
+	# 收录角色显示基础资源，技能显示消耗；战斗资源先设占位，再由状态副本覆盖。
 	var battle_stats := _battle_context and stats
 	_satiety_slot.visible = data.is_role_card or skill
+	_satiety_slot.add_theme_color_override("font_color", Color("#462618"))
 	_satiety_slot.text = _number_text(data.satiety_max if data.is_role_card else data.satiety_cost)
 	if battle_stats:
 		_satiety_slot.text = "—"
@@ -330,6 +351,7 @@ func _apply_material(data: SproutCardData) -> void:
 			_cost_slots[1].visible = true
 			_cost_slots[1].position.x = 155
 			_cost_slots[1].text = {"可携带": "可携带", "不可携带": "不可携带"}.get(data.portable_dish, "携带待定")
+	_apply_battle_state()
 
 static func _number_text(value: int) -> String:
 	return str(value) if value >= 0 else "—"

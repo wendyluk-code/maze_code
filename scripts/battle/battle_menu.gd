@@ -71,6 +71,11 @@ func _ready() -> void:
 	confirmation = Modal.new()
 	confirmation.z_index = 20
 	add_child(confirmation)
+	# 保留用户已有的战斗确认窗居中布局。
+	confirmation._body_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	confirmation._body_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var confirmation_actions := confirmation._cancel_button.get_parent() as HBoxContainer
+	confirmation_actions.alignment = BoxContainer.ALIGNMENT_CENTER
 	confirmation.confirmed.connect(func(): accepted_action = pending_action)
 	confirmation.closed.connect(_confirmation_closed)
 
