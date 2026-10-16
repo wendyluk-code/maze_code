@@ -29,6 +29,7 @@ var _selected := {}
 var _open := false
 var _empty_stock := false
 var _general_stock := false
+var _backpack_view := false
 var _stock_title: Label
 var _slots_grid: GridContainer
 var _scroll: ScrollContainer
@@ -36,6 +37,7 @@ var _grid_hover_region: Control
 var _grid_scrollbar_dragging := false
 var _tabs: TabBar
 var _slot_by_id := {}
+var _backpack_slot_order: Array[Node] = []
 var _selected_title: Label
 var _selected_scroll: ScrollContainer
 var _selected_list: VBoxContainer
@@ -51,6 +53,15 @@ var _catalog := [
 ]
 
 func _ready() -> void:
+	var recipes := preload("res://scripts/cooking/recipe_catalog.gd")
+	_catalog.append({"id": "wood", "name": "木材", "icon": 0})
+	for item in preload("res://data/maze/elder_firewood.gd").REWARD_ITEMS:
+		if not recipes.INGREDIENTS.has(item.id): _catalog.append({"id": item.id, "name": item.name, "icon": 0})
+	for id in recipes.INGREDIENTS:
+		if id not in ["rockmane_meat", "rock_salt"]:
+			_catalog.append({"id": id, "name": recipes.INGREDIENTS[id].name, "icon": 0})
+	for id in recipes.RECIPES:
+		if id != "salt_grilled_rockmane": _catalog.append({"id": id, "name": recipes.RECIPES[id].name, "icon": 0})
 	add_to_group("warehouse_modal")
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -85,7 +96,7 @@ func _on_grid_scrollbar_input(event: InputEvent) -> void:
 
 func _build() -> void:
 	_overlay = ColorRect.new()
-	_overlay.color = Color(0.04, 0.07, 0.05, 0.66)
+	_overlay.color = preload("res://scripts/ui/components/modal_style.gd").BACKDROP
 	_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(_overlay)
@@ -287,8 +298,18 @@ func _create_slot(id: String, label_text: String, icon_index: int) -> SproutItem
 		slot.set_icon_texture(_ingredient_icon(ROCK_SALT_ICON, Rect2(83, 88, 97, 90)))
 	elif id == "rockmane_meat":
 		slot.set_icon_texture(_ingredient_icon(ROCKMANE_MEAT_ICON, Rect2(77, 83, 106, 95)))
+	elif id in ["lantern_berry", "insulating_leaf", "sour_vine_juice"]:
+		for item in preload("res://data/maze/elder_firewood.gd").REWARD_ITEMS:
+			if item.id == id:
+				slot.set_icon_texture(preload("res://data/maze/elder_firewood.gd").reward_texture(item))
+	elif id == "slime_gel":
+		slot.set_icon_texture(preload("res://assets/ui/ingredients/slime_gel.png"))
+	elif id == "wood":
+		slot.set_icon_texture(_ingredient_icon(preload("res://generated_assets/wood_logs_pixel_256.png"), Rect2(40, 60, 177, 155)))
 	elif id == "salt_grilled_rockmane":
 		slot.set_icon_texture(_ingredient_icon(DISH_ICON, Rect2(279, 424, 696, 505)))
+	var configured_icon := preload("res://scripts/cooking/recipe_catalog.gd").item_texture(id)
+	if configured_icon != null: slot.set_icon_texture(configured_icon)
 	return slot
 
 func _ingredient_icon(source: Texture2D, region: Rect2) -> AtlasTexture:
@@ -298,6 +319,8 @@ func _ingredient_icon(source: Texture2D, region: Rect2) -> AtlasTexture:
 	return texture
 
 func open_for_order() -> void:
+	_restore_slot_order()
+	_backpack_view = false
 	_general_stock = false
 	_empty_stock = false
 	_selected.clear()
@@ -325,6 +348,8 @@ func open_for_order() -> void:
 	_set_tutorial_suppressed(true)
 
 func open_empty_stock() -> void:
+	_restore_slot_order()
+	_backpack_view = false
 	_general_stock = false
 	_empty_stock = true
 	_selected.clear()
@@ -358,6 +383,7 @@ func _has_stock(stock: Dictionary) -> bool:
 	return false
 
 func open_stock() -> void:
+	_restore_slot_order()
 	var stock := SaveManager.warehouse_snapshot()
 	if not _has_stock(stock):
 		open_empty_stock()
@@ -386,7 +412,7 @@ func close_modal() -> void:
 	_set_tutorial_suppressed(false)
 
 func _on_slot_selected(item_id: String) -> void:
-	if not _open or _empty_stock:
+	if not _open or _empty_stock or _backpack_view:
 		return
 	var slot: SproutItemSlot = _slot_by_id.get(item_id)
 	if not is_instance_valid(slot) or slot.disabled or slot._quantity <= 0:
@@ -394,7 +420,7 @@ func _on_slot_selected(item_id: String) -> void:
 	slot.set_selected_quantity(slot.get_selected_quantity() + 1, true)
 
 func _on_slot_quantity_changed(item_id: String, quantity: int) -> void:
-	if not _open or _empty_stock:
+	if not _open or _empty_stock or _backpack_view:
 		return
 	if quantity <= 0:
 		_selected.erase(item_id)
@@ -515,7 +541,7 @@ func _make_quantity_button(text_value: String) -> Button:
 	return button
 
 func _change_selected_quantity(item_id: String, delta: int) -> void:
-	if not _open or _empty_stock:
+	if not _open or _empty_stock or _backpack_view:
 		return
 	var slot: SproutItemSlot = _slot_by_id.get(item_id)
 	if not is_instance_valid(slot):
@@ -535,6 +561,7 @@ func _on_cancel_pressed() -> void:
 		cancelled.emit()
 
 func _on_claim_pressed() -> void:
+	if _backpack_view: return
 	if _general_stock and _open:
 		var result := SaveManager.take_warehouse_items(_selected)
 		if result.success:
@@ -580,3 +607,78 @@ func _set_tutorial_suppressed(value: bool) -> void:
 		elif not value and is_instance_valid(_hidden_guide):
 			_hidden_guide.visible = _guide_was_visible
 			_hidden_guide = null
+
+## 背包只读仓库视图，汇总餐厅仓库存量与已获得库存，不移动物品。
+func open_backpack() -> void:
+	open_empty_stock()
+	_backpack_view = true
+	_empty_stock = false
+	_cancel_button.configure("关闭")
+	_cancel_button.grab_focus()
+	var stock := SaveManager.inventory_snapshot()
+	var stored := SaveManager.warehouse_snapshot()
+	for item_id in stored:
+		stock[item_id] = int(stock.get(item_id, 0)) + int(stored[item_id])
+	if not _slot_by_id.has("wood"):
+		var reserved: SproutItemSlot = _slot_by_id["reserved_04"]
+		_slots_grid.remove_child(reserved)
+		reserved.queue_free()
+		_slot_by_id.erase("reserved_04")
+		var wood_slot := _create_slot("wood", "木材", 0)
+		_slots_grid.add_child(wood_slot)
+		_slots_grid.move_child(wood_slot, 3)
+		_slot_by_id["wood"] = wood_slot
+	var rewards: Array = preload("res://data/maze/elder_firewood.gd").REWARD_ITEMS.duplicate(true)
+	rewards.append({"id": "slime_gel", "name": "史莱姆凝胶"})
+	for i in rewards.size():
+		var item: Dictionary = rewards[i]
+		if _slot_by_id.has(item.id): continue
+		var reserved_id := "reserved_%02d" % (i + 5)
+		var reserved: SproutItemSlot = _slot_by_id[reserved_id]
+		_slots_grid.remove_child(reserved)
+		reserved.queue_free()
+		_slot_by_id.erase(reserved_id)
+		var slot := _create_slot(item.id, item.name, 0)
+		_slots_grid.add_child(slot)
+		_slots_grid.move_child(slot, i + 4)
+		_slot_by_id[item.id] = slot
+	for item_id in _slot_by_id:
+		var slot: SproutItemSlot = _slot_by_id[item_id]
+		var quantity := int(stock.get(item_id, 0))
+		_set_slot(slot, quantity, false, true)
+		# 槽位保持正常色彩与数量，选择回调由只读模式拒绝。
+	_compact_backpack_slots()
+	_message.text = "材料与食材"
+	_message.show()
+	_scroll.scroll_vertical = 0
+
+func _restore_slot_order() -> void:
+	for index in _backpack_slot_order.size():
+		if is_instance_valid(_backpack_slot_order[index]):
+			_slots_grid.move_child(_backpack_slot_order[index], index)
+	_backpack_slot_order.clear()
+
+func _compact_backpack_slots() -> void:
+	# 背包是只读汇总视图：有库存的槽位稳定保持原顺序并压到前排，空槽统一置后。
+	_backpack_slot_order = _slots_grid.get_children()
+	var occupied: Array[SproutItemSlot] = []
+	var empty: Array[SproutItemSlot] = []
+	for child in _slots_grid.get_children():
+		if not child is SproutItemSlot:
+			continue
+		var slot := child as SproutItemSlot
+		if slot._quantity > 0:
+			occupied.append(slot)
+		else:
+			empty.append(slot)
+	var ordered: Array[SproutItemSlot] = occupied + empty
+	for index in ordered.size():
+		_slots_grid.move_child(ordered[index], index)
+
+
+func _input(event: InputEvent) -> void:
+	if not _backpack_view or not _open: return
+	if event is InputEventKey:
+		get_viewport().set_input_as_handled()
+		if event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+			_on_cancel_pressed()

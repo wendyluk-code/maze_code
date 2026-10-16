@@ -17,6 +17,8 @@ const SlimeEncounter := preload("res://scripts/maze/slime_encounter.gd")
 const MazeMap := preload("res://scripts/ui/components/maze_map.gd")
 const TaskTracker := preload("res://scripts/ui/order_tracking.gd")
 const ResourceCounter := preload("res://scripts/ui/components/resource_counter.gd")
+const WhiteTigerElder := preload("res://scripts/maze/white_tiger_elder.gd")
+const YufengSaliaEncounter := preload("res://scripts/maze/yufeng_salia_encounter.gd")
 var gold_counter: ResourceCounter
 var map_ui: Control
 var task_tracker: Control
@@ -53,6 +55,15 @@ var _entry_ready := false
 var _busy := false
 var _interact_armed := false
 var _previous_auto_quit := true
+var _arrival_toast_shown := false
+var elder: Node2D
+var yufeng_salia: Node2D
+var _ui_root: Control
+var backpack_entry: Button
+var backpack_warehouse: Control
+var _backpack_locked_before := false
+var _backpack_physics_before := true
+var first_slime_flow: Node
 
 func _ready() -> void:
 	add_to_group("maze_entry")
@@ -67,8 +78,17 @@ func _ready() -> void:
 	add_child(player)
 	camera = FollowCamera.new()
 	camera.name = "Camera2D"
+	camera.add_to_group("maze_camera")
 	camera.target = player
 	add_child(camera)
+	elder = WhiteTigerElder.new()
+	elder.name = "WhiteTigerElder"
+	add_child(elder)
+	yufeng_salia = YufengSaliaEncounter.new()
+	yufeng_salia.name = "YufengSaliaEncounter"
+	add_child(yufeng_salia)
+	# 同层先画爷爷、后画主角；只调整二者的遮挡顺序，不改变道具层级。
+	move_child(elder, player.get_index())
 	_build_ui()
 	_build_chests()
 	_build_dig_sites()
@@ -80,12 +100,17 @@ func _ready() -> void:
 	get_tree().auto_accept_quit = false
 	_interact_armed = not Input.is_action_pressed("interact")
 	_commit_entry()
+	yufeng_salia.attach(player, camera, _ui_root)
+	first_slime_flow = preload("res://scripts/maze/first_slime_flow.gd").new()
+	add_child(first_slime_flow)
+	first_slime_flow.attach(self)
 
 func _build_ui() -> void:
 	var layer := CanvasLayer.new()
 	layer.layer = 65
 	add_child(layer)
 	var root := Control.new()
+	_ui_root = root
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.theme = SproutTheme.make_theme()
@@ -112,6 +137,40 @@ func _build_ui() -> void:
 	map_ui = MazeMap.new()
 	map_ui.maze = self
 	root.add_child(map_ui)
+	backpack_entry = Button.new()
+	backpack_entry.name = "BackpackEntry"
+	backpack_entry.tooltip_text = "背包"
+	backpack_entry.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	backpack_entry.expand_icon = true
+	backpack_entry.add_theme_constant_override("icon_max_width", 56)
+	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
+		backpack_entry.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+	root.add_child(backpack_entry)
+	backpack_entry.icon = preload("res://scripts/ui/components/backpack_reward.gd").entry_texture()
+	backpack_entry.custom_minimum_size = Vector2(64, 64)
+	backpack_entry.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	backpack_entry.offset_left = 16
+	backpack_entry.offset_right = 80
+	backpack_entry.offset_top = -80
+	backpack_entry.offset_bottom = -16
+	var backpack_shadow := Panel.new()
+	backpack_shadow.name = "BackpackShadow"
+	backpack_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	backpack_shadow.show_behind_parent = true
+	backpack_entry.add_child(backpack_shadow)
+	backpack_shadow.position = Vector2(8,8)
+	backpack_shadow.size = Vector2(48,48)
+	var backpack_shadow_style := StyleBoxFlat.new()
+	backpack_shadow_style.bg_color = Color.TRANSPARENT
+	backpack_shadow_style.set_corner_radius_all(24)
+	backpack_shadow_style.shadow_color = Color(0.20,0.16,0.10,0.18)
+	backpack_shadow_style.shadow_size = 5
+	backpack_shadow_style.shadow_offset = Vector2(0,2)
+	backpack_shadow.add_theme_stylebox_override("panel",backpack_shadow_style)
+	backpack_entry.hide()
+	backpack_entry.pressed.connect(_open_backpack)
+	if is_instance_valid(elder):
+		elder.attach_ui(root)
 	# 树顺序同时保证绘制与鼠标命中优先级，不能只提高 z_index。
 	_prompt_host = Control.new()
 	_prompt_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -128,6 +187,9 @@ func _build_ui() -> void:
 	loot_modal = LootModal.new()
 	root.add_child(loot_modal)
 	loot_modal.closed.connect(_close_loot)
+	backpack_warehouse = preload("res://scripts/ui/warehouse_modal.gd").new()
+	root.add_child(backpack_warehouse)
+	backpack_warehouse.cancelled.connect(_close_backpack)
 
 func _sync_gold_counter() -> void:
 	gold_counter.set_value(SaveManager.gold_balance())
@@ -304,15 +366,20 @@ func _commit_entry() -> void:
 
 func _process(delta: float) -> void:
 	_sync_gold_counter()
+	if not _arrival_toast_shown and bool(SaveManager.restaurant_customers().get("arrival_notice", false)):
+		show_toast("你有新顾客哦~")
+		_arrival_toast_shown = true
 	_sync_task_access()
 	_update_chest_target()
 	_update_prompts()
+	if is_instance_valid(elder):
+		elder.set_near(player.position.distance_to(elder.position) <= WhiteTigerElder.Config.INTERACT_RADIUS and not _busy and not confirmation.visible and not map_ui.expanded)
 	if not _entry_ready:
 		_entry_retry_seconds -= delta
 		if _entry_retry_seconds <= 0.0:
 			_commit_entry()
 		return
-	if _busy or confirmation.visible or map_ui.expanded:
+	if _busy or confirmation.visible or map_ui.expanded or (is_instance_valid(elder) and elder.is_busy()):
 		return
 	_update_triggers()
 	_save_time += delta
@@ -325,7 +392,10 @@ func _process(delta: float) -> void:
 		_save_position()
 
 func _sync_task_access() -> void:
-	var blocked: bool = _busy or not _entry_ready or confirmation.visible or map_ui.expanded or player.input_locked
+	var blocked: bool = _busy or yufeng_salia.is_busy() or not _entry_ready or confirmation.visible or map_ui.expanded or player.input_locked
+	var collecting: bool = is_instance_valid(elder) and (elder.phase == "backpack_collect" or (elder.phase == "restoring" and elder.backpack_arrived))
+	backpack_entry.visible = SaveManager.elder_backpack_unlocked() and (not blocked or collecting)
+	backpack_entry.disabled = blocked
 	if blocked == _tasks_blocked:
 		return
 	_tasks_blocked = blocked
@@ -336,12 +406,15 @@ func _sync_task_access() -> void:
 	task_tracker._task_button.disabled = blocked
 
 func _update_triggers() -> void:
-	var zones := {"exit": player.position.x < 29.0}
+	yufeng_salia.update_proximity()
+	var zones := {"exit": player.position.x < 29.0, "yufeng_salia": player.position.distance_to(yufeng_salia.TRIGGER_POS) <= yufeng_salia.TRIGGER_RADIUS}
 	for id in zones:
 		if zones[id] and not _inside.get(id, false):
 			trigger_counts[id] = int(trigger_counts.get(id, 0)) + 1
 			match id:
 				"exit": show_toast("分水庭区域制作中")
+				"yufeng_salia":
+					pass # 由update_proximity处理，避免保存失败或界面互斥消耗首次触发边沿。
 		_inside[id] = zones[id]
 
 func show_toast(message: String, seconds: float = 3.5) -> void:
@@ -360,13 +433,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.is_action_released("interact"):
 		_interact_armed = true
-	if not _entry_ready or _busy or confirmation.visible or not event.is_action_pressed("interact") or event.is_echo():
+	if not _entry_ready or _busy or player.input_locked or map_ui.expanded or confirmation.visible or not event.is_action_pressed("interact") or event.is_echo():
 		return
 	# 出生时不使用此前确认入口按住的 E；先松开再新按。
 	if not _interact_armed:
 		return
 	_interact_armed = false
 	get_viewport().set_input_as_handled()
+	if is_instance_valid(elder) and player.position.distance_to(elder.position) <= WhiteTigerElder.Config.INTERACT_RADIUS:
+		elder.interact()
+		return
 	_update_chest_target()
 	if is_instance_valid(dig_target):
 		_open_dig_site(dig_target)
@@ -390,7 +466,7 @@ func _save_position() -> bool:
 	return result.success
 
 func return_to_restaurant() -> void:
-	if _busy or not _entry_ready or Transition.is_active(get_tree()):
+	if _busy or yufeng_salia.is_busy() or player.input_locked or (is_instance_valid(elder) and elder.is_busy()) or not _entry_ready or Transition.is_active(get_tree()):
 		return
 	var destination := load(SaveManager.RESTAURANT_SCENE) as PackedScene
 	if destination == null:
@@ -418,3 +494,19 @@ func _notification(what: int) -> void:
 
 func _exit_tree() -> void:
 	get_tree().auto_accept_quit = _previous_auto_quit
+
+func _open_backpack() -> void:
+	if not SaveManager.elder_backpack_unlocked() or not _entry_ready or _busy or player.input_locked or map_ui.expanded or confirmation.visible: return
+	_backpack_locked_before = player.input_locked
+	_backpack_physics_before = player.is_physics_processing()
+	_busy = true
+	player.input_locked = true
+	player.set_physics_process(false)
+	toast_label.dismiss()
+	backpack_warehouse.open_backpack()
+
+func _close_backpack() -> void:
+	player.input_locked = _backpack_locked_before
+	player.set_physics_process(_backpack_physics_before)
+	_busy = false
+	_interact_armed = not Input.is_action_pressed("interact")
