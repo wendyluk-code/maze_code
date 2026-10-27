@@ -1,0 +1,4 @@
+[gd_scene load_steps=2 format=3]
+[ext_resource type="Script" path="res://tools/tests/ui_modal_unify_home.gd" id="1"]
+[node name="ModalHomeAcceptance" type="Node"]
+script = ExtResource("1")

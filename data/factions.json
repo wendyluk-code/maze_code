@@ -1,0 +1,6 @@
+{
+  "cycle": ["fire", "grass", "earth", "lightning", "water", "wind"],
+  "advantage": {"fire":"grass", "grass":"earth", "earth":"lightning", "lightning":"water", "water":"wind", "wind":"fire"},
+  "characters": {"yaya":"grass", "tieshan":"earth", "salia":"lightning", "yufeng":"wind", "dingdang":"earth", "jiaopopo":"fire", "ahong":"lightning", "xiluomei":"water", "chengyan":"water", "lanjiao":"wind"},
+  "monsters": {"slime":"water", "brick_snail":"earth", "sword_beetle":"wind", "petrifying_lizard":"earth", "rockmane_beast":"earth"}
+}

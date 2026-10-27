@@ -1,37 +1,67 @@
-[gd_resource type="SpriteFrames" load_steps=10 format=3]
-[ext_resource type="Texture2D" path="res://assets/props/treasure_chest/sparkle_atlas.png" id="1"]
+[gd_resource type="SpriteFrames" format=3 uid="uid://ch4wo8llsbybh"]
+
+[ext_resource type="Texture2D" uid="uid://ceyubdr8tv4k4" path="res://assets/props/treasure_chest/sparkle_atlas.png" id="1"]
+
 [sub_resource type="AtlasTexture" id="Frame_0"]
 atlas = ExtResource("1")
 region = Rect2(47, 49, 164, 128)
+
 [sub_resource type="AtlasTexture" id="Frame_1"]
 atlas = ExtResource("1")
 region = Rect2(303, 49, 164, 128)
+
 [sub_resource type="AtlasTexture" id="Frame_2"]
 atlas = ExtResource("1")
 region = Rect2(559, 49, 164, 128)
+
 [sub_resource type="AtlasTexture" id="Frame_3"]
 atlas = ExtResource("1")
 region = Rect2(815, 49, 164, 128)
+
 [sub_resource type="AtlasTexture" id="Frame_4"]
 atlas = ExtResource("1")
 region = Rect2(1071, 49, 164, 128)
+
 [sub_resource type="AtlasTexture" id="Frame_5"]
 atlas = ExtResource("1")
 region = Rect2(1327, 49, 164, 128)
+
 [sub_resource type="AtlasTexture" id="Frame_6"]
 atlas = ExtResource("1")
 region = Rect2(1583, 49, 164, 128)
+
 [sub_resource type="AtlasTexture" id="Frame_7"]
 atlas = ExtResource("1")
 region = Rect2(1839, 49, 164, 128)
+
 [resource]
-animations = [{"frames": [
-{"duration": 0.12000000, "texture": SubResource("Frame_0")},
-{"duration": 0.12000000, "texture": SubResource("Frame_1")},
-{"duration": 0.12000000, "texture": SubResource("Frame_2")},
-{"duration": 0.12000000, "texture": SubResource("Frame_3")},
-{"duration": 0.12000000, "texture": SubResource("Frame_4")},
-{"duration": 0.12000000, "texture": SubResource("Frame_5")},
-{"duration": 0.12000000, "texture": SubResource("Frame_6")},
-{"duration": 0.12000000, "texture": SubResource("Frame_7")}
-], "loop": true, "name": &"sparkle", "speed": 1.0}]
+animations = [{
+"frames": [{
+"duration": 0.12,
+"texture": SubResource("Frame_0")
+}, {
+"duration": 0.12,
+"texture": SubResource("Frame_1")
+}, {
+"duration": 0.12,
+"texture": SubResource("Frame_2")
+}, {
+"duration": 0.12,
+"texture": SubResource("Frame_3")
+}, {
+"duration": 0.12,
+"texture": SubResource("Frame_4")
+}, {
+"duration": 0.12,
+"texture": SubResource("Frame_5")
+}, {
+"duration": 0.12,
+"texture": SubResource("Frame_6")
+}, {
+"duration": 0.12,
+"texture": SubResource("Frame_7")
+}],
+"loop": 1,
+"name": &"sparkle",
+"speed": 1.0
+}]

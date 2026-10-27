@@ -1,0 +1,34 @@
+{
+  "mode": "flow",
+  "pid": 77780,
+  "profile": "C:\\Users\\KSG\\.codex\\worktrees\\0814\\maze_code\\tools\\tests\\bug_b3_evidence\\acceptance\\profile",
+  "executable": "F:/SteamLibrary/steamapps/common/Godot Engine/godot.windows.opt.tools.64.exe",
+  "exit_code": 1,
+  "timed_out": false,
+  "errors": [
+    "ERROR: QTE03 FAIL: 脚底半径连续路段：(116.0, 724.0) → (57.0, 711.0)\r",
+    "ERROR: QTE03 FAIL: 脚底半径连续路段：(57.0, 711.0) → (13.0, 699.0)\r",
+    "ERROR: QTE03 FAIL: 脚底不能跨图边缘但出口提示可达\r",
+    "ERROR: QTE03 FAIL: 边缘站位追击能造成伤害：south_chest\r"
+  ],
+  "environment_errors": [
+    "ERROR: Failed to read the root certificate store.\r"
+  ],
+  "certificate_warning": true,
+  "real_saves_unchanged": true,
+  "command": [
+    "--path",
+    "C:\\Users\\KSG\\.codex\\worktrees\\0814\\maze_code",
+    "--audio-driver",
+    "Dummy",
+    "--rendering-method",
+    "gl_compatibility",
+    "res://tools/tests/bug_b3_scene.tscn",
+    "--",
+    "--report=C:\\Users\\KSG\\.codex\\worktrees\\0814\\maze_code\\tools\\tests\\bug_b3_evidence\\acceptance\\report.json",
+    "--output-dir=C:\\Users\\KSG\\.codex\\worktrees\\0814\\maze_code\\tools\\tests\\bug_b3_evidence\\acceptance\\screenshots"
+  ],
+  "output": "C:\\Users\\KSG\\.codex\\worktrees\\0814\\maze_code\\tools\\tests\\bug_b3_evidence\\acceptance",
+  "checks": 120,
+  "failures": 4
+}

@@ -85,6 +85,8 @@ func _close_scene() -> void:
 	await get_tree().process_frame
 
 func _shot(label: String) -> void:
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
 	await _capture(evidence,label+suffix)
 
 func _dialog_finish() -> void:
@@ -116,7 +118,7 @@ func _flow() -> void:
 	_check(party.visible and outro.phase == "party" and not party._armed,"展开期间长按E不会跳过卡牌")
 	_check(party.cards.size() == 2 and party.cards[0].rotation < 0 and party.cards[1].rotation > 0,"两张卡向左右扇形展开")
 	_check(party.find_children("*", "Button", true, false).is_empty() and party.find_children("*", "PanelContainer", true, false).is_empty(),"独立卡牌无外框或关闭按钮")
-	_check(party._prompt.text == "按 E 继续" and party._prompt.modulate.a == 1.0,"底部提示正确且完整出现")
+	_check(party._prompt.has_node("ContinueKeyIcon") and party._prompt.modulate.a == 1.0,"底部E图片提示完整出现")
 	for card in party.cards:
 		var rectangle := Rect2(Vector2.ZERO,get_viewport().get_visible_rect().size)
 		var bounds := Rect2(card.get_global_transform()*Vector2.ZERO,Vector2.ZERO)
@@ -161,14 +163,14 @@ func _flow() -> void:
 	_check_prompts_hidden("结尾蒙层")
 	await get_tree().create_timer(0.25).timeout
 	_check(outro._ending._veil.modulate.a > 0 and outro._ending._veil.modulate.a < 1,"蒙层存在渐显中间态")
-	await get_tree().create_timer(1.3).timeout
+	await get_tree().create_timer(2.7).timeout
 	_check(tm.active and player.input_locked and outro._ending.visible,"长按E不穿透结尾画面")
 	var echo := InputEventKey.new(); echo.keycode = KEY_E; echo.pressed = true; echo.echo = true
 	get_viewport().push_input(echo)
 	await get_tree().process_frame
 	await _send_key(KEY_SPACE)
 	_check(outro._ending.visible,"重复事件和空格不能关闭蒙层")
-	_check(outro._ending._title.text == "第一章 · 第一顿饭" and outro._ending._prompt.text == "按 E 继续","结尾标题及提示准确")
+	_check(outro._ending._title.text == "第一章：第一顿饭" and outro._ending._prompt.has_node("ContinueKeyIcon"),"结尾标题及E图片提示准确")
 	_check(not outro._ending._armed,"跨越结尾持续按E仍未解锁继续")
 	await _shot("chapter_end")
 	var release := InputEventKey.new(); release.keycode = KEY_E

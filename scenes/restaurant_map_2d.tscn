@@ -19,6 +19,7 @@
 ; 引用新手教学引导层（暗幕/高亮/提示/对话框）
 [ext_resource type="PackedScene" path="res://scenes/ui/tutorial_guide.tscn" id="8_guide"]
 [ext_resource type="PackedScene" path="res://scenes/ui/cooking_modal.tscn" id="10_cooking"]
+[ext_resource type="Script" path="res://scripts/restaurant/trash_bin.gd" id="11_trash"]
 
 ; ↓↓↓ 子资源（SubResource）：场景内联定义的资源 ↓↓↓
 ; 定义一个圆形碰撞形状，作为主角脚底的碰撞体
@@ -43,6 +44,15 @@ position = Vector2(471, 251)
 
 ; 交互点容器：所有可交互道具集中放在这个节点下
 [node name="InteractPoints" type="Node2D" parent="." unique_id=1523598777]
+
+[node name="TrashBin" type="Node2D" parent="InteractPoints"]
+position = Vector2(195, 545)
+script = ExtResource("11_trash")
+display_name = "垃圾桶"
+ui_offset = Vector2(0, -190)
+interaction_polygon = PackedVector2Array(-40, -39, 40, -39, 40, 5, -40, 5)
+metadata/foreground_disabled = true
+metadata/use_own_ui_anchor = true
 
 ; 按钮显示偏移说明：在交互点节点下加一行  ui_offset = Vector2(右, 下)
 ; 只移动按钮"显示位置"（地图像素），不影响道具交互区域

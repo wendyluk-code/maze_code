@@ -20,8 +20,17 @@ const SPROUT_BG := Color("#d9e8bb")
 const SPROUT_BORDER := Color("#6d985f")
 const TIESHAN_BG := Color("#d9b18c")
 const TIESHAN_BORDER := Color("#8d5841")
+const DESATURATE_SHADER := """
+shader_type canvas_item;
+void fragment() {
+	vec4 pixel = COLOR;
+	float gray = dot(pixel.rgb, vec3(0.299, 0.587, 0.114));
+	COLOR = vec4(vec3(gray), pixel.a);
+}
+"""
 const ART_WINDOW_SHADER := """
 shader_type canvas_item;
+uniform bool desaturate = false;
 uniform sampler2D window_mask : filter_linear, repeat_disable;
 uniform vec2 source_origin = vec2(0.0);
 uniform vec2 source_extent = vec2(1.0);
@@ -35,6 +44,7 @@ void fragment() {
 	vec2 source_uv = source_origin + ((window_uv - vec2(0.5)) * cover_scale + vec2(0.5)) * source_extent;
 	COLOR = texture(TEXTURE, source_uv) * art_modulate;
 	COLOR.a *= texture(window_mask, window_uv).a;
+	if (desaturate) COLOR.rgb = vec3(dot(COLOR.rgb, vec3(0.299, 0.587, 0.114)));
 }
 """
 
@@ -60,6 +70,7 @@ var _title_leaf_right: TextureRect
 var _material_title: Label
 var _material_type: Label
 var _material_effect: Label
+var _effect_sections: VBoxContainer
 var _attack_art: TextureRect
 var _health_art: TextureRect
 var _satiety_art: TextureRect
@@ -70,6 +81,11 @@ var _material_stat_health: Label
 var _satiety_slot: Label
 var _mana_slot: Label
 var _shield_slot: Label
+var _hunger_art: TextureRect
+var _hunger_slot: Label
+var _revive_art: TextureRect
+var _revive_slot: Label
+var _desaturate_material: ShaderMaterial
 var _cost_slots: Array[Label] = []
 var _ability_details_enabled := false
 var _battle_context := false
@@ -95,15 +111,19 @@ func set_battle_state(values: Dictionary) -> void:
 		_apply_battle_state()
 
 func _apply_battle_state() -> void:
-	if not _battle_context or _battle_state.is_empty() or not _data.is_role_card: return
-	_material_stat_attack.text = str(_battle_state.get("attack", _data.attack))
-	_material_stat_health.text = str(_battle_state.get("hp", _data.health))
-	_satiety_slot.text = _number_text(int(_battle_state.get("satiety", -1)))
-	_mana_slot.text = _number_text(int(_battle_state.get("mana", -1)))
-	_shield_slot.text = str(int(_battle_state.get("shield", 0)))
+	if not _battle_context or _battle_state.is_empty() or not _data.is_role_card:
+		_apply_status_display()
+		return
+	# 实时状态只覆盖已获显示资格的数字，不能让源表缺值重新出现。
+	if _material_stat_attack.visible: _material_stat_attack.text = str(_battle_state.get("attack", _data.attack))
+	if _material_stat_health.visible: _material_stat_health.text = str(_battle_state.get("hp", _data.health))
+	if _satiety_slot.visible: _satiety_slot.text = _number_text(int(_battle_state.get("satiety", -1)))
+	if _mana_slot.visible: _mana_slot.text = _number_text(int(_battle_state.get("mana", -1)))
+	if _shield_slot.visible: _shield_slot.text = str(int(_battle_state.get("shield", 0)))
 	_satiety_slot.add_theme_color_override("font_color", Color("#ad3434") if _battle_state.get("satiety", -1) == 0 else Color("#462618"))
 	# 卡面正文只由名称、类型和技能组成；护盾仅通过右下图标/数值显示。
 	_value_label.text = ""
+	_apply_status_display()
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
@@ -276,6 +296,9 @@ func _build_material_labels() -> void:
 	_health_art = _edge_texture("health")
 	_satiety_art = _edge_texture("satiety")
 	_mana_art = _edge_texture("mana")
+	for entry in [[_attack_art, "attack"], [_health_art, "health"], [_satiety_art, "satiety"], [_mana_art, "mana"]]:
+		entry[0].texture = MATERIAL.status_icon(entry[1])
+		entry[0].stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	# 金盾只新增独立属性层，原件与edge_v4卡框保持原样。
 	# 护盾复用生命值槽：无生命值时落在红框位置，有生命值时上移到蓝框位置。
 	_shield_art = _material_texture("res://assets/ui/card_materials/card_display_v2/gold_shield.png", Rect2(228, 398, 54, 54))
@@ -313,24 +336,69 @@ func _build_material_labels() -> void:
 	_shield_slot.add_theme_constant_override("outline_size", 2)
 	for index in 2:
 		_cost_slots.append(_resource_slot(Rect2(115 + index * 75, 287, 70, 23), Color("#f3e6cc")))
+	_hunger_art = _material_texture("", Rect2(153, 0, 60, 60))
+	_hunger_art.texture = MATERIAL.status_icon("hunger")
+	_hunger_slot = _material_label("+2", Rect2(159, 10, 48, 40), 27)
+	_revive_art = _material_texture("", Rect2(0, 0, 90, 120))
+	_revive_art.texture = MATERIAL.status_icon("revive")
+	_hunger_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_revive_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_revive_slot = _material_label("", Rect2(0, 0, 80, 64), 46)
+	for label in [_hunger_slot, _revive_slot]:
+		label.add_theme_font_override("font", number_font)
+		label.add_theme_color_override("font_color", Color("#fff7df"))
+		label.add_theme_color_override("font_outline_color", Color("#6318b6"))
+		label.add_theme_constant_override("outline_size", 2)
+	var shader := Shader.new()
+	shader.code = DESATURATE_SHADER
+	_desaturate_material = ShaderMaterial.new()
+	_desaturate_material.shader = shader
+	_apply_status_display()
 
 func _layout_shield_slot(has_health: bool) -> void:
-	var health_rect := MATERIAL.edge_rect("health")
-	var right_edge := maxf(MATERIAL.edge_rect("satiety").end.x, MATERIAL.edge_rect("mana").end.x)
-	var health_shift := right_edge - health_rect.end.x
-	_health_art.position.x = health_rect.position.x + health_shift
-	_material_stat_health.position.x = 235.4 + health_shift
-	# 攻击图标与右侧资源图标围绕卡片中心对称出框，数字随原图同量移动。
-	var attack_rect := MATERIAL.edge_rect("attack")
-	var attack_left := CARD_SIZE.x - right_edge
-	_attack_art.position.x = attack_left
-	_material_stat_attack.position.x = 22.8 + attack_left - attack_rect.position.x
+	# 属性轻微跨出可见卡框，仍完全位于300×500设计画布内。
+	_attack_art.position = Vector2(8, 409)
+	_attack_art.size = Vector2(62, 68)
+	_material_stat_attack.position = Vector2(19, 430)
+	_health_art.position = Vector2(239, 409)
+	_health_art.size = Vector2(54, 68)
+	_material_stat_health.position = Vector2(247, 433)
+	_mana_art.position = Vector2(78 if _attack_art.visible else 12, 409)
+	_mana_art.size = Vector2(54, 68)
+	_mana_slot.position = _mana_art.position + Vector2(8, 24)
 	var shield_size := Vector2(54, 54)
 	var lift := 64.0 if has_health else 0.0
 	_shield_art.size = shield_size
-	_shield_art.position = Vector2(right_edge - shield_size.x, health_rect.end.y - shield_size.y - lift)
+	_shield_art.position = Vector2(241, 477 - shield_size.y - lift)
 	_shield_slot.size = Vector2(39, 38)
 	_shield_slot.position = _shield_art.position + (shield_size - _shield_slot.size) * 0.5
+
+## 显示状态只读取副本；alive缺失默认存活，revive只负责剩余回合数字。
+func _apply_status_display() -> void:
+	if not is_instance_valid(_revive_art): return
+	var active := _battle_context and _data != null and _data.is_role_card
+	var dead := active and not bool(_battle_state.get("alive", true))
+	var hungry := active and _satiety_slot.visible and _satiety_slot.text == "0"
+	_hunger_art.visible = hungry
+	_hunger_slot.visible = hungry
+	_satiety_art.size = Vector2(62, 65)
+	_satiety_art.position = Vector2(86 if hungry else 119, 0)
+	_satiety_slot.position = _satiety_art.position + Vector2(11, 8)
+	_satiety_slot.size = Vector2(40, 38)
+	# 以原卡框可见区域中心定位，而非插画开窗中心。
+	var center := MATERIAL.edge_rect("frame").get_center()
+	_revive_art.position = center - _revive_art.size * 0.5
+	_revive_slot.position = center - _revive_slot.size * 0.5
+	var remaining := int(_battle_state.get("revive", 0))
+	_revive_art.visible = dead and remaining > 0
+	_revive_slot.visible = _revive_art.visible
+	_revive_slot.text = str(remaining)
+	for child in _material_canvas.get_children():
+		if child == _revive_art or child == _revive_slot: continue
+		if child == _material_art:
+			if child.material is ShaderMaterial: child.material.set_shader_parameter("desaturate", dead)
+		elif child is CanvasItem:
+			child.material = _desaturate_material if dead else null
 
 func _resource_slot(rect: Rect2, fill: Color) -> Label:
 	var slot := _material_label("", rect, 12)
@@ -393,9 +461,9 @@ func _apply_material(data: SproutCardData) -> void:
 	var health_text := display_number(data, "health")
 	if attack_text.contains("条件"):
 		attack_text = attack_text.get_slice("（", 0) if _skill_resolution.get("conditional_attack_active", false) else "-"
-	_attack_art.visible = data.is_role_card or attack_text != "-"
+	_attack_art.visible = _stat_visible(data, "attack", attack_text)
 	_material_stat_attack.visible = _attack_art.visible
-	_health_art.visible = data.is_role_card or health_text != "-"
+	_health_art.visible = _stat_visible(data, "health", health_text)
 	_material_stat_health.visible = _health_art.visible
 	_layout_shield_slot(_health_art.visible)
 	_material_effect.position = Vector2((CARD_SIZE.x - EFFECT_WIDTH) / 2, EFFECT_TOP if data.is_role_card else 316.0)
@@ -405,8 +473,8 @@ func _apply_material(data: SproutCardData) -> void:
 	if _readable_battle_text:
 		# 战斗牌优先利用标题下方空白，增大正文实际像素；不改技能原文。
 		var text_width := READABLE_EFFECT_WIDTH
-		# 正文延伸到卡框底部内侧；左右图标已外移，保留中央完整文字区域。
-		var text_height := 170.0
+		# 正文止于底部属性上方，避免新魔力位置遮挡长技能。
+		var text_height := 125.0
 		var font_size := 30
 		while font_size > 18:
 			var paragraph := TextParagraph.new()
@@ -420,28 +488,28 @@ func _apply_material(data: SproutCardData) -> void:
 		_material_effect.set_deferred("size", Vector2(text_width, text_height))
 		_material_effect.add_theme_font_size_override("font_size", font_size)
 	_material_stat_attack.text = attack_text
+	_apply_effect_sections(data)
 	_material_stat_health.text = health_text
 	_material_stat_attack.add_theme_font_size_override("font_size", 32 if data.attack < 10 else 26)
 	_material_stat_health.add_theme_font_size_override("font_size", 32 if data.health < 10 else 26)
-	var skill := data.card_type in ["赋形牌", "法术牌", "战斗牌"]
 	# 收录角色显示基础资源，技能显示消耗；战斗资源先设占位，再由状态副本覆盖。
 	var battle_stats := _battle_context and data.is_role_card
-	_satiety_slot.visible = data.is_role_card or skill
+	_satiety_slot.visible = _stat_visible(data, "satiety", display_number(data, "satiety"))
 	_satiety_slot.add_theme_color_override("font_color", Color("#462618"))
 	_satiety_slot.text = display_number(data, "satiety")
-	if battle_stats:
+	if battle_stats and _satiety_slot.visible:
 		_satiety_slot.text = "—"
-	_mana_slot.visible = data.mana_enabled if data.is_role_card else (skill and display_number(data, "mana") != "-")
+	_mana_slot.visible = _stat_visible(data, "mana", display_number(data, "mana"))
 	_mana_slot.text = display_number(data, "mana")
-	if battle_stats:
+	if battle_stats and _mana_slot.visible:
 		_mana_slot.text = "—"
 	_satiety_art.visible = _satiety_slot.visible
 	_mana_art.visible = _mana_slot.visible
 	_satiety_slot.add_theme_font_size_override("font_size", 30 if _satiety_slot.text.length() <= 1 else 24)
 	_mana_slot.add_theme_font_size_override("font_size", 30 if _mana_slot.text.length() <= 1 else 24)
-	_shield_slot.visible = battle_stats or display_number(data, "shield") != "-"
+	_shield_slot.visible = _stat_visible(data, "shield", display_number(data, "shield"))
 	_shield_art.visible = _shield_slot.visible
-	_shield_slot.text = "—" if battle_stats else display_number(data, "shield")
+	_shield_slot.text = "—" if battle_stats and _shield_slot.visible else display_number(data, "shield")
 	for slot in _cost_slots:
 		slot.visible = false
 	if not data.is_role_card:
@@ -450,6 +518,17 @@ func _apply_material(data: SproutCardData) -> void:
 			_cost_slots[1].position.x = 155
 			_cost_slots[1].text = {"可携带": "可携带", "不可携带": "不可携带"}.get(data.portable_dish, "携带待定")
 	_apply_battle_state()
+
+func _stat_visible(data: SproutCardData, key: String, display_text: String) -> bool:
+	# 明确的源表缺值与未提供原值不同；后者兼容旧卡牌调用方。
+	if data.display_values.has(key): return display_text != "-"
+	var skill := data.card_type in ["赋形牌", "法术牌", "战斗牌"]
+	match key:
+		"attack", "health": return data.is_role_card or display_text != "-"
+		"satiety": return data.is_role_card or skill
+		"mana": return data.mana_enabled if data.is_role_card else (skill and display_text != "-")
+		"shield": return (_battle_context and data.is_role_card) or display_text != "-"
+	return false
 
 func _apply_art_window() -> void:
 	# 原批准插画的透明alpha即开窗轮廓；只读复用，不重画卡框或素材。
@@ -498,6 +577,50 @@ static func effect_area_height(data: SproutCardData) -> float:
 		return EFFECT_STATS_HEIGHT
 	return 75.0 if data.card_type == "赋形牌" else 109.0
 
+
+func _apply_effect_sections(data: SproutCardData) -> void:
+	if not is_instance_valid(_effect_sections):
+		_effect_sections = VBoxContainer.new()
+		_effect_sections.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_effect_sections.add_theme_constant_override("separation", 5)
+		_material_canvas.add_child(_effect_sections)
+	for child in _effect_sections.get_children():
+		_effect_sections.remove_child(child)
+		child.queue_free()
+	_effect_sections.visible = data.effect_sections.size() == 2
+	_material_effect.visible = not _effect_sections.visible
+	if not _effect_sections.visible: return
+	_effect_sections.position = _material_effect.position
+	_effect_sections.size = _material_effect.size
+	var font_size := 24
+	while font_size > 16:
+		var height := 12.0
+		for section in data.effect_sections:
+			var paragraph := TextParagraph.new()
+			paragraph.break_flags = TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
+			paragraph.width = _material_effect.size.x - EFFECT_TEXT_INSET * 2
+			paragraph.add_string(str(section), SproutTheme.FONT_CN, font_size)
+			height += paragraph.get_size().y
+		if height <= _material_effect.size.y: break
+		font_size -= 1
+	for index in range(2):
+		if index == 1:
+			var separator := HSeparator.new()
+			var line := StyleBoxLine.new()
+			line.color = Color("#927349")
+			line.thickness = 2
+			separator.add_theme_stylebox_override("separator", line)
+			separator.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_effect_sections.add_child(separator)
+		var label := Label.new()
+		label.text = str(data.effect_sections[index])
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.add_theme_font_size_override("font_size", font_size)
+		label.add_theme_color_override("font_color", Color("#462618"))
+		label.add_theme_stylebox_override("normal", _material_effect.get_theme_stylebox("normal"))
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_effect_sections.add_child(label)
 
 static func effect_display_text(data: SproutCardData) -> String:
 	# 已批准原稿沿用原稿断句；只改变显示，不改变规则数据。

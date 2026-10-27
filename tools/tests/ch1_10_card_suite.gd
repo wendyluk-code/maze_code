@@ -1,8 +1,7 @@
 extends Node
-## CH1-10 隔离规则与存档契约验收。
+## CH1-10 保留卡牌展示数据与存档契约验收；旧战斗规则已移除。
 
 const DATA := preload("res://scripts/ui/components/sprout_card_data.gd")
-const RULES := preload("res://scripts/card_rules.gd")
 var checks: Array[Dictionary] = []
 var failures := 0
 
@@ -15,33 +14,6 @@ func run_suite() -> void:
 	_check(cards.slice(0, 8).filter(func(c): return c.rarity == "R").size() == 7, "yaya_seven_r")
 	_check(cards.slice(8, 16).filter(func(c): return c.rarity == "R").size() == 7, "tieshan_seven_r")
 	_check(cards[0].title == "先吃一口" and cards[2].title == "芽芽找找" and cards[9].title == "站我身后" and cards[10].title == "盾沿猛击", "teaching_names")
-	var state := RULES.new_state()
-	state.characters.tieshan.hp = 2
-	_check(RULES.heal(state, "tieshan", 3) and state.characters.tieshan.hp == 5, "heal_caps_at_max")
-	state.characters.tieshan.alive = false
-	state.characters.tieshan.hp = 0
-	_check(not RULES.heal(state, "tieshan", 3) and state.characters.tieshan.hp == 0, "heal_does_not_revive")
-	state.characters.tieshan.alive = true
-	state.characters.tieshan.hp = 6
-	state.characters.tieshan.armor = 3
-	_check(RULES.damage(state, "tieshan", 4) == 1 and state.characters.tieshan.armor == 0 and state.characters.tieshan.hp == 5, "armor_before_life")
-	state.next_damage_reduction["tieshan"] = 2
-	state.characters.tieshan.armor = 3
-	_check(RULES.damage(state, "tieshan", 4) == 0 and state.characters.tieshan.armor == 1, "reduction_before_armor")
-	state.characters.tieshan.armor = 0
-	state.entered_this_turn = {}
-	_check(RULES.enter_battle(state, "tieshan", 2) and state.characters.tieshan.armor == 3, "entry_no_attack_and_stand_firm")
-	_check(RULES.enter_battle(state, "tieshan", 2) and state.characters.tieshan.armor == 5, "entry_replacement_no_duplicate_passive")
-	RULES.begin_turn(state)
-	_check(state.characters.tieshan.armor == 0, "tieshan_armor_clears")
-	state.deck = ["a", "b", "c"]
-	state.hand = []
-	var draw_result := RULES.draw_two_put_bottom(state, "b")
-	_check(draw_result.drawn.size() == 2 and state.deck == ["c", "b"], "draw_two_put_bottom")
-	state.action_points = 2
-	state.characters.tieshan.hp = 6
-	_check(RULES.play_teaching_card(state, "tieshan_02").success and state.battle_zone == "tieshan", "teaching_entry")
-	_check(RULES.play_teaching_card(state, "tieshan_03").success, "teaching_attack")
 	var sm := get_node_or_null("/root/SaveManager")
 	if sm != null:
 		var seeded: Dictionary = sm._defaults()
@@ -75,7 +47,7 @@ func _write_report() -> void:
 	for card in DATA.formal_set():
 		snapshot.append({"id": card.id, "character": card.character_name, "title": card.title,
 			"type": card.card_type, "cost": card.cost, "rarity": card.rarity, "effect": card.effect})
-	var report := {"suite": "CH1-10 card rules", "failures": failures, "checks": checks,
+	var report := {"suite": "CH1-10 卡牌显示与存档", "failures": failures, "checks": checks,
 		"card_snapshot": snapshot, "balance_note": "正式设计数值尚未实战平衡"}
 	var path := OS.get_environment("CH1_10_REPORT")
 	if path.is_empty():

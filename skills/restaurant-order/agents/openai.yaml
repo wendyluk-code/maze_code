@@ -1,0 +1,7 @@
+interface:
+  display_name: "餐厅点单"
+  short_description: "梳理餐厅顾客点单所需输入，复用素材与经营逻辑并完成接入验收"
+  default_prompt: "使用 $restaurant-order 处理这个餐厅顾客点单新增或替换请求。"
+policy:
+  allow_implicit_invocation: true
+

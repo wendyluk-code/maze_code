@@ -18,6 +18,10 @@ var _disabled := false
 var _icon_index := 0
 var _custom_icon: Texture2D
 var _grid_mode := false
+var _grid_size := GRID_SIZE
+var _grid_icon_size := Vector2(40, 40)
+var _normalize_icon := false
+const DisplayIcon = preload("res://scripts/ui/components/bag_icon_display.gd")
 var _icon_button: Button
 var _icon_view: TextureRect
 var _name_label: Label
@@ -45,7 +49,7 @@ var disabled: bool:
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	focus_mode = Control.FOCUS_NONE
-	custom_minimum_size = GRID_SIZE if _grid_mode else Vector2(128, 164)
+	custom_minimum_size = _grid_size if _grid_mode else Vector2(128, 164)
 	_build_visual()
 	pressed.connect(_on_pressed)
 	resized.connect(_apply_visual)
@@ -147,12 +151,23 @@ func set_icon_texture(texture: Texture2D) -> void:
 func set_grid_mode(value: bool) -> void:
 	_grid_mode = value
 	if value:
-		custom_minimum_size = GRID_SIZE
+		custom_minimum_size = _grid_size
 	if is_node_ready():
 		_apply_visual()
 
 func get_icon_texture() -> Texture2D:
-	return _custom_icon if is_instance_valid(_custom_icon) else SproutTheme.icon(_icon_index)
+	var source := _custom_icon if is_instance_valid(_custom_icon) else SproutTheme.icon(_icon_index)
+	return DisplayIcon.texture(source) if _normalize_icon else source
+
+## 仅显式接入的仓库/背包使用大格与透明轮廓归一化，旧调用方维持原尺寸。
+func configure_grid_display(cell_size: Vector2, icon_size: Vector2, normalize_icon := false) -> void:
+	_grid_size = cell_size.max(GRID_SIZE)
+	_grid_icon_size = icon_size.min(_grid_size - Vector2(12, 16))
+	_normalize_icon = normalize_icon
+	if _grid_mode:
+		custom_minimum_size = _grid_size
+	if is_node_ready():
+		_apply_visual()
 
 func set_selected_quantity(value: int, emit_change := false) -> void:
 	var next := clampi(value, 0, mini(_quantity, max_quantity))
@@ -182,7 +197,7 @@ func set_selected(value: bool) -> void:
 func _apply_visual() -> void:
 	if not is_instance_valid(_icon_button):
 		return
-	_icon_view.texture = _custom_icon if is_instance_valid(_custom_icon) else SproutTheme.icon(_icon_index)
+	_icon_view.texture = get_icon_texture()
 	if _grid_mode:
 		_apply_grid_visual()
 		return
@@ -215,11 +230,11 @@ func _apply_visual() -> void:
 	_apply_icon_style()
 
 func _apply_grid_visual() -> void:
-	_icon_button.custom_minimum_size = GRID_SIZE
+	_icon_button.custom_minimum_size = _grid_size
 	_icon_button.position = Vector2.ZERO
-	_icon_button.size = GRID_SIZE
-	_icon_view.position = Vector2(8, 5)
-	_icon_view.size = Vector2(40, 40)
+	_icon_button.size = _grid_size
+	_icon_view.position = (_grid_size - _grid_icon_size) * 0.5
+	_icon_view.size = _grid_icon_size
 	_icon_view.visible = _quantity > 0
 	_icon_button.tooltip_text = "%s\n库存：×%d" % [_item_name, _quantity] if _quantity > 0 else "空位"
 	_name_label.visible = false
@@ -230,7 +245,7 @@ func _apply_grid_visual() -> void:
 	_stock_badge.visible = _quantity > 0
 	_stock_badge.text = str(_quantity)
 	_stock_badge.size = Vector2(maxf(18, _stock_badge.get_minimum_size().x), 16)
-	_stock_badge.position = GRID_SIZE - _stock_badge.size - Vector2(2, 2)
+	_stock_badge.position = _grid_size - _stock_badge.size - Vector2(2, 2)
 	_apply_icon_style()
 
 func _apply_icon_style() -> void:

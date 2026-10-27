@@ -37,26 +37,13 @@ func _party_flow_only() -> void:
 	_check(await _wait_until(func(): return not outro._busy,180), "真实扇形展开完成")
 	_check(outro.phase == "party" and party.visible and not party._armed, "长按E不穿透")
 	_check(party.cards.size() == 2 and party.cards[0].rotation < 0 and party.cards[1].rotation > 0, "双卡扇形")
-	var records := ArtCatalog.display_records()
 	for index in 2:
-		var card := party.cards[index].get_node_or_null("TemplateCard") as SproutCard
-		_check(card != null, "实际原生TemplateCard")
-		if card == null: continue
-		var id := "yaya" if index == 0 else "tieshan"
-		for raw in records:
-			if raw.id != id: continue
-			_check(card._data.id == id and card._material_effect.text == raw.effect, "角色与原表技能原文：" + id)
-			_check(card._material_art.texture != null and card._material_art.texture.resource_path == ArtCatalog.path_for(id), "实际唯一插画：" + id)
-			_check(card._satiety_slot.text == raw.display_values.satiety and card._material_stat_attack.text == raw.display_values.attack and card._material_stat_health.text == raw.display_values.health, "真实资源与攻血：" + id)
-			if id == "yaya": _check(card._mana_slot.text == "3", "芽芽魔力3")
-			_check(card.size.is_equal_approx(SproutCard.CARD_SIZE), "原生布局不压窄：" + id)
-			var label: Label = card._material_effect
-			var paragraph := TextParagraph.new()
-			paragraph.break_flags = TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
-			paragraph.width = label.size.x
-			paragraph.add_string(label.text, label.get_theme_font("font"), label.get_theme_font_size("font_size"))
-			_check(paragraph.get_size().y <= label.size.y, "最终有效正文高度容纳：" + id)
-			print("PARTY_FINAL_TEXT ", id, " size=", label.size, " position=", label.position, " font=", label.get_theme_font_size("font_size"), " original=", raw.effect)
+		var face = party.cards[index].get_node_or_null("CharacterFace")
+		_check(face != null, "真实入队使用角色详情卡面")
+		if face == null: continue
+		_check(face.character_id == ("yaya" if index == 0 else "tieshan"), "角色对应正确")
+		_check(face.stars.size() == 6, "显示六颗真实星阶")
+		_check(party.cards[index].get_node_or_null("TemplateCard") == null, "不再创建旧战斗卡")
 	await _shot("party_actual_native")
 	var echo := InputEventKey.new()
 	echo.keycode = KEY_E

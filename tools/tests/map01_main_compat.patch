@@ -1,0 +1,11 @@
+--- a/scripts/maze/capture_run.gd
++++ b/scripts/maze/capture_run.gd
+@@ -330,7 +330,7 @@
+ 				run.bag[item] = int(run.bag.get(item,0))+int(items[item])
+ 	if capture:
+ 		var counts := {}
+-		for kind in Catalog.TYPES: counts[kind] = failure_streak(sm,kind)
++		for kind in Catalog.capture_kinds(): counts[kind] = failure_streak(sm,kind)
+ 		counts[row.kind] = 0 if caught else mini(3,counts[row.kind]+1)
+ 		sm.get("_state")[PITY_KEY] = counts
+ 	# 计数、奖励、结算记录同一事务提交，保存失败全部回滚。

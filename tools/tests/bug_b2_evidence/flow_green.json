@@ -1,0 +1,381 @@
+{
+	"checks": 75,
+	"failures": 0,
+	"results": [
+		{
+			"detail": {},
+			"label": "隔离正式存档",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "初始化隔离存档",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "真实首单事务达成收尾前置",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "完整第一章前置：party",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "完整第一章前置：home",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "完整第一章前置：maze",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "完整第一章前置：title",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "新探索",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "到期不刷新且不改随机/布局：slime/captured",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "到期不刷新且不改随机/布局：slime/failed",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "到期不刷新且不改随机/布局：slime/skipped",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "到期不刷新且不改随机/布局：snail/captured",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "到期不刷新且不改随机/布局：snail/failed",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "到期不刷新且不改随机/布局：snail/skipped",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "到期不刷新且不改随机/布局：beetle/captured",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "到期不刷新且不改随机/布局：beetle/failed",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "到期不刷新且不改随机/布局：beetle/skipped",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "到期不刷新且不改随机/布局：lizard/captured",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "到期不刷新且不改随机/布局：lizard/failed",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "到期不刷新且不改随机/布局：lizard/skipped",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "击败保存失败回滚：slime_1",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "击败：slime_1",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "开始付费捕获",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "保存捕获结果",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "结算保存失败回滚：slime_1",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "捕获/失败/放弃结算：slime_1",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "结算幂等：slime_1",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "击败保存失败回滚：snail_1",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "击败：snail_1",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "开始付费捕获",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "保存捕获结果",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "结算保存失败回滚：snail_1",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "捕获/失败/放弃结算：snail_1",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "结算幂等：snail_1",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "击败保存失败回滚：beetle_1",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "击败：beetle_1",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "结算保存失败回滚：beetle_1",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "捕获/失败/放弃结算：beetle_1",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "结算幂等：beetle_1",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "三种结算结果",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "等待181秒超过全部旧期限仍不刷新",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "时钟保存失败回滚",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "跨区保存失败回滚",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "前往分水庭",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "返回枯水渠",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "跨区往返已死不复活，保留返回清区规则",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "存盘",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "同趟恢复",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "同趟读档保留结果",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "旧档缺时钟可恢复",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "旧档死亡保留",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "结束探索 bank=false",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "开始下一趟",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "新趟重新生成所有怪物",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "结束探索 bank=true",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "开始下一趟",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "新趟重新生成所有怪物",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "初始化隔离存档",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "真实首单事务达成收尾前置",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "完整第一章前置：party",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "完整第一章前置：home",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "完整第一章前置：maze",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "完整第一章前置：title",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "新趟初始化",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "显式固定布局夹具保存",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "实际场景生产攻击",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "生产弹道实际击杀",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "实际场景死亡结算",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "实际场景越过旧期限",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "实际怪物节点保持隐藏",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "图形流程跨区",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "图形流程返回",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "图形流程存盘",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "图形流程恢复",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "跨区读档实际节点仍死亡",
+			"passed": true
+		}
+	]
+}

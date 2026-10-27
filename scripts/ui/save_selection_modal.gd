@@ -63,7 +63,6 @@ func _ready() -> void:
 	slot_list.item_selected.connect(_select_slot)
 	_edit_modal = EditModal.new()
 	add_child(_edit_modal)
-	_edit_modal._overlay.color = Color(0.08, 0.12, 0.08, 0.25)
 	_edit_modal.confirmed.connect(_confirm_edit)
 	_edit_modal.closed.connect(_edit_closed)
 	_name_edit = LineEdit.new()
@@ -144,6 +143,7 @@ func _fit_panel() -> void:
 func open_slots(selected_path := "") -> void:
 	_mode = "list"
 	_busy = false
+	_overlay.self_modulate.a = 1.0
 	_edit_modal.hide()
 	_name_edit.hide()
 	slot_list.show()
@@ -161,7 +161,7 @@ func open_slots(selected_path := "") -> void:
 		if child is SproutButton and not child.is_queued_for_deletion():
 			_decorate_row(child, _slots[index])
 			index += 1
-	show_modal("继续游戏 · 选择存档", "请选择要继续的冒险" if result.success else result.message, "载入")
+	show_modal("继续游戏", "请选择要继续的冒险" if result.success else result.message, "载入")
 	_confirm_button.disabled = true
 	_cancel_button.disabled = false
 	_close_button.disabled = false
@@ -229,6 +229,8 @@ func _begin_edit(mode: String) -> void:
 	if _busy or _selected.is_empty() or _mode != "list":
 		return
 	_mode = mode
+	# 上层使用完整共用蒙层，下层保留鼠标拦截但不重复压暗背景。
+	_overlay.self_modulate.a = 0.0
 	_edit_scroll = slot_list._scroll.scroll_vertical
 	var label := ""
 	for slot in _slots:
@@ -260,6 +262,7 @@ func _begin_edit(mode: String) -> void:
 		_edit_modal._cancel_button.grab_focus()
 
 func _edit_closed() -> void:
+	_overlay.self_modulate.a = 1.0
 	var action := _mode
 	_mode = "list"
 	set_busy(false)

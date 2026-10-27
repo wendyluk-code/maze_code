@@ -3,6 +3,8 @@ extends Control
 ## 组成：对白暗幕 + 顶部操作提示 + 对话框 + Toast
 
 const HINT_TOP := 16.0
+const TASK_CUTOUT := preload("res://scripts/ui/tutorial_task_cutout.gdshader")
+const DIALOG_DIM_ALPHA := 0.72
 
 signal dialog_done
 
@@ -16,18 +18,26 @@ signal dialog_done
 @onready var chapter_title: Label = %ChapterTitle
 @onready var chapter_stage: Label = %ChapterStage
 
+var external_cutouts: Array[Rect2] = []
+var external_operation := false
+var external_circles := false
+var external_owner := false
+
 var _toast_tween: Tween = null
 var _modal_suppressed := false
 var _modal_hint_visible := false
 
 func _ready() -> void:
 	add_to_group("tutorial_guide")
+	var cutout := ShaderMaterial.new()
+	cutout.shader = TASK_CUTOUT
+	dim.material = cutout
 	dim.gui_input.connect(_on_dim_gui_input)
 	if not dialog.finished.is_connected(_on_dialog_finished):
 		dialog.finished.connect(_on_dialog_finished)
 	# 只有正式餐厅入口负责自动启动。测试或其他场景临时实例化地图时，
 	# 不抢占 TutorialManager，避免产生第二条异步教程流程。
-	if get_tree().current_scene != _scene_root():
+	if external_owner or get_tree().current_scene != _scene_root():
 		finish_all()
 		return
 	# 已完成第一章：直接隐藏整个引导层，不干扰正常游戏；开发重播参数例外
@@ -67,7 +77,7 @@ func prepare_for_start() -> void:
 	_toast_tween = null
 	visible = true
 	dim.visible = false
-	dim.color.a = 0.5
+	dim.color = Color(0.08, 0.06, 0.04, DIALOG_DIM_ALPHA)
 	hint_panel.visible = false
 	_hide_toast()
 	skip_button.visible = false
@@ -166,11 +176,38 @@ func _position_skip_button() -> void:
 
 func _sync_dialog_mask() -> void:
 	if is_instance_valid(dim):
-		dim.visible = dialog.visible and not _modal_suppressed
+		if external_owner and external_operation:
+			dim.visible = false
+			return
+		# 外部教学对白的遮罩与对白同步，不能被业务弹窗抑制或遗留透明度覆盖。
+		if external_owner and (dialog.visible or external_operation):
+			dim.color = preload("res://scripts/ui/components/modal_style.gd").BACKDROP
+			dim.visible = true
+			_sync_task_cutouts()
+			return
+		dim.visible = (dialog.visible or external_operation) and not _modal_suppressed
+		_sync_task_cutouts()
+
+func _sync_task_cutouts() -> void:
+	# 仅改变暗幕像素透明度；原 ColorRect 仍全屏拦截输入。
+	var cutout := dim.material as ShaderMaterial
+	var rects: Array[Rect2] = []
+	var tracker := get_tree().get_first_node_in_group("order_tracking")
+	if dim.visible and is_instance_valid(tracker) and tracker.has_method("explanation_cutout_rects"):
+		rects = tracker.explanation_cutout_rects()
+	if external_owner: rects = external_cutouts
+	cutout.set_shader_parameter("overlay_size", dim.size)
+	cutout.set_shader_parameter("circle_cutouts", external_owner and external_circles)
+	for index in range(2):
+		var rect := Rect2()
+		if index < rects.size():
+			rect = dim.get_global_transform().affine_inverse() * rects[index]
+		cutout.set_shader_parameter("ingredients_rect" if index == 0 else "cooking_rect",
+			Vector4(rect.position.x, rect.position.y, rect.size.x, rect.size.y))
 
 func play_dialog(speaker: String, lines: Array, ptex: Texture2D = null) -> void:
 	dialog.visible = true
-	dim.color.a = 0.32
+	dim.color = Color(0.08, 0.06, 0.04, DIALOG_DIM_ALPHA)
 	_sync_dialog_mask()
 	dialog.start(speaker, lines, ptex)
 
@@ -213,4 +250,5 @@ func finish_all() -> void:
 	chapter_title.visible = false
 	chapter_stage.visible = false
 	dim.visible = false
+	_sync_task_cutouts()
 	visible = false

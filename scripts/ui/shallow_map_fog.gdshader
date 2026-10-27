@@ -7,6 +7,7 @@ uniform sampler2D road_reveal : filter_linear_mipmap, repeat_disable;
 uniform bool exploration_view = false;
 uniform bool circular_view = false;
 uniform bool map_unlocked = true;
+uniform bool moss_pool_view = false;
 uniform vec4 view_region = vec4(0.0, 0.0, 1.0, 1.0);
 varying vec4 canvas_tint;
 
@@ -89,6 +90,11 @@ void fragment() {
 	d = min(d, path_distance(p, vec2(785.0, 288.0), vec2(801.0, 252.0), 38.0));
 	float clouds = cloud_shadow(map_uv * vec2(5.0, 3.5), TIME * 0.16);
 	float coverage = smoothstep(-6.0, 42.0, d + (clouds - 0.5) * 12.0);
+	if (moss_pool_view) {
+		float moss = ellipse_distance(p, vec2(447.0,185.0), vec2(190.0,164.0));
+		moss = min(moss,path_distance(p,vec2(553.0,264.0),vec2(611.0,380.0),22.0));
+		coverage = min(coverage,smoothstep(-8.0,20.0,moss));
+	}
 	if (exploration_view) {
 		float road = max(textureLod(road_reveal, map_uv,0.0).r, textureLod(road_reveal,map_uv,4.4).r * 0.95);
 		coverage = min(coverage, 1.0 - road);

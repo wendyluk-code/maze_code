@@ -1,0 +1,7 @@
+ERROR: Failed to read the root certificate store.
+   at: get_system_ca_certificates (platform/windows/os_windows.cpp:2582)
+ERROR: QTE03 FAIL: 右下道具邻近合法站位能受到追击伤害
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _check (res://tools/tests/ch1_qte_03_input.gd:22)
+       [1] _run (res://tools/tests/bug_b3_scene.gd:38)

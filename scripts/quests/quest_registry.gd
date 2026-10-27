@@ -34,7 +34,7 @@ static func normalize_journal(value) -> Dictionary:
 			continue
 		journal.instances[id] = {
 			"status": instance.status,
-			"unread": instance.get("unread", true) != false if instance.status == "active" else false,
+			"unread": (not instance.get("unread", true) is bool or instance.get("unread", true)) if instance.status == "active" else false,
 		}
 	return journal
 

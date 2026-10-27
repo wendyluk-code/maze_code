@@ -15,6 +15,7 @@ func _ready() -> void:
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	add_child(sprite)
 	sprite.play("sparkle")
+
 	prompt = Prompt.new()
 	add_child(prompt)
 

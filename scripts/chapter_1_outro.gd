@@ -91,7 +91,7 @@ func _render_phase() -> void:
 			await _manager._unpark_camera(_token)
 			if not _valid():
 				return
-			_ending.present("第一章 · 第一顿饭")
+			_ending.present("第一章：第一顿饭", "你苏醒后，和芽芽一起结识了铁山，\n准备一同前往迷宫浅层探索")
 			_busy = false
 		"done":
 			_manager._finish()

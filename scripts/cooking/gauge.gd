@@ -24,4 +24,4 @@ func _draw() -> void:
 	draw_rect(Rect2(center - perfect, rect.position.y, perfect * 2.0, rect.size.y), Color("#8fcf9c"), true)
 	var x := center + pointer_position * rect.size.x * 0.5
 	draw_line(Vector2(x, 22), Vector2(x, 78), Color("#54382d"), 5.0)
-	draw_string(ThemeDB.fallback_font, Vector2(center - 45, 96), "精准区", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("#356849"))
+	draw_string(SproutTheme.FONT_CN, Vector2(center - 45, 96), "精准区", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("#356849"))

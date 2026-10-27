@@ -28,6 +28,7 @@ var _breath_tween: Tween = null
 var _rise_finished := false
 var satisfied_started := false
 var satisfied_completed := false
+var _order_bubble: Node2D
 
 @onready var portrait: AnimatedSprite2D = $Portrait
 @onready var ground_shadow: Sprite2D = $GroundShadow
@@ -145,7 +146,22 @@ func _seat_ground_position() -> Vector2:
 
 func _set_phase(value: String) -> void:
 	seating_phase = value
+	_update_order_bubble()
 	seating_phase_changed.emit(value)
+
+func _update_order_bubble() -> void:
+	if not is_instance_valid(_order_bubble): return
+	_order_bubble.visible = seating_phase == "waiting" and SaveManager.has_active_order() and not SaveManager.has_first_order_settlement()
+	if _order_bubble.visible:
+		var texture := portrait.sprite_frames.get_frame_texture(portrait.animation, portrait.frame)
+		var pixels := texture.get_image()
+		if pixels.is_compressed(): pixels.decompress()
+		_order_bubble.position = Vector2(0, portrait.position.y + pixels.get_used_rect().position.y * portrait.scale.y - 6.0)
+
+func _process(_delta: float) -> void:
+	# 事务成功即撤下提示；读档落座走同一显示入口。
+	if is_instance_valid(_order_bubble) and _order_bubble.visible and SaveManager.has_first_order_settlement():
+		_order_bubble.hide()
 
 func _on_animation_finished() -> void:
 	if portrait.animation == &"collapse":
@@ -191,6 +207,11 @@ func _ready() -> void:
 	add_to_group("guest")
 	portrait.animation_finished.connect(_on_animation_finished)
 	_load_gait()
+	_order_bubble = preload("res://scripts/ui/components/customer_order_bubble.gd").new()
+	_order_bubble.name = "OrderBubble"
+	add_child(_order_bubble)
+	_order_bubble.setup(SaveManager.FIRST_ORDER_ITEM_ID)
+	_order_bubble.hide()
 
 func _load_gait() -> void:
 	gait_scale = 0.427142857

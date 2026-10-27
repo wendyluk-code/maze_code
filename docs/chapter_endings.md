@@ -1,19 +1,25 @@
 # 章节结束演出约定
 
-更新日期：2026-10-09。此文记录用户确认的每章通用结束形式，以及第一章当前收尾流程。第一章旧文档中不同的收尾描述，以本约定为准。
+更新日期：2026-10-12。此文记录用户确认的每章通用结束形式，以及第一章当前收尾流程。第一章旧文档中不同的收尾描述，以本约定为准。
 
 ## 每章通用形式
 
 章节最后一段剧情结束时，先持久化本章完成状态，再播放结束演出。玩家关闭结束蒙层只表示已经看完演出，不是再次完成章节，也不应再次结算奖励。
 
 1. 暂停玩家移动与场景交互，收起对白和临时引导，恢复正常游戏镜头。
-2. 全屏深色蒙层渐显；蒙层出现后，中央渐显章名与独立一行的“完”。章名采用“第 X 章 · 章节名称”的格式。
+2. 全屏深色蒙层渐显；蒙层出现后，中央依次渐显章名、章节说明、底部提示，不再显示“完”。章名采用“第X章：章节名称”的格式。
 3. 底部显示“按 E 继续”。显示完成前不响应继续；显示完成后，必须松开先前按住的 E，再重新按下 E 才能关闭。按键重复、关闭上一句对白的同一次 E、其他按键和鼠标操作均不能提前关闭。
 4. 关闭时蒙层渐隐，恢复此前游戏界面、镜头倍率和正常输入。关闭蒙层的 E 事件不得继续触发地图上的道具交互。
 
-使用组件库的字体和配色。当前通用组件的时序为：蒙层渐显 0.65 秒 → 中央文字渐显 0.45 秒 → 底部提示渐显 0.2 秒；退出渐隐 0.3 秒。后续章节复用同一组件并传入自身章名，保持同一表现与输入规则。
+章末局部复用组件库的 `continue_prompt.gd`（继续提示）与原 E 图标，说明和提示使用 `assets/ui/zcool_kuail.ttf` 的原生文字，暖米白。时序为：原暗幕渐显0.65秒 → 标题渐显0.6秒 → 间隔0.2秒 → 说明渐显0.6秒 → 间隔0.2秒 → 提示渐显0.4秒；退出仍渐隐0.3秒。提示完整后才开放松键后的新按E，鼠标和键重复不触发继续。
+
+标题以 Godot 原生 `Label`（文字控件）渲染，使用本页专用 `assets/ui/chapter_end/ZCOOLXiaoWei-Regular.ttf`（站酷小薇体），整行暖金色、无描边，冒号同色。不使用标题切图或着色器。字体原文件来自用户确认样张，同目录 `OFL.txt` 保留官方许可证；来源为 https://github.com/google/fonts/tree/main/ofl/zcoolxiaowei 。说明与继续提示保持原生快乐体。两侧小绿叶和细金线由 `chapter_title_flourish.gd` 原生绘制，无下弧线、繁复叶枝和外框。背景及暗幕颜色不变。
+
+`present(chapter_title, description = "")` 兼容旧单参数调用；当前唯一生产调用方为第一章收尾。其他章名同样使用可替换的原生站酷小薇体文字。重复 `present`、`cancel`、`dismiss` 会终止旧动画，旧关闭协程不得隐藏新展示。调用方仍管理玩家锁、保存失败与恢复，不由组件修改经营状态。
 
 ## 第一章：第一顿饭
+
+入队提示“芽芽、铁山加入队伍”使用30px暖白文字、6px深棕描边和轻投影，下方操作提示使用20px文字与30px的E键图片，保持独立间距。所有“按 E 继续”中的E使用用户指定素材 `assets/ui/continue_key_e.png`；入队、章末与地图复用 `scripts/ui/components/continue_prompt.gd`。对白框内的独立E按键保留原有key_button.tscn样式，仅替换“按 E 继续”中的E；序章片尾在既有字幕E的位置叠加该图标。地图展开后底部渐显继续提示，按E关闭地图；各界面原有防长按及输入规则保留。日后替换序章片尾底图时，需重新校验图标覆盖位置。
 
 既有首单与同行对白结束，出发准备达到 `ready_to_depart`（准备出发）后，按以下顺序进行：
 
@@ -28,8 +34,9 @@
 中央和底部文字固定为：
 
 ```text
-第一章 · 第一顿饭
-完
+第一章：第一顿饭
+你苏醒后，和芽芽一起结识了铁山，
+准备一同前往迷宫浅层探索
 
 按 E 继续
 ```
@@ -58,10 +65,16 @@
 
 ## 实现入口与验收
 
-- [`scripts/ui/chapter_end_overlay.gd`](../scripts/ui/chapter_end_overlay.gd)：通用结束蒙层。调用 `present(chapter_title)` 展示，监听 `continue_requested`；调用方保存确认状态成功后调用 `dismiss()` 渐隐。`show_error()` 展示重试提示，`cancel()` 取消演出。
+- [`scripts/ui/chapter_end_overlay.gd`](../scripts/ui/chapter_end_overlay.gd)：通用结束蒙层。调用 `present(chapter_title, description = "")` 展示，监听 `continue_requested`；调用方保存确认状态成功后调用 `dismiss()` 渐隐。`show_error()` 展示重试提示，`cancel()` 取消演出。
 - [`scripts/ui/party_cards_overlay.gd`](../scripts/ui/party_cards_overlay.gd)：入队双卡蒙层、扇形展开动画与新按 E 输入保护；透明卡面位于 `assets/ui/party_cards/`。保留数值徽章，不显示攻击／血量标签。
 - [`scripts/chapter_1_outro.gd`](../scripts/chapter_1_outro.gd)：第一章入队弹窗、入口镜头、对白与蒙层的顺序控制。
 - [`scripts/save_manager.gd`](../scripts/save_manager.gd)：检查点读取与原子推进；[`scripts/tutorial_manager.gd`](../scripts/tutorial_manager.gd) 管理镜头、输入锁、恢复与取消。
 - [`tools/tests/chapter_ending_input.gd`](../tools/tests/chapter_ending_input.gd)：两种分辨率下的顺序、台词、镜头、蒙层、新按 E、恢复与存档失败检查。
 
 后续章节接入时，必须核对：剧情最后一句才完成章节；中央章名正确；长按 E 不穿透；关闭后仍在原游戏场景且可操作；每个检查点重进一致；保存失败不越步；奖励和完成信号不重复。新增章名与剧情控制器可独立扩展，蒙层输入与显示约定统一复用。
+
+## CH-END-01 专项验收与重审条件
+
+运行 `tools/tests/chapter_end_redesign_run.ps1`，从真实餐厅的 `title` 检查点恢复，在1152×648和1280×720采样标题、说明、提示各阶段；截图等待布局帧和 `RenderingServer.frame_post_draw`（绘制完成信号）。测试核对原生字体资源、精确说明、早按/长按/重复E/鼠标隔离、新按E保存继续、关闭输入恢复、取消重开和重复关闭。`-Name full_flow -Scene res://tools/tests/chapter_ending_input.tscn` 覆盖原入口对白、保存失败与检查点恢复回归。`-Name editor -Headless -Editor` 和 `-Name startup -Headless` 提供编辑器解析与主入口无头启动检查。
+
+运行器使用隔离用户目录，记录正式存档目录（不含引擎日志）的前后文件指纹；输出位于 `output/chapter_end_redesign/`，不提交。系统证书读取或引擎便携版编辑器设置写入失败单独披露，不用它们掩盖项目解析错误。修改标题资源、时长、布局、输入路由或生命周期后须重新运行专项并逐张看图；修改保存或镜头控制需另行确认范围并复验完整收尾。

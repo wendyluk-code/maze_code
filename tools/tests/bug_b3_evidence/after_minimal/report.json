@@ -1,0 +1,77 @@
+{
+	"checks": 10,
+	"failures": 0,
+	"probes": [],
+	"results": [
+		{
+			"detail": {},
+			"label": "隔离正式存档",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "初始化隔离存档",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "真实首单事务达成收尾前置",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "完整第一章前置：party",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "完整第一章前置：home",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "完整第一章前置：maze",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "完整第一章前置：title",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "新趟初始化",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "显式固定布局夹具保存",
+			"passed": true
+		},
+		{
+			"detail": {
+				"actor": {
+					"away": 0.0,
+					"cooldown": 0.549999999999999,
+					"flash_remaining": 0.0,
+					"hp": 21,
+					"mode": "chase",
+					"position": [
+						988.50341796875,
+						1145.4150390625
+					],
+					"velocity": [
+						0.0,
+						0.0
+					],
+					"windup": 0.0000000000000000138777878078145
+				},
+				"hp_after": 31,
+				"hp_before": 36,
+				"target": "(999.0, 1171.0)"
+			},
+			"label": "右下道具邻近合法站位能受到追击伤害",
+			"passed": true
+		}
+	]
+}

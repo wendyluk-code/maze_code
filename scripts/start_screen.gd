@@ -4,13 +4,11 @@ extends Control
 const COVER := preload("res://assets/ui/start_screen/cover_runtime_buttons.png")
 const SAVE_MODAL := preload("res://scripts/ui/save_selection_modal.gd")
 const PROLOGUE := "res://scenes/prologue.tscn"
-const BATTLE_DEMO := "res://scenes/battle/yaya_battle_demo.tscn"
 const ART_SIZE := Vector2(1672, 941)
 
 var art: Control
 var new_button: Button
 var continue_button: Button
-var battle_button: Button
 var save_modal: SproutModal
 var _error_modal: SproutModal
 var _busy := false
@@ -34,14 +32,6 @@ func _ready() -> void:
 	art.add_child(picture)
 	new_button = _hotspot("新游戏", Rect2(109, 579, 325, 70))
 	continue_button = _hotspot("继续游戏", Rect2(109, 665, 325, 70))
-	battle_button = _hotspot("卡牌战斗", Rect2(1290, 816, 280, 68))
-	battle_button.add_theme_font_size_override("font_size", 28)
-	battle_button.add_theme_color_override("font_color", Color("#5f704d"))
-	battle_button.add_theme_color_override("font_hover_color", Color("#405b3d"))
-	battle_button.add_theme_stylebox_override("normal", _feedback(Color(1, 1, 1, 0.38)))
-	battle_button.add_theme_stylebox_override("hover", _feedback(Color(1, 1, 1, 0.62)))
-	battle_button.add_theme_stylebox_override("pressed", _feedback(Color(0.78, 0.86, 0.68, 0.7)))
-	battle_button.pressed.connect(_battle_demo)
 	# 原图已有边框，返回焦点时只做轻微高亮，避免叠出第二层框。
 	continue_button.add_theme_stylebox_override("focus", _feedback(Color(1, 1, 1, 0.16)))
 	new_button.pressed.connect(_new_game)
@@ -69,7 +59,7 @@ func _layout() -> void:
 
 func _hotspot(label: String, rectangle: Rect2) -> Button:
 	var button := Button.new()
-	button.name = "NewGame" if label == "新游戏" else ("ContinueGame" if label == "继续游戏" else "BattleDemo")
+	button.name = "NewGame" if label == "新游戏" else "ContinueGame"
 	button.text = label
 	button.tooltip_text = label
 	button.position = rectangle.position
@@ -81,6 +71,7 @@ func _hotspot(label: String, rectangle: Rect2) -> Button:
 	button.add_theme_font_size_override("font_size", 36)
 	var text_color := SproutTheme.CREAM if label == "新游戏" else Color("#5f704d")
 	button.add_theme_color_override("font_color", text_color)
+	button.add_theme_color_override("font_focus_color", text_color)
 	button.add_theme_color_override("font_hover_color", text_color)
 	button.add_theme_color_override("font_pressed_color", text_color)
 	button.add_theme_color_override("font_disabled_color", text_color.darkened(0.2))
@@ -108,16 +99,6 @@ func _feedback(color: Color) -> StyleBoxFlat:
 func _set_buttons_disabled(value: bool) -> void:
 	new_button.disabled = value
 	continue_button.disabled = value
-	battle_button.disabled = value
-
-func _battle_demo() -> void:
-	if _busy or save_modal.visible or _error_modal.visible:
-		return
-	_busy = true
-	_set_buttons_disabled(true)
-	var error := get_tree().change_scene_to_file(BATTLE_DEMO)
-	if error != OK:
-		_show_error("卡牌战斗演示加载失败，请重试。错误：" + str(error))
 
 func _new_game() -> void:
 	if _busy or save_modal.visible or _error_modal.visible:

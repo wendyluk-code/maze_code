@@ -19,7 +19,7 @@ var _tex_key: Texture2D
 func _init() -> void:
 	_tex_btn = load("res://assets/ui/ui_big_play_blank.png") as Texture2D
 	_tex_key = load("res://assets/ui/key_square26_frame0.png") as Texture2D
-	_font_cn = load("res://assets/ui/zcool_kuail.ttf") as Font
+	_font_cn = load("res://assets/ui/game_font.tres") as Font
 	_font_key = load("res://assets/ui/sprout_lands.ttf") as Font
 
 ## 设置按钮文案与宽度（世界单位，即原像素数值）
@@ -45,6 +45,6 @@ func _draw() -> void:
 
 ## 给出与文案匹配的按钮宽度（世界单位，即原像素数值）
 static func desired_width(text: String) -> float:
-	var font: Font = load("res://assets/ui/zcool_kuail.ttf") as Font
+	var font: Font = load("res://assets/ui/game_font.tres") as Font
 	var tw: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, 15.0).x
 	return maxf(140.0, 18.0 + 6.0 + 30.0 + 10.0 + tw)

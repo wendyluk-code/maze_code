@@ -1,0 +1,4 @@
+[gd_scene load_steps=2 format=3]
+[ext_resource type="Script" path="res://tools/tests/combat_short_preview.gd" id="1"]
+[node name="CombatShortPreview" type="Node"]
+script = ExtResource("1")

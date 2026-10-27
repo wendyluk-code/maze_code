@@ -211,7 +211,7 @@ func _entry() -> void:
 	_check(not get_tree().paused and not scene.get_node("Camera").paused, "餐厅未残留暂停或相机锁")
 	_check(player.input_locked == tm._player_lock_owned and player.is_physics_processing() == not tm._player_lock_owned, "玩家锁仅由现有第一章对白持有")
 	if mode != "old":
-		_check(guide.dialog.visible and tm.idx == 0 and tm.steps[0].lines == ["……你终于醒了。"], "首句保持可见，跳过输入不泄漏到第一章")
+		_check(guide.dialog.visible and tm.idx == 0 and tm.steps[0].lines == ["……你终于醒了。记得我吗？"], "首句保持可见，跳过输入不泄漏到第一章")
 		_check(not sm.is_chapter_1_done() and not sm.is_tutorial_done(), "没有补发章节完成")
 	if mode == "save-failure":
 		_check(not sm.is_prologue_done() and _disk().sha256_text() == protected_disk, "保存失败仍进入餐厅且正式标记回滚")

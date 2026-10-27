@@ -12,6 +12,7 @@ func _run() -> void:
 			suffix = "_%dx%d" % [resolution.x,resolution.y]
 			await _reputation_reveal()
 			await _interactions()
+		await _reputation_outro_layers()
 	var file := FileAccess.open(_arg("--report="), FileAccess.WRITE)
 	file.store_string(JSON.stringify({"checks":checks,"failures":failures,"results":results}, "\t"))
 	print("POST_CHAPTER ",checks," checks, ",failures," failures")
@@ -123,13 +124,25 @@ func _reputation_reveal() -> void:
 	sm._active_save_path = "user://reputation-reveal.json"
 	await _use("InteractPoints/BarCounter")
 	await get_tree().process_frame
-	_check(sm.has_first_order_settlement() and hud.reputation_label.visible and hud.reputation_label.text == "声望：60", "真实E首次上菜后显示实际声望")
+	var guide = scene.get_node("UIOverlay/TutorialGuide")
+	_check(sm.has_first_order_settlement() and hud.reputation_label.is_visible_in_tree() and hud.reputation_label.text == "声望：60" and guide.dialog.visible and guide.toast.is_visible_in_tree(), "首次上菜结算Toast与对白期间同步显示声望")
+	_check_shared_hud("首次上菜对白")
+	await _verify_mask_dimming(guide.dim, "上菜对白")
+	var notice = guide.toast_panel.get_node("Content/NoticeIcon")
+	_check(not notice.get_global_rect().intersects(guide.toast.get_global_rect()) and notice.get_global_rect().end.x + 10 <= guide.toast.get_global_rect().position.x, "上菜长文案与提示图标独立占位且留有间隔")
 	await _shot("reputation_first_served")
+	var tracker = scene.get_node("UIOverlay/OrderTracking")
+	tracker.collapse_details()
+	# 从未写完的当前对白开始，点击任务入口所在位置应仅补全对白。
+	guide.dialog._shown = 0.0
+	await _click(tracker._task_button)
+	_check(not tracker._expanded and guide.dialog.visible and guide.dialog._shown >= str(guide.dialog._lines[guide.dialog._line_idx]).length(), "对白蒙层拦截任务入口点击且保留点击继续")
 	await _close_scene()
 	sm.load_data()
 	await _open_scene()
 	hud = get_tree().get_first_node_in_group("restaurant_hud")
-	_check(hud.reputation_label.visible and hud.reputation_label.text == "声望：60", "上菜后读档恢复声望展示")
+	_check(hud.reputation_label.is_visible_in_tree() and hud.reputation_label.text == "声望：60", "上菜后读档恢复对白时同步显示声望")
+	_check_shared_hud("读档恢复上菜对白")
 	await _close_scene()
 
 func _interactions() -> void:
@@ -139,9 +152,23 @@ func _interactions() -> void:
 	var player = scene.get_node("Player")
 	var warehouse = scene.get_node("UIOverlay/WarehouseModal")
 	var tracker = scene.get_node("UIOverlay/OrderTracking")
+	_check(hud.reputation_label.get_parent() == tracker, "声望实际归属任务层并继承显隐")
+	_check_shared_hud("常规任务栏")
+	tracker.modulate.a = 0.35
+	_check_shared_hud("任务栏淡入淡出中间态")
+	tracker.modulate.a = 0.0
+	_check_shared_hud("任务栏透明隐藏", false)
+	tracker.modulate.a = 1.0
+	tracker.hide()
+	_check_shared_hud("任务栏直接隐藏", false)
+	tracker.show()
+	_check_shared_hud("任务栏恢复")
 	_check(not tm.active,"完章后不重启教学")
 	_check(hud.reputation_label.visible and hud.reputation_label.text == "声望：60","HUD显示实际累计值")
-	_check(hud.reputation_label.get_global_rect().position.x < 50 and hud.reputation_label.get_global_rect().position.y < 50,"声望固定左上角")
+	var entry: Rect2 = tracker.entry_rect()
+	var reputation: Rect2 = hud.reputation_label.get_global_rect()
+	_check(entry.position.x < 30 and reputation.position.x > entry.end.x
+		and reputation.position.y < 50 and not reputation.intersects(entry), "任务入口左上角，声望在右侧且不重叠")
 	await _use("InteractPoints/Register")
 	_check(hud.toast_label.visible and hud.toast_label.text == "当前暂无订单，请等待顾客上门","无顾客E点单反馈")
 	_shot("no_order")
@@ -149,12 +176,18 @@ func _interactions() -> void:
 	_check(hud.toast_label.text == "当前暂无用餐需求，请先接单","无需求E上菜反馈")
 	await _use("InteractPoints/Store")
 	_check(warehouse.visible and warehouse._message.text == "没有任何食物" and player.input_locked,"E打开空仓库且锁住移动")
+	_check_shared_hud("仓库弹窗")
+	await _verify_mask_dimming(warehouse._overlay, "仓库")
+	await _click(tracker._task_button)
+	_check(warehouse.visible and not tracker._expanded, "仓库蒙层拦截背景任务入口点击")
 	_shot("empty_warehouse")
 	await _click(warehouse._cancel_button)
 	_check(not warehouse.visible and not player.input_locked,"空仓库确认释放输入")
+	_check(hud.reputation_label.is_visible_in_tree(), "关闭仓库恢复声望")
 	sm.data.warehouse_stock = {"rockmane_meat":4,"rock_salt":3}
 	await _use("InteractPoints/Store")
 	_check(warehouse._meat_slot._quantity == 4 and warehouse._salt_slot._quantity == 3,"真实仓库数量")
+	_check_shared_hud("有货仓库弹窗")
 	await _click(warehouse._meat_slot._icon_button)
 	await _click(warehouse._meat_slot._icon_button)
 	await _click(warehouse._salt_slot._icon_button)
@@ -165,7 +198,11 @@ func _interactions() -> void:
 	var card_panel = get_tree().get_first_node_in_group("departure_panel")
 	card_panel.open_task_cards()
 	_check(card_panel._cards_open(),"章后有携带物品仍可查看卡组")
+	await get_tree().process_frame
+	_check_shared_hud("卡组弹窗")
 	card_panel._close_cards()
+	await get_tree().process_frame
+	_check(hud.reputation_label.is_visible_in_tree(), "关闭卡组恢复声望")
 	for display in ["冰柜","小餐车"]:
 		var target = get_tree().get_nodes_in_group("interactable").filter(func(n): return str(n.get("display_name")) == display)[0]
 		var threshold: int = 2000 if display == "冰柜" else 5000
@@ -178,28 +215,41 @@ func _interactions() -> void:
 	sm.data.reputation = 60
 	for dest in ["InteractPoints/AdventurerHomeDoor","DepartureEntrance"]:
 		await _use(dest)
-		_check(hud.confirmation.visible and player.input_locked,"一次E只打开二次确认："+dest)
-		var repeat := InputEventKey.new()
-		repeat.keycode = KEY_E
-		repeat.pressed = true
-		repeat.echo = true
-		get_viewport().push_input(repeat)
-		await get_tree().process_frame
-		_check(hud.confirmation.visible,"E重复事件不能确认")
-		await _send_key(KEY_E)
 		if dest == "DepartureEntrance":
+			_check(hud.confirmation.visible,"一次E先确认前往迷宫")
+			await _send_key(KEY_E)
+			_check(await _wait_until(func(): return is_instance_valid(get_tree().get_first_node_in_group("maze_entry")) and get_tree().get_first_node_in_group("scene_transition") == null, 240),"确认后进入正式迷宫并完成转场")
+			var maze = get_tree().get_first_node_in_group("maze_entry")
+			_check(maze != null and maze._entry_ready, "地图就绪后保存第二章开始")
+			if maze != null:
+				maze.return_to_restaurant()
+				_check(await _wait_until(func(): return is_instance_valid(get_tree().get_first_node_in_group("restaurant_hud")) and get_tree().get_first_node_in_group("scene_transition") == null, 240), "迷宫返回餐厅并完成转场")
+				scene = get_tree().current_scene
+				hud = get_tree().get_first_node_in_group("restaurant_hud")
+				player = scene.get_node("Player")
+				warehouse = scene.get_node("UIOverlay/WarehouseModal")
+				tracker = scene.get_node("UIOverlay/OrderTracking")
+				await get_tree().process_frame
 			var departure = get_tree().get_first_node_in_group("departure_panel")
-			_check(departure._open and player.input_locked,"新E确认打开地图且锁定")
-			departure.close_map()
+			departure.open_map()
+			_check(departure._open and player.input_locked,"独立地图预览打开且锁定")
+			await get_tree().create_timer(0.5).timeout
+			_check_shared_hud("地图展开", false)
+			_check(departure._continue_prompt.is_visible_in_tree() and departure._continue_prompt.modulate.a == 1.0, "地图展开后显示继续提示")
+			_check(departure._continue_prompt.get_node("ContinueKeyIcon").texture.atlas.resource_path == "res://assets/ui/continue_key_e.png", "地图使用指定E图标")
+			_check(departure._map_panel.get_rect().end.y < departure._continue_prompt.position.y, "地图与底部提示不重叠")
+			await _shot("map_without_reputation")
+			await _send_key(KEY_E)
+			_check(not departure._open, "地图提示对应E实际关闭")
+			await get_tree().process_frame
+			_check_shared_hud("关闭地图恢复任务栏")
 		else:
-			_check(not hud.confirmation.visible and not player.input_locked and "暂未开放" in hud.toast_label.text,"确认未开放入口不假跳场景")
-		await _use(dest)
-		_shot("confirm_"+dest.get_file())
-		await _send_key(KEY_ESCAPE)
-		_check(not hud.confirmation.visible and not player.input_locked,"取消确认恢复输入")
-		await _use(dest)
-		await _send_key(KEY_ENTER)
-		_check(not hud.confirmation.visible and not player.input_locked,"Enter尊重默认取消焦点")
+			var home = get_tree().get_first_node_in_group("adventurer_home")
+			_check(is_instance_valid(home) and not hud.confirmation.visible, "一次E直接打开冒险者之家正式页面")
+			if is_instance_valid(home):
+				await _click(home.back_button)
+				await get_tree().process_frame
+			_check(get_tree().get_nodes_in_group("adventurer_home").is_empty() and player.can_process() and not player.input_locked, "返回餐厅恢复原场景输入")
 	_check(sm.register_customer_order("gui"+suffix,sm.FIRST_ORDER_ITEM_ID).success,"登记可接待顾客")
 	await _use("InteractPoints/Register")
 	_check(sm.has_active_order(),"真实E接受新订单")
@@ -210,13 +260,18 @@ func _interactions() -> void:
 	await _use("InteractPoints/Cauldron")
 	var cooking = scene.get_node("HUD/CookingModal")
 	_check(cooking.visible and player.input_locked,"章后E开锅")
+	_check_shared_hud("料理台弹窗")
+	await _shot("cooking_shared_hud")
 	await _click(cooking._start_button)
 	_check(sm.cooking_state().status == "active","鼠标开始QTE扣料")
 	await _click(cooking._finish_button)
 	_check(sm.inventory_quantity(sm.FIRST_ORDER_ITEM_ID) == 1,"章后QTE生成料理")
+	_check_shared_hud("料理评分弹窗")
+	await _shot("cooking_result_shared_hud")
 	await get_tree().create_timer(1.4).timeout
 	await _send_key(KEY_E)
 	_check(not player.input_locked,"料理结果确认恢复移动")
+	_check(hud.reputation_label.is_visible_in_tree(), "确认料理结果恢复声望")
 	var stars: int = sm.cooked_quality()
 	await _use("InteractPoints/BarCounter")
 	_check(sm.reputation() == 60 + int({1:60,2:80,3:100}[stars]),"真实E交付后累计")
@@ -224,3 +279,132 @@ func _interactions() -> void:
 	_check(hud.reputation_label.text == "声望：%d" % sm.reputation(),"HUD立即同步交付奖励")
 	_shot("reputation_after_delivery")
 	await _close_scene()
+
+func _reputation_outro_layers() -> void:
+	_seed()
+	await _open_scene()
+	_check(await _wait_until(func(): return is_instance_valid(tm._chapter_outro) and not tm._chapter_outro._busy, 180), "入队蒙层就绪")
+	var hud = get_tree().get_first_node_in_group("restaurant_hud")
+	_check_shared_hud("入队蒙层", false)
+	var party = tm._chapter_outro._party
+	_check(party._join_message.get_theme_font_size("font_size") > party._prompt.get_child(0).get_theme_font_size("font_size"), "入队标题与操作提示有字号层次")
+	_check(party._join_message.get_rect().end.y < party._prompt.position.y, "入队标题与继续提示留出间距")
+	_check(party._prompt.get_node("ContinueKeyIcon").texture.atlas.resource_path == "res://assets/ui/continue_key_e.png", "入队使用指定E图标")
+	await _shot("party_without_reputation")
+	await _click_screen(Vector2(20, 20))
+	_check(await _wait_until(func(): return tm._chapter_outro.phase == "home" and not tm._chapter_outro._busy, 180), "入口教学就绪")
+	_check_shared_hud("入口特写", false)
+	await _dialog_finish()
+	_check(await _wait_until(func(): return tm._chapter_outro.phase == "maze" and not tm._chapter_outro._busy, 180), "迷宫教学就绪")
+	await _dialog_finish()
+	_check(await _wait_until(func(): return tm._chapter_outro.phase == "title" and tm._chapter_outro._ending.visible, 180), "章节标题蒙层就绪")
+	await get_tree().create_timer(1.5).timeout
+	_check_shared_hud("章节标题蒙层", false)
+	await _shot("chapter_end_without_reputation")
+	await _click_screen(Vector2(20, 20))
+	_check(await _wait_until(func(): return not tm.active, 180), "空白点击退出章节蒙层")
+	await get_tree().process_frame
+	_check_shared_hud("章节蒙层退出恢复任务栏")
+	await _close_scene()
+
+func _click_screen(point: Vector2) -> void:
+	var event := InputEventMouseButton.new()
+	event.position = point
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.button_mask = MOUSE_BUTTON_MASK_LEFT
+	event.pressed = true
+	get_viewport().push_input(event)
+	await get_tree().process_frame
+	event = InputEventMouseButton.new()
+	event.position = point
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = false
+	get_viewport().push_input(event)
+	await get_tree().process_frame
+
+# visible 只代表节点开关；地图/片尾使用父节点透明度，必须一起验收实际绘制状态。
+func _effective_alpha(item: CanvasItem) -> float:
+	if not item.is_visible_in_tree():
+		return 0.0
+	var alpha := item.self_modulate.a
+	var cursor: Node = item
+	while cursor is CanvasItem:
+		alpha *= (cursor as CanvasItem).modulate.a
+		cursor = cursor.get_parent()
+	return alpha
+
+func _check_shared_hud(context: String, expected_visible := true) -> void:
+	_check_active_masks_above_hud(context)
+	var hud = get_tree().get_first_node_in_group("restaurant_hud")
+	var tracker = get_tree().get_first_node_in_group("order_tracking")
+	var reputation: Label = hud.reputation_label
+	var task: Button = tracker._task_button
+	var task_alpha := _effective_alpha(task)
+	var reputation_alpha := _effective_alpha(reputation)
+	_check(reputation.get_parent() == task.get_parent()
+		and reputation.get_canvas_layer_node() == task.get_canvas_layer_node()
+		and reputation.z_index == task.z_index
+		and reputation.z_as_relative == task.z_as_relative
+		and not reputation.top_level and not task.top_level,
+		context + "：任务入口与声望共用父级与绘制层级")
+	_check(is_equal_approx(task_alpha, reputation_alpha)
+		and (task_alpha > 0.0) == expected_visible,
+		context + "：任务入口与声望同时显隐且透明度相同",
+		{"task_alpha": task_alpha, "reputation_alpha": reputation_alpha})
+
+func _canvas_layer_of(item: CanvasItem) -> int:
+	var layer := item.get_canvas_layer_node()
+	return layer.layer if is_instance_valid(layer) else 0
+
+func _effective_z(item: CanvasItem) -> int:
+	var result := item.z_index
+	var cursor: CanvasItem = item
+	while cursor.z_as_relative and cursor.get_parent() is CanvasItem:
+		cursor = cursor.get_parent() as CanvasItem
+		result += cursor.z_index
+	return result
+
+func _check_active_masks_above_hud(context: String) -> void:
+	var tracker = get_tree().get_first_node_in_group("order_tracking")
+	var hud = get_tree().get_first_node_in_group("restaurant_hud")
+	for node in scene.find_children("*", "ColorRect", true, false):
+		var mask := node as ColorRect
+		if _effective_alpha(mask) <= 0.0 or mask.color.a <= 0.0:
+			continue
+		if not mask.get_global_rect().encloses(tracker._task_button.get_global_rect()) or not mask.get_global_rect().encloses(hud.reputation_label.get_global_rect()):
+			continue
+		var mask_layer := _canvas_layer_of(mask)
+		var task_layer := _canvas_layer_of(tracker)
+		_check(mask_layer > task_layer or (mask_layer == task_layer and _effective_z(mask) > _effective_z(tracker)),
+			context + "：全屏蒙层在任务/声望上方 " + str(mask.get_path()),
+			{"mask_layer":mask_layer,"task_layer":task_layer,"mask_z":_effective_z(mask),"task_z":_effective_z(tracker)})
+
+func _hud_brightness(image: Image, control: Control) -> float:
+	var rect := control.get_global_rect().intersection(Rect2(Vector2.ZERO, image.get_size()))
+	var total := 0.0
+	var count := 0
+	for y in range(int(rect.position.y), int(rect.end.y), 2):
+		for x in range(int(rect.position.x), int(rect.end.x), 2):
+			var color := image.get_pixel(x,y)
+			total += color.r + color.g + color.b
+			count += 1
+	return total / maxf(1.0, count)
+
+func _verify_mask_dimming(mask: ColorRect, context: String) -> void:
+	var tracker = get_tree().get_first_node_in_group("order_tracking")
+	var hud = get_tree().get_first_node_in_group("restaurant_hud")
+	await RenderingServer.frame_post_draw
+	var dimmed := get_viewport().get_texture().get_image()
+	var alpha := mask.self_modulate.a
+	mask.self_modulate.a = 0.0
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var undimmed := get_viewport().get_texture().get_image()
+	mask.self_modulate.a = alpha
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	for item in [tracker._task_button, hud.reputation_label]:
+		var dim_value := _hud_brightness(dimmed, item)
+		var normal_value := _hud_brightness(undimmed, item)
+		_check(dim_value < normal_value * 0.9, context + "：实际渲染被蒙层压暗 " + item.name,
+			{"masked":dim_value,"unmasked":normal_value})

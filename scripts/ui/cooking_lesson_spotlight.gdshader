@@ -10,11 +10,17 @@ uniform float edge_softness = 3.4;
 void fragment() {
 	vec2 point = UV * overlay_size - arc_center;
 	float half_span = max(arc_radius.x, 1.0);
+	float curvature = arc_radius.y / (half_span * half_span);
 	float x = clamp(point.x, -half_span, half_span);
-	float progress = x / half_span;
-	vec2 centerline = vec2(x, arc_radius.y * progress * progress);
-	float slope = 2.0 * arc_radius.y * progress / half_span;
-	// 沿实际抛物线色带挖空，两端保留圆润余量，完整露出红黄绿区和指针。
-	float distance_to_band = length(point - centerline) / sqrt(1.0 + slope * slope);
+	// 求抛物线最近点：使用真实法线距离保持等宽，端点接相同半径圆帽。
+	// 不能把端点欧氏距离再除以斜率，否则会在连接处形成凸包。
+	for (int iteration = 0; iteration < 5; iteration++) {
+		float y = curvature * x * x;
+		float slope = 2.0 * curvature * x;
+		float gradient = x - point.x + (y - point.y) * slope;
+		float derivative = 1.0 + slope * slope + (y - point.y) * 2.0 * curvature;
+		x = clamp(x - gradient / max(derivative, 0.1), -half_span, half_span);
+	}
+	float distance_to_band = length(point - vec2(x, curvature * x * x));
 	COLOR.a *= smoothstep(clear_half_width, clear_half_width + edge_softness, distance_to_band);
 }

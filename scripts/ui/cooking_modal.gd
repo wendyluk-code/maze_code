@@ -9,7 +9,7 @@ const RECIPE_ID := "salt_grilled_rockmane"
 const GaugeScript := preload("res://scripts/cooking/cooking_visual.gd")
 const Judgement := preload("res://scripts/cooking/qte_judgement.gd")
 const POINTER_SPEED_SCALE := 1.125
-const RESULT_HOLD_MSEC := 2000
+const RESULT_HOLD_MSEC := 500
 const LESSON_SPOTLIGHT := preload("res://scripts/ui/cooking_lesson_spotlight.gdshader")
 const Catalog := preload("res://scripts/cooking/recipe_catalog.gd")
 const DISH_ICON: Texture2D = preload("res://assets/ui/ingredients/salt_grilled_rockmane.png")
@@ -28,8 +28,10 @@ var _countdown: Label
 var _lesson_dialog: Control
 var _lesson_blocker: ColorRect
 var _lesson_paused := false
+var _lesson_button_states: Dictionary = {}
 var _perfect_width := 0.16
 var _good_width := 0.80
+var _zone_center := 0.0
 var _gauge: Control
 var _panel: PanelContainer
 var _panel_fill: ColorRect
@@ -61,7 +63,7 @@ func _ready() -> void:
 
 func _build() -> void:
 	var overlay := ColorRect.new()
-	overlay.color = Color(0.04, 0.07, 0.05, 0.72)
+	overlay.color = preload("res://scripts/ui/components/modal_style.gd").BACKDROP
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(overlay)
 	_panel_fill = ColorRect.new()
@@ -83,11 +85,10 @@ func _build() -> void:
 	line.color = Color("#e7d6b5")
 	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_place(content, line, Rect2(10, 39, 580, 1))
-	_cancel_button = Button.new()
-	_cancel_button.text = "×"
+	_cancel_button = preload("res://scripts/ui/components/modal_style.gd").close_button()
 	_cancel_button.tooltip_text = "关闭（Esc）"
 	_cancel_button.pressed.connect(_on_cancel_pressed)
-	_place(content, _cancel_button, Rect2(558, 0, 34, 34))
+	_place(content, _cancel_button, Rect2(548, -5, 44, 44))
 	_gauge = Control.new()
 	_gauge.set_script(GaugeScript)
 	_place(content, _gauge, Rect2(15, 43, 570, 350))
@@ -260,7 +261,7 @@ func open_for_order(requested_recipe_id: String = RECIPE_ID) -> void:
 		_gauge.set_ingredients(recipe.get("ingredients", {}))
 		_show_finish_button()
 		_message.text = "烹饪已中断，以 1 星恢复；结束烹饪以保存"
-	elif sm != null and (sm.cooking_state().status == "locked" or sm.cooked_quality() > 0):
+	elif sm != null and not sm.is_chapter_1_done() and (sm.cooking_state().status == "locked" or sm.cooked_quality() > 0):
 		_start_button.disabled = true
 		_finished = true
 		_message.text = "料理已完成，请前往吧台交付"
@@ -273,8 +274,17 @@ func _apply_recipe() -> void:
 	_round_duration = float(recipe.get("round_duration", 5.0))
 	_perfect_width = float(recipe.get("perfect_width", 0.16))
 	_good_width = float(recipe.get("good_width", 0.80))
+	_zone_center = 0.0
+	var sm := get_node_or_null("/root/SaveManager")
+	var first_order: bool = sm != null and not sm.is_chapter_1_done() and sm.is_canonical_first_order(sm.current_order()) and not sm.has_first_order_settlement()
+	if not first_order:
+		var zones := Judgement.random_zones()
+		_perfect_width = zones.perfect
+		_good_width = zones.good
+		_zone_center = zones.center
 	_gauge.perfect_width = _perfect_width
 	_gauge.good_width = _good_width
+	_gauge.zone_center = _zone_center
 	_gauge.queue_redraw()
 
 func _render_recipe_choices() -> void:
@@ -323,12 +333,7 @@ func _render_recipe_choices() -> void:
 		_recipe_choices.add_child(choice)
 
 func _dish_icon(id: String) -> Texture2D:
-	if id != RECIPE_ID:
-		return null
-	var texture := AtlasTexture.new()
-	texture.atlas = DISH_ICON
-	texture.region = Rect2(279, 424, 696, 505)
-	return texture
+	return Catalog.item_texture(id)
 
 func _select_recipe(id: String) -> void:
 	if _started or not id in _available_recipe_ids:
@@ -366,7 +371,7 @@ func _on_start_pressed() -> void:
 		return
 	var result: Dictionary = sm.start_cooking(recipe_id)
 	if not bool(result.get("success", false)):
-		var messages := {"no_canonical_order": "请先到前台接单", "ingredients_not_claimed": "请先到仓库领取食材", "insufficient_ingredients": "携带食材不足", "recipe_locked": "这道料理尚未解锁", "already_started": "这份料理已经开始", "already_cooked": "料理已完成，请前往吧台交付", "save_failed": "保存失败，请重试开始烹饪"}
+		var messages := {"invalid_state": "料理记录异常，请保留存档", "hands_full": "请先存放或处理携带的料理", "no_canonical_order": "请先到前台接单", "ingredients_not_claimed": "请先到仓库领取食材", "insufficient_ingredients": "携带食材不足", "recipe_locked": "这道料理尚未解锁", "already_started": "这份料理已经开始", "already_cooked": "料理已完成，请前往吧台交付", "save_failed": "保存失败，请重试开始烹饪"}
 		_message.text = str(messages.get(result.get("reason", ""), "料理台暂时无法开始"))
 		return
 	_started = true
@@ -387,7 +392,7 @@ func _on_finish_pressed() -> void:
 	if _locked_stars > 0:
 		_finish_result(_locked_stars, _locked_pointer, true)
 	else:
-		_finish_result(Judgement.stars_for_position(_gauge.pointer_position, _perfect_width, _good_width), _gauge.pointer_position, true)
+		_finish_result(Judgement.stars_for_position(_gauge.pointer_position, _perfect_width, _good_width, _zone_center), _gauge.pointer_position, true)
 
 func _finish_result(stars: int, pointer := -2.0, hold_result := false) -> void:
 	if _finished:
@@ -413,7 +418,7 @@ func _finish_result(stars: int, pointer := -2.0, hold_result := false) -> void:
 	_finish_button.disabled = true
 	_pending_result = result.duplicate(true)
 	if hold_result:
-		# 成品立即保存，界面保留两秒供玩家看清锁定落点；关闭或重开会清除此等待。
+		# 成品立即保存，界面保留半秒供玩家看清锁定落点；关闭或重开会清除此等待。
 		_result_hold_until_msec = Time.get_ticks_msec() + RESULT_HOLD_MSEC
 	else:
 		_show_pending_result()
@@ -462,6 +467,11 @@ func _update_countdown() -> void:
 
 func _show_cooking_guide() -> void:
 	_lesson_paused = true
+	# 记录业务禁用态，教学结束时原样恢复，避免启用原本不可选的配方。
+	for button in [_cancel_button] + _recipe_choices.get_children():
+		if button is BaseButton:
+			_lesson_button_states[button] = button.disabled
+			button.disabled = true
 	_start_button.disabled = true
 	_finish_button.disabled = true
 	_gauge.set_tutorial_highlight(true)
@@ -485,6 +495,9 @@ func _resume_cooking_guide() -> void:
 
 func _clear_cooking_guide() -> void:
 	_lesson_paused = false
+	for button in _lesson_button_states:
+		if is_instance_valid(button): button.disabled = _lesson_button_states[button]
+	_lesson_button_states.clear()
 	if is_instance_valid(_lesson_dialog):
 		_lesson_dialog.hide_box()
 		_lesson_blocker.hide()

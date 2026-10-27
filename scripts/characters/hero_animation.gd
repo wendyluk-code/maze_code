@@ -31,7 +31,7 @@ func install(actor: Node2D) -> void:
 	actor.add_child(body)
 	update(Vector2.DOWN, false)
 
-func update(facing: Vector2, walking: bool, delta: float = 0.0) -> void:
+func update(facing: Vector2, walking: bool, delta: float = 0.0, running: bool = false) -> void:
 	var direction := "front"
 	if facing.x > 0.1:
 		direction = "right"
@@ -44,7 +44,7 @@ func update(facing: Vector2, walking: bool, delta: float = 0.0) -> void:
 		animation_name = next
 		animation_frame = 0
 		_elapsed = 0.0
-	_elapsed += delta
+	_elapsed += delta * (1.5 if walking and running else 1.0)
 	var duration := _frame_duration()
 	while _elapsed >= duration:
 		_elapsed -= duration
@@ -60,6 +60,7 @@ func update(facing: Vector2, walking: bool, delta: float = 0.0) -> void:
 	body.centered = false
 	body.offset = -FRAME_FOOT
 	body.position = Vector2.ZERO
+	body.rotation = 0.08 * signf(facing.x) if walking and running else 0.0
 	ground_shadow.scale = SHADOW_SCALE * view_scale
 	ground_shadow.position = SHADOW_OFFSET * view_scale
 

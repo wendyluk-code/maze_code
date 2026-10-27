@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/prologue.gd" id="1"]
-[ext_resource type="FontFile" path="res://assets/ui/zcool_kuail.ttf" id="3"]
+[ext_resource type="FontVariation" path="res://assets/ui/game_font.tres" id="3"]
 
 [sub_resource type="StyleBoxFlat" id="skip_style"]
 bg_color = Color(0.1, 0.13, 0.12, 0.7)
@@ -42,7 +42,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-ratio = 1.7239264
+ratio = 1.7537538
 stretch_mode = 3
 
 [node name="Video" type="VideoStreamPlayer" parent="Aspect"]
@@ -78,7 +78,7 @@ theme_override_font_sizes/font_size = 18
 theme_override_styles/normal = SubResource("skip_style")
 theme_override_styles/hover = SubResource("skip_style")
 theme_override_styles/pressed = SubResource("skip_style")
-text = "跳过 ▸"
+text = "跳过 >"
 
 [node name="Status" type="Label" parent="."]
 unique_name_in_owner = true

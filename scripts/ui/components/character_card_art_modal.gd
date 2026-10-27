@@ -27,14 +27,16 @@ var _slide: Tween
 func _build() -> void:
 	theme = SproutTheme.make_theme()
 	_overlay = ColorRect.new()
-	_overlay.color = Color(0.08, 0.06, 0.04, 0.72)
+	_overlay.color = preload("res://scripts/ui/components/modal_style.gd").BACKDROP
 	_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_overlay)
 	design = Control.new()
 	design.size = Vector2(1280, 720)
 	add_child(design)
-	_close_button = _button("×", Vector2(1160, 28), Vector2(56, 48))
-	(_close_button as SproutButton).set_focus_visual(false)
+	_close_button = preload("res://scripts/ui/components/modal_style.gd").close_button()
+	design.add_child(_close_button)
+	_close_button.position = Vector2(1160, 28)
+	_close_button.size = Vector2(56, 48)
 	_close_button.tooltip_text = "关闭卡牌"
 	_close_button.pressed.connect(close_modal)
 	viewport_area = Control.new()

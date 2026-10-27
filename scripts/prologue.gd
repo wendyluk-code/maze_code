@@ -7,7 +7,7 @@ const STALL_TIMEOUT := 8.0
 
 @export_file("*.ogv") var video_path := "res://assets/video/prologue/prologue_opening_zh.ogv"
 @export_file("*.png") var end_card_path := "res://assets/video/prologue/prologue_end_card.png"
-@export var end_card_time := 197.5
+@export var end_card_time := 204.5
 @onready var video: VideoStreamPlayer = %Video
 @onready var end_card: TextureRect = %EndCard
 @onready var skip_button: Button = %SkipPrologue
@@ -68,8 +68,8 @@ func _layout_end_key() -> void:
 	var source := end_card.texture.get_size()
 	var factor := minf(end_card.size.x / source.x, end_card.size.y / source.y)
 	var origin := (end_card.size - source * factor) * 0.5
-	_end_key.position = origin + Vector2(531, 554) * factor
-	_end_key.size = Vector2(27, 29) * factor
+	_end_key.position = origin + Vector2(554, 574) * factor
+	_end_key.size = Vector2(25, 26) * factor
 
 func _process(delta: float) -> void:
 	if _leaving or playback_state != "playing" or video.stream == null:

@@ -18,6 +18,8 @@ var title: String
 var cost: String
 var card_type: String
 var effect: String
+## 赋形角色原技能和赋形技能的原文分段；只参与公共卡面排版。
+var effect_sections: Array = []
 var value: String
 var rarity: String
 var number: int
@@ -53,6 +55,7 @@ func _init(values: Dictionary = {}) -> void:
 	if card_type == "形态牌":
 		card_type = "赋形牌"
 	effect = str(values.get("effect", ""))
+	effect_sections = values.get("effect_sections", []).duplicate()
 	value = str(values.get("value", ""))
 	rarity = str(values.get("rarity", "R"))
 	number = int(values.get("number", 1))

@@ -20,10 +20,9 @@ func _ready() -> void:
 	theme = SproutTheme.make_theme()
 	_veil = ColorRect.new()
 	_veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_veil.color = Color(0.025, 0.035, 0.03, 0.70)
+	_veil.color = preload("res://scripts/ui/components/modal_style.gd").BACKDROP
 	_veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_veil)
-	var records := CardArtCatalog.display_records()
 	for index in 2:
 		var card := TextureRect.new()
 		card.name = "YayaCard" if index == 0 else "TieshanCard"
@@ -31,22 +30,10 @@ func _ready() -> void:
 		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cards.append(card)
 		add_child(card)
-		var role_id := "yaya" if index == 0 else "tieshan"
-		for record in records:
-			if str(record.get("id", "")) != role_id:
-				continue
-			var values: Dictionary = record.duplicate(true)
-			values["illustration_path"] = CardArtCatalog.path_for(role_id)
-			var template := SproutCard.new()
-			template.name = "TemplateCard"
-			template.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			card.add_child(template)
-			template.configure(SproutCardData.new(values))
-			template.size = SproutCard.CARD_SIZE
-			# 正文复用公共可读布局，其对称内边距由共享组件负责。
-			if template.has_method("set_readable_battle_text"):
-				template.call("set_readable_battle_text", true)
-			break
+		var face := preload("res://scripts/ui/components/party_character_face.gd").new()
+		face.name = "CharacterFace"
+		card.add_child(face)
+		face.configure("yaya" if index == 0 else "tieshan")
 	_join_message = _label("芽芽、铁山加入队伍", 30)
 	_join_message.add_theme_color_override("font_color", Color("fff1cd"))
 	_join_message.add_theme_color_override("font_outline_color", Color("493626"))
@@ -75,14 +62,14 @@ func _layout() -> void:
 	if cards.size() != 2:
 		return
 	var height := minf(540.0, minf(size.y * 0.70, size.x * 0.58))
-	var card_size := Vector2(height * 0.6, height)
+	var card_size := Vector2(height * (470.0 / 720.0), height)
 	for index in 2:
 		var card := cards[index]
 		var direction := -1.0 if index == 0 else 1.0
 		card.size = card_size
-		var template := card.get_node_or_null("TemplateCard") as SproutCard
+		var template := card.get_node_or_null("CharacterFace") as Control
 		if template:
-			template.scale = Vector2.ONE * (height / 500.0)
+			template.scale = Vector2.ONE * (height / 720.0)
 		card.pivot_offset = Vector2(card_size.x * 0.5, card_size.y)
 		var spread := lerpf(10.0, card_size.x * 0.56, _progress)
 		var anchor := Vector2(size.x * 0.5 + direction * spread, minf(size.y * 0.81, size.y - 124.0) + (1.0 - _progress) * 25.0)

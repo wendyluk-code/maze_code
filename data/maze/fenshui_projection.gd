@@ -1,0 +1,10 @@
+extends "res://data/maze/entry_map_projection.gd"
+## 原图像素地标：逐段校准支路弯折和下方岔路，不把道路点吸附到附近路径。
+## 外框保留原红框覆盖，内部使用连续三角形映射；两种地图共用此坐标。
+func _init() -> void:
+	WORLD = PackedVector2Array([Vector2(0,0),Vector2(1715,0),Vector2(1715,917),Vector2(0,917),Vector2(15,26),Vector2(88,73),Vector2(125,141),Vector2(264,188),Vector2(354,262),Vector2(425,325),Vector2(462,376),Vector2(413,433),Vector2(275,463),Vector2(161,526),Vector2(24,483),Vector2(811,12),Vector2(830,80),Vector2(887,118),Vector2(911,160),Vector2(877,230),Vector2(850,296),Vector2(779,340),Vector2(755,404),Vector2(781,475),Vector2(842,533),Vector2(881,594),Vector2(857,659),Vector2(836,739),Vector2(725,784),Vector2(595,807),Vector2(459,841),Vector2(315,910),Vector2(1700,161),Vector2(1625,181),Vector2(1590,203),Vector2(1495,250),Vector2(1399,283),Vector2(1295,317),Vector2(1214,352),Vector2(1298,390),Vector2(1396,427),Vector2(1445,455),Vector2(1476,509),Vector2(1410,563),Vector2(1391,609),Vector2(1511,654),Vector2(1697,726),Vector2(920,782),Vector2(975,827),Vector2(988,908)])
+	ATLAS = PackedVector2Array([Vector2(522,341),Vector2(1167,341),Vector2(1167,685),Vector2(522,685),Vector2(551,344),Vector2(560,371),Vector2(601,401),Vector2(637,418),Vector2(663,439),Vector2(666,460),Vector2(672,471),Vector2(661,482),Vector2(613,488),Vector2(576,484),Vector2(527,478),Vector2(846,350),Vector2(855,366),Vector2(849,383),Vector2(840,400),Vector2(829,415),Vector2(820,435),Vector2(806,456),Vector2(793,484),Vector2(795,510),Vector2(814,534),Vector2(828,556),Vector2(836,575),Vector2(813,577),Vector2(774,566),Vector2(736,589),Vector2(699,641),Vector2(641,676),Vector2(1160,412),Vector2(1133,410),Vector2(1100,403),Vector2(1068,414),Vector2(1030,434),Vector2(1010,475),Vector2(944,499),Vector2(938,519),Vector2(932,542),Vector2(928,559),Vector2(935,575),Vector2(955,589),Vector2(990,614),Vector2(1045,643),Vector2(1158,678),Vector2(854,606),Vector2(874,638),Vector2(883,680)])
+	_triangles = Geometry2D.triangulate_delaunay(WORLD)
+
+func project_direction(point: Vector2, direction: Vector2) -> Vector2:
+	return (project(point+direction*2.0)-project(point)).normalized()

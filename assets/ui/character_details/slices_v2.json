@@ -1,0 +1,23 @@
+{
+  "source": "output\\home_detail_assets\\tabs_source_v2.png",
+  "assets": [
+    {
+      "name": "tab_selected_v2",
+      "source_box": [
+        85,
+        121,
+        1685,
+        422
+      ]
+    },
+    {
+      "name": "tab_idle_v2",
+      "source_box": [
+        86,
+        489,
+        1686,
+        791
+      ]
+    }
+  ]
+}

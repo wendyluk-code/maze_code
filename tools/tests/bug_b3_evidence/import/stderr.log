@@ -1,0 +1,26 @@
+ERROR: Cannot open file 'res://.godot/imported/zcool_kuail.ttf-032820fb5b45d9544e8b15363a34852a.fontdata'.
+   at: load (core/io/resource_format_binary.cpp:1156)
+ERROR: Failed loading resource: res://.godot/imported/zcool_kuail.ttf-032820fb5b45d9544e8b15363a34852a.fontdata.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Failed loading resource: res://assets/ui/zcool_kuail.ttf.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Cannot open file 'res://.godot/imported/ZCOOLXiaoWei-Regular.ttf-cac352cae5f816e14050a444ced26eea.fontdata'.
+   at: load (core/io/resource_format_binary.cpp:1156)
+ERROR: Failed loading resource: res://.godot/imported/ZCOOLXiaoWei-Regular.ttf-cac352cae5f816e14050a444ced26eea.fontdata.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Failed loading resource: res://assets/ui/chapter_end/ZCOOLXiaoWei-Regular.ttf.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: res://assets/ui/game_font.tres:7 - Parse Error: [ext_resource] referenced non-existent resource at: res://assets/ui/zcool_kuail.ttf.
+   at: _printerr (scene/resources/resource_format_text.cpp:41)
+ERROR: res://assets/ui/game_font.tres:7 - Parse Error: [ext_resource] referenced non-existent resource at: res://assets/ui/zcool_kuail.ttf.
+   at: _printerr (scene/resources/resource_format_text.cpp:41)
+ERROR: Failed loading resource: res://assets/ui/game_font.tres.
+   at: _load (core/io/resource_loader.cpp:317)
+ERROR: Error loading custom project font 'res://assets/ui/game_font.tres'
+   at: initialize_theme (scene/theme/theme_db.cpp:84)
+ERROR: Failed to read the root certificate store.
+   at: get_system_ca_certificates (platform/windows/os_windows.cpp:2582)
+ERROR: Cannot save file 'F:/SteamLibrary/steamapps/common/Godot Engine/editor_data/editor_settings-4.7.tres'.
+   at: save (scene/resources/resource_format_text.cpp:1768)
+ERROR: Error saving editor settings to F:/SteamLibrary/steamapps/common/Godot Engine/editor_data/editor_settings-4.7.tres
+   at: save (editor/settings/editor_settings.cpp:1525)

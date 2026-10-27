@@ -1,0 +1,29 @@
+{
+  "mode": "flow",
+  "pid": 69068,
+  "profile": "C:\\Users\\KSG\\.codex\\worktrees\\0814\\maze_code\\tools\\tests\\bug_b3_evidence\\acceptance_v2\\profile",
+  "executable": "F:/SteamLibrary/steamapps/common/Godot Engine/godot.windows.opt.tools.64.exe",
+  "exit_code": 0,
+  "timed_out": false,
+  "errors": [],
+  "environment_errors": [
+    "ERROR: Failed to read the root certificate store.\r"
+  ],
+  "certificate_warning": true,
+  "real_saves_unchanged": true,
+  "command": [
+    "--path",
+    "C:\\Users\\KSG\\.codex\\worktrees\\0814\\maze_code",
+    "--audio-driver",
+    "Dummy",
+    "--rendering-method",
+    "gl_compatibility",
+    "res://tools/tests/bug_b3_scene.tscn",
+    "--",
+    "--report=C:\\Users\\KSG\\.codex\\worktrees\\0814\\maze_code\\tools\\tests\\bug_b3_evidence\\acceptance_v2\\report.json",
+    "--output-dir=C:\\Users\\KSG\\.codex\\worktrees\\0814\\maze_code\\tools\\tests\\bug_b3_evidence\\acceptance_v2\\screenshots"
+  ],
+  "output": "C:\\Users\\KSG\\.codex\\worktrees\\0814\\maze_code\\tools\\tests\\bug_b3_evidence\\acceptance_v2",
+  "checks": 99,
+  "failures": 0
+}

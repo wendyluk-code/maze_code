@@ -138,7 +138,7 @@ func _begin_dialog(generation: int) -> void:
 		dialog.start("白虎爷爷", ["木材收集好了吗？"], Portrait)
 	else:
 		phase = "farewell"
-		dialog.start("白虎爷爷", ["加油啊，年轻人。"], Portrait)
+		dialog.start("白虎爷爷", ["等孙子回家，就生火做饭。"], Portrait)
 
 func _dialog_finished() -> void:
 	if phase in ["intro", "delivery_intro"]:
@@ -170,7 +170,8 @@ func _next_reward_step() -> void:
 	ingredient_reward.hide()
 	_reward_step += 1
 	if _reward_step >= Config.REWARD_STEPS.size():
-		_show_backpack_reward()
+		phase = "farewell"
+		close_dialog()
 		return
 	var step: Dictionary = Config.REWARD_STEPS[_reward_step]
 	if step.get("food_reward", false):

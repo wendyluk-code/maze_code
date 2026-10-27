@@ -1,0 +1,469 @@
+{
+	"checks": 15,
+	"failures": 0,
+	"results": [
+		{
+			"detail": {},
+			"label": "隔离正式存档",
+			"passed": true
+		},
+		{
+			"detail": {
+				"last": [
+					270.0,
+					720.0
+				],
+				"origin": [
+					790.0,
+					326.0
+				],
+				"stopped": 0,
+				"target": [
+					270.0,
+					720.0
+				],
+				"waypoint": [
+					270.0,
+					720.0
+				]
+			},
+			"label": "道路双向绕弯抵达",
+			"passed": true
+		},
+		{
+			"detail": {
+				"last": [
+					270.0,
+					720.0
+				],
+				"origin": [
+					790.0,
+					326.0
+				],
+				"stopped": 0,
+				"target": [
+					270.0,
+					720.0
+				],
+				"waypoint": [
+					270.0,
+					720.0
+				]
+			},
+			"label": "每步保持道路且不穿墙",
+			"passed": true
+		},
+		{
+			"detail": {
+				"last": [
+					933.0,
+					269.0
+				],
+				"origin": [
+					790.0,
+					326.0
+				],
+				"stopped": 0,
+				"target": [
+					933.0,
+					269.0
+				],
+				"waypoint": [
+					933.0,
+					269.0
+				]
+			},
+			"label": "道路双向绕弯抵达",
+			"passed": true
+		},
+		{
+			"detail": {
+				"last": [
+					933.0,
+					269.0
+				],
+				"origin": [
+					790.0,
+					326.0
+				],
+				"stopped": 0,
+				"target": [
+					933.0,
+					269.0
+				],
+				"waypoint": [
+					933.0,
+					269.0
+				]
+			},
+			"label": "每步保持道路且不穿墙",
+			"passed": true
+		},
+		{
+			"detail": {
+				"last": [
+					790.0,
+					326.0
+				],
+				"origin": [
+					933.0,
+					269.0
+				],
+				"stopped": 0,
+				"target": [
+					790.0,
+					326.0
+				],
+				"waypoint": [
+					790.0,
+					326.0
+				]
+			},
+			"label": "道路双向绕弯抵达",
+			"passed": true
+		},
+		{
+			"detail": {
+				"last": [
+					790.0,
+					326.0
+				],
+				"origin": [
+					933.0,
+					269.0
+				],
+				"stopped": 0,
+				"target": [
+					790.0,
+					326.0
+				],
+				"waypoint": [
+					790.0,
+					326.0
+				]
+			},
+			"label": "每步保持道路且不穿墙",
+			"passed": true
+		},
+		{
+			"detail": {
+				"last": [
+					477.0,
+					766.0
+				],
+				"origin": [
+					270.0,
+					720.0
+				],
+				"stopped": 0,
+				"target": [
+					477.0,
+					766.0
+				],
+				"waypoint": [
+					477.0,
+					766.0
+				]
+			},
+			"label": "道路双向绕弯抵达",
+			"passed": true
+		},
+		{
+			"detail": {
+				"last": [
+					477.0,
+					766.0
+				],
+				"origin": [
+					270.0,
+					720.0
+				],
+				"stopped": 0,
+				"target": [
+					477.0,
+					766.0
+				],
+				"waypoint": [
+					477.0,
+					766.0
+				]
+			},
+			"label": "每步保持道路且不穿墙",
+			"passed": true
+		},
+		{
+			"detail": {
+				"last": [
+					270.0,
+					720.0
+				],
+				"origin": [
+					477.0,
+					766.0
+				],
+				"stopped": 0,
+				"target": [
+					270.0,
+					720.0
+				],
+				"waypoint": [
+					270.0,
+					720.0
+				]
+			},
+			"label": "道路双向绕弯抵达",
+			"passed": true
+		},
+		{
+			"detail": {
+				"last": [
+					270.0,
+					720.0
+				],
+				"origin": [
+					477.0,
+					766.0
+				],
+				"stopped": 0,
+				"target": [
+					270.0,
+					720.0
+				],
+				"waypoint": [
+					270.0,
+					720.0
+				]
+			},
+			"label": "每步保持道路且不穿墙",
+			"passed": true
+		},
+		{
+			"detail": {
+				"last": [
+					551.196655273438,
+					456.525329589844
+				],
+				"origin": [
+					270.0,
+					720.0
+				],
+				"stopped": 0,
+				"target": [
+					552.0,
+					455.0
+				],
+				"waypoint": [
+					552.0,
+					455.0
+				]
+			},
+			"label": "道路双向绕弯抵达",
+			"passed": true
+		},
+		{
+			"detail": {
+				"last": [
+					551.196655273438,
+					456.525329589844
+				],
+				"origin": [
+					270.0,
+					720.0
+				],
+				"stopped": 0,
+				"target": [
+					552.0,
+					455.0
+				],
+				"waypoint": [
+					552.0,
+					455.0
+				]
+			},
+			"label": "每步保持道路且不穿墙",
+			"passed": true
+		},
+		{
+			"detail": {
+				"last": [
+					270.0,
+					720.0
+				],
+				"origin": [
+					552.0,
+					455.0
+				],
+				"stopped": 0,
+				"target": [
+					270.0,
+					720.0
+				],
+				"waypoint": [
+					270.0,
+					720.0
+				]
+			},
+			"label": "道路双向绕弯抵达",
+			"passed": true
+		},
+		{
+			"detail": {
+				"last": [
+					270.0,
+					720.0
+				],
+				"origin": [
+					552.0,
+					455.0
+				],
+				"stopped": 0,
+				"target": [
+					270.0,
+					720.0
+				],
+				"waypoint": [
+					270.0,
+					720.0
+				]
+			},
+			"label": "每步保持道路且不穿墙",
+			"passed": true
+		}
+	],
+	"routes": [
+		{
+			"last": [
+				270.0,
+				720.0
+			],
+			"origin": [
+				790.0,
+				326.0
+			],
+			"stopped": 0,
+			"target": [
+				270.0,
+				720.0
+			],
+			"waypoint": [
+				270.0,
+				720.0
+			]
+		},
+		{
+			"last": [
+				933.0,
+				269.0
+			],
+			"origin": [
+				790.0,
+				326.0
+			],
+			"stopped": 0,
+			"target": [
+				933.0,
+				269.0
+			],
+			"waypoint": [
+				933.0,
+				269.0
+			]
+		},
+		{
+			"last": [
+				790.0,
+				326.0
+			],
+			"origin": [
+				933.0,
+				269.0
+			],
+			"stopped": 0,
+			"target": [
+				790.0,
+				326.0
+			],
+			"waypoint": [
+				790.0,
+				326.0
+			]
+		},
+		{
+			"last": [
+				477.0,
+				766.0
+			],
+			"origin": [
+				270.0,
+				720.0
+			],
+			"stopped": 0,
+			"target": [
+				477.0,
+				766.0
+			],
+			"waypoint": [
+				477.0,
+				766.0
+			]
+		},
+		{
+			"last": [
+				270.0,
+				720.0
+			],
+			"origin": [
+				477.0,
+				766.0
+			],
+			"stopped": 0,
+			"target": [
+				270.0,
+				720.0
+			],
+			"waypoint": [
+				270.0,
+				720.0
+			]
+		},
+		{
+			"last": [
+				551.196655273438,
+				456.525329589844
+			],
+			"origin": [
+				270.0,
+				720.0
+			],
+			"stopped": 0,
+			"target": [
+				552.0,
+				455.0
+			],
+			"waypoint": [
+				552.0,
+				455.0
+			]
+		},
+		{
+			"last": [
+				270.0,
+				720.0
+			],
+			"origin": [
+				552.0,
+				455.0
+			],
+			"stopped": 0,
+			"target": [
+				270.0,
+				720.0
+			],
+			"waypoint": [
+				270.0,
+				720.0
+			]
+		}
+	],
+	"user_dir": "C:/Users/KSG/.codex/worktrees/0814/maze_code/tools/tests/bug_b3_evidence/navigation/profile/Godot/app_userdata/maze_code"
+}

@@ -10,18 +10,18 @@ const REWARD_STEPS := [
 	{"speaker": "主角", "lines": ["你认识我？"]},
 	{"speaker": "白虎爷爷", "lines": ["呵呵，看来你又忘了啊。没事，这些调味的食材送给你，你会用得上的。"]},
 	{"food_reward": true},
-	{"speaker": "白虎爷爷", "lines": ["对了，上次你还留下个背包在我这，跟你的仓库连通很方便，一并还给你。"]},
-	{"speaker": "主角", "lines": ["上次？"]},
-	{"speaker": "白虎爷爷", "lines": ["呵呵，打开看看吧。继续加油，年轻人。"]},
 ]
 const REWARD_ITEMS := [
-	{"id": "lantern_berry", "name": "灯盏果", "quantity": 3, "icon": "res://assets/ui/ingredients/lantern_berry.png", "region": Rect2(77, 82, 103, 93)},
-	{"id": "insulating_leaf", "name": "绝缘叶", "quantity": 3, "icon": "res://assets/ui/ingredients/insulating_leaf.png", "region": Rect2(76, 84, 104, 89)},
+	{"id": "moondew_honey", "name": "月露蜜", "quantity": 3, "icon": "res://assets/ui/ingredients/day1/moondew_honey.png", "region": Rect2(77, 82, 103, 93)},
+	{"id": "cooking_sake", "name": "烧酒", "quantity": 3, "icon": "res://assets/ui/ingredients/day1/cooking_sake.png", "region": Rect2(76, 84, 104, 89)},
 	{"id": "sour_vine_juice", "name": "酸浆藤汁", "quantity": 3, "icon": "res://assets/ui/ingredients/sour_vine_juice.png", "region": Rect2(95, 77, 66, 103)},
 ]
 
 static func reward_texture(item: Dictionary) -> Texture2D:
+	if item.id in ["moondew_honey", "cooking_sake"]:
+		return load(item.icon)
 	var texture := AtlasTexture.new()
 	texture.atlas = load(item.icon)
 	texture.region = item.region
 	return texture
+

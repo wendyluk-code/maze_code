@@ -3,7 +3,12 @@ extends RefCounted
 const REWARD := 100
 const INTERACT_RADIUS := 52.0
 
-static func all() -> Array[Dictionary]:
+static func all(region: String = "maze_entry") -> Array[Dictionary]:
+	if region != "maze_entry":
+		var result: Array[Dictionary]=[]
+		for row in preload("res://data/maze/region_resources.gd").all(region):
+			if row.item=="gold": result.append(row)
+		return result
 	return [
 		{"id": "entry_corridor_north", "position": Vector2(724, 350)},
 		{"id": "entry_west_fork", "position": Vector2(375, 646)},
@@ -13,6 +18,8 @@ static func all() -> Array[Dictionary]:
 	]
 
 static func find(id: String) -> Dictionary:
+	var regional: Dictionary=preload("res://data/maze/region_resources.gd").find(id)
+	if not regional.is_empty(): return regional if regional.item=="gold" else {}
 	for chest in all():
 		if chest.id == id:
 			return chest

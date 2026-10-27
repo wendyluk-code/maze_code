@@ -1,0 +1,29 @@
+{
+  "mode": "smoke",
+  "pid": 60244,
+  "profile": "C:\\Users\\KSG\\.codex\\worktrees\\0814\\maze_code\\tools\\tests\\bug_b3_evidence\\smoke\\profile",
+  "executable": "F:/SteamLibrary/steamapps/common/Godot Engine/godot.windows.opt.tools.64.exe",
+  "exit_code": 0,
+  "timed_out": false,
+  "errors": [],
+  "environment_errors": [
+    "ERROR: Failed to read the root certificate store.\r"
+  ],
+  "certificate_warning": true,
+  "real_saves_unchanged": true,
+  "command": [
+    "--path",
+    "C:\\Users\\KSG\\.codex\\worktrees\\0814\\maze_code",
+    "--audio-driver",
+    "Dummy",
+    "--rendering-method",
+    "gl_compatibility",
+    "--headless",
+    "--quit-after",
+    "5",
+    "--",
+    "--report=C:\\Users\\KSG\\.codex\\worktrees\\0814\\maze_code\\tools\\tests\\bug_b3_evidence\\smoke\\report.json",
+    "--output-dir=C:\\Users\\KSG\\.codex\\worktrees\\0814\\maze_code\\tools\\tests\\bug_b3_evidence\\smoke\\screenshots"
+  ],
+  "output": "C:\\Users\\KSG\\.codex\\worktrees\\0814\\maze_code\\tools\\tests\\bug_b3_evidence\\smoke"
+}

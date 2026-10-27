@@ -1,0 +1,31 @@
+{
+  "mode": "flow",
+  "pid": 75736,
+  "profile": "C:\\Users\\KSG\\.codex\\worktrees\\0814\\maze_code\\tools\\tests\\bug_b3_evidence\\before\\profile",
+  "executable": "F:/SteamLibrary/steamapps/common/Godot Engine/godot.windows.opt.tools.64.exe",
+  "exit_code": 1,
+  "timed_out": false,
+  "errors": [
+    "ERROR: QTE03 FAIL: 右下道具邻近合法站位能受到追击伤害\r"
+  ],
+  "environment_errors": [
+    "ERROR: Failed to read the root certificate store.\r"
+  ],
+  "certificate_warning": true,
+  "real_saves_unchanged": true,
+  "command": [
+    "--path",
+    "C:\\Users\\KSG\\.codex\\worktrees\\0814\\maze_code",
+    "--audio-driver",
+    "Dummy",
+    "--rendering-method",
+    "gl_compatibility",
+    "res://tools/tests/bug_b3_scene.tscn",
+    "--",
+    "--report=C:\\Users\\KSG\\.codex\\worktrees\\0814\\maze_code\\tools\\tests\\bug_b3_evidence\\before\\report.json",
+    "--output-dir=C:\\Users\\KSG\\.codex\\worktrees\\0814\\maze_code\\tools\\tests\\bug_b3_evidence\\before\\screenshots"
+  ],
+  "output": "C:\\Users\\KSG\\.codex\\worktrees\\0814\\maze_code\\tools\\tests\\bug_b3_evidence\\before",
+  "checks": 10,
+  "failures": 1
+}

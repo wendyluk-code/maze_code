@@ -14,14 +14,21 @@
       "complete_event": "exploration.region_entered",
       "completion_handler": "verified_region_arrival",
       "interaction": "enter_target_region"
+    },
+    "collection": {
+      "name": "收集任务",
+      "accept_event": "quest.collection.accepted",
+      "complete_event": "quest.collection.delivered",
+      "completion_handler": "verified_inventory_delivery",
+      "interaction": "collect_then_deliver_to_npc"
     }
   },
   "quests": {
     "restaurant_customer_order": {
       "type": "order",
-      "title": "交出盐烤岩鬃肉",
+      "title": "交付顾客料理",
       "accept_condition": {"handler": "waiting_customer_order_accepted"},
-      "completion_condition": {"handler": "customer_order_settlement"},
+      "completion_condition": {"handler": "customer_order_settlement", "gold_reward": {"recipe_id": "salt_grilled_rockmane", "amount": 5, "config_field": "order_gold", "min": 5, "max": 20, "quality_scaled": false}, "customer_recipes": {"slime_candy": {"gold": 10}, "brick_snail_sashimi": {"gold": 20}, "lizard_tail_skewer": {"gold": 40}}},
       "subtasks": [
         {"id": "collect_ingredients", "title": "领取食材", "handler": "customer_order_ingredients_available"},
         {"id": "cook_dish", "title": "制作料理", "handler": "customer_order_dish_available"}
@@ -31,7 +38,7 @@
       "type": "order",
       "title": "交出盐烤岩鬃肉",
       "accept_condition": {"handler": "canonical_first_order_active"},
-      "completion_condition": {"handler": "canonical_order_settlement", "order_id": "chapter_1_first_order"},
+      "completion_condition": {"handler": "canonical_order_settlement", "order_id": "chapter_1_first_order", "gold_reward": {"recipe_id": "salt_grilled_rockmane", "amount": 5, "config_field": "order_gold", "min": 5, "max": 20, "quality_scaled": false}},
       "subtasks": [
         {"id": "collect_ingredients", "title": "领取食材", "handler": "first_order_ingredients_claimed"},
         {"id": "cook_dish", "title": "制作料理", "handler": "first_order_cooked"}
@@ -43,6 +50,14 @@
       "accept_condition": {"handler": "chapter_1_ready_to_depart"},
       "completion_condition": {"handler": "verified_region_arrival", "floor": 1, "region_id": "old_salt_pool", "implemented": false},
       "subtasks": []
+    },
+    "elder_firewood": {
+      "type": "exploration",
+      "title": "帮助白虎爷爷收集木材",
+      "accept_condition": {"handler": "elder_dialogue_confirmed"},
+      "completion_condition": {"handler": "elder_firewood_delivery", "item_id": "wood", "quantity": 12, "rewards": {"moondew_honey": 3, "cooking_sake": 3, "sour_vine_juice": 3, "backpack_unlocked": true}},
+      "subtasks": [{"id": "collect_materials", "title": "收集材料", "handler": "elder_firewood_inventory_available", "item_id": "wood", "quantity": 12}]
     }
   }
 }
+

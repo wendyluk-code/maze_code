@@ -1,0 +1,4 @@
+interface:
+  display_name: "新地图开发"
+  short_description: "结合枯水渠、分水庭与盐池，确认新地图玩法、素材需求、接入范围和验收"
+  default_prompt: "使用 $new-map-development，先整理新地图开发需要确认的事项和提供的素材，核对现有实现后列出接入与验收方案。"

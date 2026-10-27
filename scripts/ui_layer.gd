@@ -56,7 +56,7 @@ func _rebuild_buttons() -> void:
 func _on_interaction_button_input(event: InputEvent, target: Node2D, button: Control) -> void:
 	if not event is InputEventMouseButton or not event.pressed or event.button_index != MOUSE_BUTTON_LEFT:
 		return
-	if not is_instance_valid(player) or player.input_locked or not button.is_visible_in_tree():
+	if not is_instance_valid(player) or player.input_locked or not player.is_physics_processing() or not button.is_visible_in_tree():
 		return
 	if not is_instance_valid(target) or player.nearest_interactable() != target:
 		return
@@ -92,7 +92,7 @@ func _process(_delta: float) -> void:
 	var cooking_modal := get_tree().get_first_node_in_group("cooking_modal")
 	var restaurant_hud := get_tree().get_first_node_in_group("restaurant_hud")
 	var confirming: bool = is_instance_valid(restaurant_hud) and restaurant_hud.confirmation.visible
-	if confirming or (is_instance_valid(warehouse_modal) and warehouse_modal.visible) or (is_instance_valid(departure_panel) and departure_panel._open) or (is_instance_valid(cooking_modal) and cooking_modal.visible):
+	if (is_instance_valid(player) and (player.input_locked or not player.is_physics_processing())) or confirming or (is_instance_valid(warehouse_modal) and warehouse_modal.visible) or (is_instance_valid(departure_panel) and departure_panel._open) or (is_instance_valid(cooking_modal) and cooking_modal.visible):
 		_hiding = true
 		for b in _buttons.values():
 			if is_instance_valid(b):
@@ -123,7 +123,7 @@ func is_target_in_interaction_range(target: Node2D) -> bool:
 ## 世界坐标 → 屏幕：仅用于定位，按钮尺寸始终为屏幕像素
 func _place_button(btn: Control, node: Node2D, cam: Camera2D, zone: Node, vp: Vector2) -> void:
 	var anchor: Vector2 = node.global_position
-	if zone != null and zone.has_method("top_anchor_of"):
+	if zone != null and zone.has_method("top_anchor_of") and not node.get_meta("use_own_ui_anchor", false):
 		var top: Vector2 = zone.top_anchor_of(anchor)
 		if top != Vector2.ZERO:
 			anchor = top
@@ -140,6 +140,8 @@ func _place_button(btn: Control, node: Node2D, cam: Camera2D, zone: Node, vp: Ve
 
 func action_for(display_name: String) -> String:
 	match display_name:
+		"垃圾桶":
+			return "丢弃"
 		"魔法汤锅", "料理台":
 			return "烹饪"
 		"小餐车":

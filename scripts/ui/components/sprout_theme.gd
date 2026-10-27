@@ -5,7 +5,7 @@ extends RefCounted
 
 const PANEL_TEXTURE: Texture2D = preload("res://assets/ui/ui_big_play_blank.png")
 const ICON_TEXTURE: Texture2D = preload("res://assets/ui/all_icons.png")
-const FONT_CN: Font = preload("res://assets/ui/zcool_kuail.ttf")
+const FONT_CN: Font = preload("res://assets/ui/game_font.tres")
 const FONT_PIXEL: Font = preload("res://assets/ui/sprout_lands.ttf")
 
 const INK := Color("#5b3b20")
@@ -112,3 +112,8 @@ static func selected_style() -> StyleBoxTexture:
 
 static func unselected_style() -> StyleBoxTexture:
 	return button_style(Color("#f0d4a1"))
+
+## 手绘按钮页签共用文字状态；保留各自的整张贴图和尺寸。
+static func apply_tab_button_colors(button: Button, ink: Color) -> void:
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color", "font_disabled_color"]:
+		button.add_theme_color_override(state, ink)

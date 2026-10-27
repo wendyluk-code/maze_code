@@ -1,0 +1,110 @@
+{
+	"clean_plate": "res://output/summon_ui/revision_02/clean_plate_source.png",
+	"layers": {
+		"heading": {
+			"kind": "批准稿原像素与生成底板解混，独立透明层",
+			"rect": [
+				234,
+				162,
+				151,
+				56
+			]
+		},
+		"key_visual": {
+			"kind": "批准稿原像素与生成底板解混，独立透明层",
+			"rect": [
+				350,
+				140,
+				1030,
+				454
+			]
+		},
+		"name_dingdang": {
+			"kind": "批准稿原像素与生成底板解混，独立透明层",
+			"rect": [
+				450,
+				594,
+				137,
+				31
+			]
+		},
+		"name_salia": {
+			"kind": "批准稿原像素与生成底板解混，独立透明层",
+			"rect": [
+				770,
+				594,
+				162,
+				31
+			]
+		},
+		"name_yufeng": {
+			"kind": "批准稿原像素与生成底板解混，独立透明层",
+			"rect": [
+				1120,
+				594,
+				132,
+				31
+			]
+		},
+		"panel_backplate": {
+			"kind": "生成无内容底板，仅取玻璃范围",
+			"rect": [
+				168,
+				140,
+				1445,
+				635
+			]
+		},
+		"single_button": {
+			"kind": "批准稿原像素与生成底板解混，独立透明层",
+			"rect": [
+				523,
+				632,
+				344,
+				88
+			]
+		},
+		"single_price": {
+			"kind": "批准稿原像素与生成底板解混，独立透明层",
+			"rect": [
+				628,
+				719,
+				133,
+				27
+			]
+		},
+		"ten_button": {
+			"kind": "批准稿原像素与生成底板解混，独立透明层",
+			"rect": [
+				881,
+				632,
+				345,
+				88
+			]
+		},
+		"ten_original_price": {
+			"kind": "批准稿原像素与生成底板解混，独立透明层",
+			"rect": [
+				949,
+				719,
+				92,
+				27
+			]
+		},
+		"ten_price": {
+			"kind": "批准稿原像素与生成底板解混，独立透明层",
+			"rect": [
+				1043,
+				719,
+				118,
+				27
+			]
+		}
+	},
+	"source": "res://output/summon_ui/approved_reference.png",
+	"source_sha256": "9a0b19eda74df82c17290ecfa54d42b5b6b793d9e2483bca1c49570014aab97e",
+	"source_size": [
+		1672,
+		941
+	]
+}

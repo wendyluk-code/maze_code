@@ -198,7 +198,7 @@ func chapter_1_lesson() -> Array:
 			"type": "dialog", "speaker": "芽芽",
 			"portrait": "res://assets/characters/yaya_portrait.png",
 			"lines": [
-				"……你终于醒了。记得我吗？",
+				"……你终于醒了。还记得我吗？",
 			],
 		},
 		{
@@ -241,7 +241,7 @@ func chapter_1_lesson() -> Array:
 			"portrait": "res://assets/characters/yaya_portrait.png",
 			"lines": [
 				"先不说了，救人要紧。",
-				"你不会连怎么做饭都忘了吧？……没事，跟我来。你以前，也是这么做的。",
+				"你不会连怎么做饭都忘了吧？……没事，我教你。你以前也是这么做的。",
 			],
 		},
 		{
@@ -253,6 +253,10 @@ func chapter_1_lesson() -> Array:
 			"stage": 3,
 			"type": "interact", "target": "前台",
 			"hint": "靠近前台后，按 E 接下订单",
+		},
+		{
+			"stage": 4,
+			"type": "recipe_unlock",
 		},
 		{
 			"stage": 4,
@@ -383,6 +387,17 @@ func _run_step(token: int) -> void:
 	if _chapter_1_run and stage > 0 and stage != current_stage:
 		current_stage = stage
 		chapter_1_stage_changed.emit(stage, str(CHAPTER_1_STAGE_NAMES.get(stage, "")))
+	if st_type == "recipe_unlock":
+		_set_player_locked(true)
+		var hud := get_tree().get_first_node_in_group("restaurant_hud")
+		if is_instance_valid(hud) and hud.has_method("show_recipe_unlock"):
+			hud.show_recipe_unlock()
+			if hud.has_signal("recipe_unlock_closed") and not hud.recipe_unlock_closed.is_connected(_on_recipe_unlock_closed):
+				hud.recipe_unlock_closed.connect(_on_recipe_unlock_closed)
+			return
+		_set_player_locked(false)
+		_complete_step(token)
+		return
 	# 过场镜头驻留：一旦进入非对话步骤（该回到主角行动），回收镜头
 	if _camera_parked and st_type != "dialog" and st_type != "cutscene_guest":
 		await _unpark_camera(token)
@@ -768,6 +783,12 @@ func _on_empty_warehouse_inspected() -> void:
 
 func _on_departure_map_closed() -> void:
 	if not active or idx >= steps.size() or steps[idx].get("type", "") != "departure_map":
+		return
+	_set_player_locked(false)
+	_complete_step(_run_token)
+
+func _on_recipe_unlock_closed() -> void:
+	if not active or idx < 0 or idx >= steps.size() or steps[idx].get("type", "") != "recipe_unlock":
 		return
 	_set_player_locked(false)
 	_complete_step(_run_token)

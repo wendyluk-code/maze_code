@@ -19,10 +19,15 @@ config/features=PackedStringArray("4.7")
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 SaveManager="*res://scripts/save_manager.gd"
 TutorialManager="*res://scripts/tutorial_manager.gd"
+LocalDebug="*res://scripts/debug/local_debug.gd"
 
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/godot_ai/plugin.cfg")
+
+[gui]
+
+theme/custom_font="res://assets/ui/game_font.tres"
 
 [input]
 

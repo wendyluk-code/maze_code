@@ -31,8 +31,7 @@ func _ready() -> void:
 func set_selected(value: bool) -> void:
 	selected = value
 	scale = Vector2.ONE if value else Vector2(0.88, 0.98)
-	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_disabled_color"]:
-		add_theme_color_override(state, GOLD if value else SproutTheme.CREAM)
+	SproutTheme.apply_tab_button_colors(self, GOLD if value else SproutTheme.CREAM)
 	if is_instance_valid(caption): caption.add_theme_color_override("font_color", GOLD if value else SproutTheme.CREAM)
 	queue_redraw()
 

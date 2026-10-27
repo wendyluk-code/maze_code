@@ -1,0 +1,156 @@
+diff --git a/scripts/maze/maze_entry.gd b/scripts/maze/maze_entry.gd
+index fa91407..a8b7237 100644
+--- a/scripts/maze/maze_entry.gd
++++ b/scripts/maze/maze_entry.gd
+@@ -53,6 +53,7 @@ var _entry_ready := false
+ var _busy := false
+ var _interact_armed := false
+ var _previous_auto_quit := true
++var _arrival_toast_shown := false
+ 
+ func _ready() -> void:
+ 	add_to_group("maze_entry")
+@@ -304,6 +305,9 @@ func _commit_entry() -> void:
+ 
+ func _process(delta: float) -> void:
+ 	_sync_gold_counter()
++	if not _arrival_toast_shown and bool(SaveManager.restaurant_customers().get("arrival_notice", false)):
++		show_toast("你有新顾客哦~")
++		_arrival_toast_shown = true
+ 	_sync_task_access()
+ 	_update_chest_target()
+ 	_update_prompts()
+diff --git a/scripts/restaurant/customer_flow.gd b/scripts/restaurant/customer_flow.gd
+index af2227e..b52a956 100644
+--- a/scripts/restaurant/customer_flow.gd
++++ b/scripts/restaurant/customer_flow.gd
+@@ -12,6 +12,7 @@ var _shade: ColorRect
+ var _dialog: Control
+ var _modal: SproutModal
+ var _choices: VBoxContainer
++var _arrival_toast_shown := false
+ 
+ func _ready() -> void:
+ 	add_to_group("restaurant_customers")
+@@ -39,8 +40,23 @@ func _process(delta: float) -> void:
+ 	_elapsed += delta
+ 	if _elapsed < 0.2 or not SaveManager.is_chapter_1_done(): return
+ 	_elapsed = 0.0
+-	SaveManager.ensure_restaurant_customer()
++	var arrival := SaveManager.ensure_restaurant_customer()
++	if arrival.get("created", false):
++		hud.show_toast("你有新顾客哦~")
++		_arrival_toast_shown = true
+ 	_sync()
++	_clear_arrival_toast_if_seen()
++
++func _clear_arrival_toast_if_seen() -> void:
++	if not _arrival_toast_shown or not is_instance_valid(hud._player): return
++	var front := SaveManager.restaurant_customers().get("front", {})
++	if front.is_empty(): return
++	var actor := actors.get(str(front.get("id", "")))
++	if not is_instance_valid(actor): return
++	if hud._player.global_position.distance_to(actor.global_position) <= 150.0:
++		hud.toast_label.dismiss()
++		_arrival_toast_shown = false
++		SaveManager.consume_customer_arrival_notice()
+ 
+ func _sync() -> void:
+ 	var state := SaveManager.restaurant_customers()
+diff --git a/scripts/save_manager.gd b/scripts/save_manager.gd
+index 52121ce..422090e 100644
+--- a/scripts/save_manager.gd
++++ b/scripts/save_manager.gd
+@@ -113,6 +113,7 @@ func _defaults() -> Dictionary:
+ 		CLAIMED_DIG_SITES_KEY: [],
+ 		YUFENG_SALIA_KEY: "unseen",
+ 		FIRST_SLIME_KEY: {"status": "unseen", "position": [953.0, 255.0]},
++		"restaurant_customers": {"serial": 0, "front": {}, "seated": [], "queue": [], "daily_key": "", "daily_orders": 0, "arrival_notice": false},
+ 	}
+ 
+ func first_slime_state() -> Dictionary:
+@@ -1756,10 +1757,13 @@ func deliver_first_order() -> Dictionary:
+ 
+ ## DAY1-01：顾客、座位、订单同一份持久状态；离场完成才释放座位。
+ func restaurant_customers() -> Dictionary:
+-	var raw = _state.get("restaurant_customers", {"serial": 0, "front": {}, "seated": []})
++	var raw = _state.get("restaurant_customers", {"serial": 0, "front": {}, "seated": [], "queue": []})
+ 	if raw is Dictionary and _customers_valid(raw):
+ 		var result: Dictionary = raw.duplicate(true)
+ 		if not result.has("queue"): result.queue = [] # 旧档只补字段，不改已有订单。
++		if not result.has("daily_key"): result.daily_key = ""
++		if not result.has("daily_orders"): result.daily_orders = 0
++		if not result.has("arrival_notice"): result.arrival_notice = false
+ 		return result
+ 	_diagnose("顾客订单结构无效，停止来客及结算，保留原始记录")
+ 	return {"serial": 0, "front": {}, "seated": [], "invalid": true}
+@@ -1780,20 +1784,28 @@ func ensure_restaurant_customer() -> Dictionary:
+ 		return {"success": false, "reason": "arrival_locked"}
+ 	var state := restaurant_customers()
+ 	if not _customers_valid(state): return {"success": false, "reason": "invalid_state"}
++	var today := Time.get_date_string_from_system()
++	if str(state.daily_key) != today:
++		state.daily_key = today
++		state.daily_orders = 0
++		state.arrival_notice = false
++		_state["restaurant_customers"] = state
+ 	var waiting_count: int = state.queue.size() + (0 if state.front.is_empty() else 1)
++	if int(state.daily_orders) >= 10:
++		return {"success": not state.front.is_empty(), "created": false, "reason": "daily_limit"}
+ 	if state.seated.size() + waiting_count >= 3:
+ 		return {"success": not state.front.is_empty(), "created": false, "reason": "full"}
+ 	var previous := _state.duplicate(true)
+-	while state.seated.size() + state.queue.size() + (0 if state.front.is_empty() else 1) < 3:
+-		var serial := int(state.serial) + 1
+-		var config: Dictionary = CustomerCatalog.CUSTOMERS[(serial - 1) % 3]
+-		state.serial = serial
+-		var order := {"id": "restaurant_%d" % serial, "customer_id": config.id, "item_id": config.recipe,
+-			"item_name": RecipeCatalog.get_recipe(config.recipe).name, "quantity": 1, "phase": "queued", "seat": -1}
+-		if state.front.is_empty():
+-			order.phase = "front"
+-			state.front = order
+-		else: state.queue.append(order)
++	var serial := int(state.serial) + 1
++	var config: Dictionary = CustomerCatalog.CUSTOMERS[(serial - 1) % 3]
++	state.serial = serial
++	var order := {"id": "restaurant_%d" % serial, "customer_id": config.id, "item_id": config.recipe,
++		"item_name": RecipeCatalog.get_recipe(config.recipe).name, "quantity": 1, "phase": "queued", "seat": -1}
++	if state.front.is_empty():
++		order.phase = "front"
++		state.front = order
++	else: state.queue.append(order)
++	state.arrival_notice = true
+ 	_state["restaurant_customers"] = state
+ 	if not save():
+ 		_state = previous
+@@ -1833,6 +1845,7 @@ func accept_restaurant_customer(expected_id: String) -> Dictionary:
+ 	if not _customers_valid(state): return {"success": false, "reason": "invalid_state"}
+ 	if state.seated.size() >= 3: return {"success": false, "reason": "full"}
+ 	if state.front.get("id", "") != expected_id or expected_id.is_empty(): return {"success": false, "reason": "stale_customer"}
++	if int(state.daily_orders) >= 10: return {"success": false, "reason": "daily_limit"}
+ 	var previous := _state.duplicate(true)
+ 	var order: Dictionary = state.front.duplicate(true)
+ 	var occupied: Array = []
+@@ -1844,6 +1857,8 @@ func accept_restaurant_customer(expected_id: String) -> Dictionary:
+ 	order.phase = "seating"
+ 	state.seated.append(order)
+ 	state.front = {}
++	state.daily_orders = int(state.daily_orders) + 1
++	state.arrival_notice = false
+ 	if not state.queue.is_empty():
+ 		state.front = state.queue.pop_front()
+ 		state.front.phase = "front"
+@@ -1856,6 +1871,13 @@ func accept_restaurant_customer(expected_id: String) -> Dictionary:
+ 		return {"success": false, "reason": "save_failed"}
+ 	return {"success": true, "order": order.duplicate(true)}
+ 
++func consume_customer_arrival_notice() -> bool:
++	var state := restaurant_customers()
++	if not bool(state.get("arrival_notice", false)): return false
++	state.arrival_notice = false
++	_state["restaurant_customers"] = state
++	return true
++
+ func advance_restaurant_customer(id: String, expected: String, next: String) -> Dictionary:
+ 	var transitions := {"seating": "waiting", "eating": "farewell", "farewell": "leaving", "leaving": "departed"}
+ 	if transitions.get(expected) != next: return {"success": false, "reason": "invalid_transition"}

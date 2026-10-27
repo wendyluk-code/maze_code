@@ -1,0 +1,96 @@
+{
+	"checks": 10,
+	"failures": 1,
+	"probes": [
+		{
+			"anchor": "(923.0, 1211.0)",
+			"distance": 61.0573501586914,
+			"point": "(871.0, 1179.0)",
+			"prop": "entry_dig_south_bend"
+		},
+		{
+			"anchor": "(804.0, 1195.0)",
+			"distance": 41.1825218200684,
+			"point": "(824.0, 1159.0)",
+			"prop": "entry_south_rim"
+		},
+		{
+			"anchor": "(1075.0, 627.0)",
+			"distance": 43.2666168212891,
+			"point": "(1099.0, 663.0)",
+			"prop": "entry_east_rim"
+		}
+	],
+	"results": [
+		{
+			"detail": {},
+			"label": "隔离正式存档",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "初始化隔离存档",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "真实首单事务达成收尾前置",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "完整第一章前置：party",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "完整第一章前置：home",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "完整第一章前置：maze",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "完整第一章前置：title",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "新趟初始化",
+			"passed": true
+		},
+		{
+			"detail": {},
+			"label": "显式固定布局夹具保存",
+			"passed": true
+		},
+		{
+			"detail": {
+				"actor": {
+					"away": 0.0,
+					"cooldown": 0.0,
+					"flash_remaining": 0.0,
+					"hp": 21,
+					"mode": "chase",
+					"position": [
+						983.0,
+						1132.0
+					],
+					"velocity": [
+						-55.0341796875,
+						-134.150390625
+					],
+					"windup": 0.0
+				},
+				"hp_after": 36,
+				"hp_before": 36,
+				"target": "(999.0, 1171.0)"
+			},
+			"label": "右下道具邻近合法站位能受到追击伤害",
+			"passed": false
+		}
+	]
+}

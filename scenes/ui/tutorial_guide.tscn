@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/tutorial_guide.gd" id="1_guide"]
 [ext_resource type="PackedScene" path="res://scenes/ui/dialog_box.tscn" id="3_dlg"]
-[ext_resource type="FontFile" path="res://assets/ui/zcool_kuail.ttf" id="4_font"]
+[ext_resource type="FontVariation" path="res://assets/ui/game_font.tres" id="4_font"]
 [ext_resource type="Texture2D" path="res://assets/ui/all_icons.png" id="5_icons"]
 
 [sub_resource type="StyleBoxFlat" id="skip_style"]
@@ -135,7 +135,7 @@ theme_override_font_sizes/font_size = 18
 theme_override_styles/normal = SubResource("skip_style")
 theme_override_styles/hover = SubResource("skip_style")
 theme_override_styles/pressed = SubResource("skip_style")
-text = "跳过 ▸"
+text = "跳过 >"
 
 [node name="HintPanel" type="PanelContainer" parent="."]
 unique_name_in_owner = true

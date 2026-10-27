@@ -1,5 +1,5 @@
 extends Control
-## 仓库界面：5×6 食材图标网格，以及独立的已选择食材列表。
+## 仓库界面：五列大图标网格，以及独立的已选择食材列表。
 
 signal claimed(result: Dictionary)
 signal cancelled
@@ -8,9 +8,9 @@ signal inspected
 const MAX_ITEM_QUANTITY := 999
 const GRID_COLUMNS := 5
 const MAX_GRID_ITEMS := 30
-const GRID_CELL_SIZE := SproutItemSlot.GRID_SIZE
+const GRID_CELL_SIZE := Vector2(56, 56)
 const GRID_VISIBLE_HEIGHT := 3.5 * GRID_CELL_SIZE.y + 3 * 4
-const PANEL_WIDTH := 5 * GRID_CELL_SIZE.x + 4 * 4 + 12 + 16
+const PANEL_WIDTH := 324.0
 const ROCK_SALT_ICON: Texture2D = preload("res://assets/ui/ingredients/rock_salt.png")
 const ROCKMANE_MEAT_ICON: Texture2D = preload("res://assets/ui/ingredients/rockmane_meat.png")
 const DISH_ICON: Texture2D = preload("res://assets/ui/ingredients/salt_grilled_rockmane.png")
@@ -30,6 +30,8 @@ var _open := false
 var _empty_stock := false
 var _general_stock := false
 var _backpack_view := false
+var _temporary_backpack: Dictionary = {}
+var _heading: Label
 var _stock_title: Label
 var _slots_grid: GridContainer
 var _scroll: ScrollContainer
@@ -73,10 +75,13 @@ func _ready() -> void:
 func _layout_modal() -> void:
 	if not is_instance_valid(_panel):
 		return
-	var panel_height := minf(480.0, size.y - 16.0)
+	_tabs.visible = not _backpack_view
+	(_cancel_button.get_parent() as HBoxContainer).alignment = BoxContainer.ALIGNMENT_CENTER if _backpack_view else BoxContainer.ALIGNMENT_END
+	_scroll.custom_minimum_size.y = 4 * 56 + 3 * 4 if _backpack_view else GRID_VISIBLE_HEIGHT
 	var panel_width := PANEL_WIDTH + _scroll.get_v_scroll_bar().get_combined_minimum_size().x
-	_panel.position = Vector2((size.x - panel_width) * 0.5, (size.y - panel_height) * 0.5)
-	_panel.size = Vector2(panel_width, panel_height)
+	_panel.custom_minimum_size = Vector2(panel_width, 0)
+	_panel.size = Vector2(panel_width, _panel.get_combined_minimum_size().y)
+	_panel.position = (size - _panel.size) * 0.5
 
 func _process(_delta: float) -> void:
 	if not _open:
@@ -114,18 +119,19 @@ func _build() -> void:
 
 	# 内容区始终占满剩余高度，隐藏选择列表时也保持底部按钮栏的位置。
 	var outer := VBoxContainer.new()
-	outer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	outer.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	outer.add_theme_constant_override("separation", 4)
 	frame.add_child(outer)
 
 	var heading := Label.new()
+	_heading = heading
 	heading.text = "仓库"
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	heading.add_theme_font_size_override("font_size", 24)
 	heading.add_theme_color_override("font_color", SproutTheme.INK)
 	outer.add_child(heading)
 
-	_tabs = TabBar.new()
+	_tabs = preload("res://scripts/ui/components/sprout_tab_bar.gd").new()
 	_tabs.name = "CategoryTabs"
 	_tabs.tab_alignment = TabBar.ALIGNMENT_LEFT
 	_tabs.add_tab("全部")
@@ -161,10 +167,11 @@ func _build() -> void:
 	_slots_grid.columns = GRID_COLUMNS
 	_slots_grid.add_theme_constant_override("h_separation", 4)
 	_slots_grid.add_theme_constant_override("v_separation", 4)
-	_slots_grid.custom_minimum_size = Vector2(0, 6.0 * GRID_CELL_SIZE.y + 5.0 * 4.0)
-	_slots_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_slots_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_scroll.add_child(_slots_grid)
 	_build_catalog()
+	_slots_grid.resized.connect(_fit_square_slots)
+	call_deferred("_fit_square_slots")
 
 	_empty_label = Label.new()
 	_empty_label.text = "仓库暂无材料"
@@ -184,7 +191,7 @@ func _build() -> void:
 
 	_selection_area = PanelContainer.new()
 	_selection_area.name = "SelectedFoodBackground"
-	_selection_area.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_selection_area.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_selection_area.add_theme_stylebox_override("panel", _box(Color("#f5e5c6"), Color("#d4b986"), 1, 4))
 	outer.add_child(_selection_area)
 	_selected_scroll = ScrollContainer.new()
@@ -214,7 +221,7 @@ func _build() -> void:
 	_selection_label.text = "已选择 0 种，共 0 份"
 	_selection_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_selection_label.add_theme_font_size_override("font_size", 16)
-	_selection_label.add_theme_font_override("font", ThemeDB.fallback_font)
+	_selection_label.add_theme_font_override("font", SproutTheme.FONT_CN)
 	_selection_label.add_theme_color_override("font_color", SproutTheme.INK_MUTED)
 	_selection_label.visible = false
 	outer.add_child(_selection_label)
@@ -284,16 +291,28 @@ func _build_catalog() -> void:
 		elif slot.item_id == "salt_grilled_rockmane":
 			_dish_slot = slot
 
+func _fit_square_slots() -> void:
+	if not is_instance_valid(_slots_grid) or _slots_grid.size.x <= 0:
+		return
+	var side := 56.0
+	if side < 56.0:
+		return
+	for slot in _slots_grid.get_children():
+		if slot is SproutItemSlot:
+			slot.configure_grid_display(Vector2(side, side), Vector2(40, 40), true)
+
 func _create_slot(id: String, label_text: String, icon_index: int) -> SproutItemSlot:
 	var slot := SproutItemSlot.new()
 	slot.name = id
-	slot.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	# 槽位横向填满网格列，避免网格左右出现额外留白；图标仍在正方形槽内居中。
+	slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	slot.custom_minimum_size = GRID_CELL_SIZE
 	slot.focus_mode = Control.FOCUS_NONE
 	slot.slot_selected.connect(_on_slot_selected)
 	slot.selection_changed.connect(_on_slot_quantity_changed)
 	slot.configure(id, label_text, 0, icon_index, true)
 	slot.set_grid_mode(true)
+	slot.configure_grid_display(GRID_CELL_SIZE, Vector2(40, 40), true)
 	if id == "rock_salt":
 		slot.set_icon_texture(_ingredient_icon(ROCK_SALT_ICON, Rect2(83, 88, 97, 90)))
 	elif id == "rockmane_meat":
@@ -319,6 +338,7 @@ func _ingredient_icon(source: Texture2D, region: Rect2) -> AtlasTexture:
 	return texture
 
 func open_for_order() -> void:
+	_heading.text = "仓库"
 	_restore_slot_order()
 	_backpack_view = false
 	_general_stock = false
@@ -346,8 +366,10 @@ func open_for_order() -> void:
 	_update_grid_scrollbar()
 	_update_selection()
 	_set_tutorial_suppressed(true)
+	call_deferred("_layout_modal")
 
 func open_empty_stock() -> void:
+	_heading.text = "仓库"
 	_restore_slot_order()
 	_backpack_view = false
 	_general_stock = false
@@ -373,11 +395,13 @@ func open_empty_stock() -> void:
 		var slot: SproutItemSlot = _slot_by_id[item_id]
 		var quantity := int(stock.get(item_id, 0))
 		_set_slot(slot, quantity, true, true)
+	_compact_backpack_slots(stock)
 	_update_selection()
 	_set_tutorial_suppressed(true)
+	call_deferred("_layout_modal")
 
 func _has_stock(stock: Dictionary) -> bool:
-	for item_id in ["rockmane_meat", "rock_salt", "salt_grilled_rockmane"]:
+	for item_id in stock:
 		if int(stock.get(item_id, 0)) > 0:
 			return true
 	return false
@@ -396,9 +420,11 @@ func open_stock() -> void:
 	for item_id in _slot_by_id:
 		var quantity := int(stock.get(item_id, 0))
 		_set_slot(_slot_by_id[item_id], quantity, quantity <= 0, true)
+	_compact_backpack_slots(stock)
 	_update_selection()
 
 func _set_slot(slot: SproutItemSlot, quantity: int, disabled_state: bool, slot_visible: bool) -> void:
+	slot.modulate = Color.WHITE
 	slot.configure(slot.item_id, slot._item_name, clampi(quantity, 0, MAX_ITEM_QUANTITY), slot._icon_index, disabled_state)
 	slot.set_selected_quantity(0)
 	slot.set_selected(false)
@@ -414,6 +440,10 @@ func close_modal() -> void:
 func _on_slot_selected(item_id: String) -> void:
 	if not _open or _empty_stock or _backpack_view:
 		return
+	if not SaveManager.carried_ingredients().is_empty():
+		return
+	if not _selected.has(item_id) and _selected.size() >= SaveManager.MAX_WAREHOUSE_KINDS:
+		return
 	var slot: SproutItemSlot = _slot_by_id.get(item_id)
 	if not is_instance_valid(slot) or slot.disabled or slot._quantity <= 0:
 		return
@@ -421,6 +451,18 @@ func _on_slot_selected(item_id: String) -> void:
 
 func _on_slot_quantity_changed(item_id: String, quantity: int) -> void:
 	if not _open or _empty_stock or _backpack_view:
+		return
+	if quantity > 0 and not SaveManager.carried_ingredients().is_empty():
+		var blocked_slot: SproutItemSlot = _slot_by_id.get(item_id)
+		if is_instance_valid(blocked_slot): blocked_slot.set_selected_quantity(int(_selected.get(item_id, 0)))
+		return
+	if quantity > 0 and not _selected.has(item_id) and _selected.size() >= SaveManager.MAX_WAREHOUSE_KINDS:
+		var rejected_slot: SproutItemSlot = _slot_by_id.get(item_id)
+		if is_instance_valid(rejected_slot): rejected_slot.set_selected_quantity(0)
+		return
+	if quantity > int(_selected.get(item_id, 0)) and not _can_add_material(item_id, quantity):
+		var rejected_slot: SproutItemSlot = _slot_by_id.get(item_id)
+		if is_instance_valid(rejected_slot): rejected_slot.set_selected_quantity(int(_selected.get(item_id, 0)))
 		return
 	if quantity <= 0:
 		_selected.erase(item_id)
@@ -441,8 +483,28 @@ func _update_selection() -> void:
 			total += quantity
 	_selection_label.text = "已选择 %d 种，共 %d 份" % [kinds, total]
 	_selected_title.text = "已选择食材"
-	_claim_button.disabled = _selected.is_empty() if _general_stock else not _is_first_order_selection()
+	_claim_button.disabled = not SaveManager.warehouse_selection_complete(_selected) if _general_stock else not _is_first_order_selection()
+	_claim_button.disabled = _claim_button.disabled or not SaveManager.carried_ingredients().is_empty()
+	_update_recipe_slots()
 	_rebuild_selected_list()
+
+func _can_add_material(item_id: String, quantity: int) -> bool:
+	var proposed := _selected.duplicate()
+	proposed[item_id] = quantity
+	if proposed.size() > SaveManager.MAX_WAREHOUSE_KINDS:
+		return false
+	return not SaveManager.warehouse_recipe_candidates(proposed).is_empty()
+
+func _update_recipe_slots() -> void:
+	if _backpack_view or _empty_stock:
+		return
+	var hands_full := not SaveManager.carried_ingredients().is_empty()
+	for item_id in _slot_by_id:
+		var slot: SproutItemSlot = _slot_by_id[item_id]
+		var quantity := int(_selected.get(item_id, 0))
+		slot.disabled = hands_full or quantity >= slot._quantity or not _can_add_material(item_id, quantity + 1)
+		# 只在仓库取料模式灰显不相容材料，保留已选格的绿色及背包原样式。
+		slot.modulate = Color(0.48, 0.48, 0.48, 0.65) if slot.disabled and quantity == 0 and slot._quantity > 0 else Color.WHITE
 
 func _rebuild_selected_list() -> void:
 	if not is_instance_valid(_selected_list):
@@ -472,7 +534,7 @@ func _rebuild_selected_list() -> void:
 			_selected_list.add_child(row)
 		var content: HBoxContainer = _selected_rows[item_id].get_child(0)
 		content.get_node("Count").text = str(quantity)
-		content.get_node("Plus").disabled = quantity >= slot._quantity
+		content.get_node("Plus").disabled = quantity >= slot._quantity or not _can_add_material(item_id, quantity + 1) or not SaveManager.carried_ingredients().is_empty()
 	if visible_count == 0:
 		if _selected_empty_label.get_parent() != _selected_list:
 			_selected_list.add_child(_selected_empty_label)
@@ -503,6 +565,7 @@ func _make_selected_row(item_id: String, slot: SproutItemSlot, quantity: int) ->
 	name_label.add_theme_font_size_override("font_size", 15)
 	name_label.add_theme_color_override("font_color", SproutTheme.INK)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content.add_child(name_label)
@@ -562,6 +625,14 @@ func _on_cancel_pressed() -> void:
 
 func _on_claim_pressed() -> void:
 	if _backpack_view: return
+	if not SaveManager.carried_ingredients().is_empty():
+		_update_selection()
+		return
+	if _selected.size() > SaveManager.MAX_WAREHOUSE_KINDS:
+		return
+	if not SaveManager.warehouse_selection_complete(_selected):
+		_update_selection()
+		return
 	if _general_stock and _open:
 		var result := SaveManager.take_warehouse_items(_selected)
 		if result.success:
@@ -608,47 +679,31 @@ func _set_tutorial_suppressed(value: bool) -> void:
 			_hidden_guide.visible = _guide_was_visible
 			_hidden_guide = null
 
-## 背包只读仓库视图，汇总餐厅仓库存量与已获得库存，不移动物品。
-func open_backpack() -> void:
+## temporary=true仅显示传入暂存食材；默认调用保留餐厅原有只读库存入口。
+func open_backpack(temporary_items: Dictionary = {}, temporary: bool = false) -> void:
 	open_empty_stock()
 	_backpack_view = true
 	_empty_stock = false
+	_temporary_backpack = temporary_items.duplicate(true)
+	var display_stock: Dictionary = _temporary_backpack.duplicate(true)
+	if not temporary:
+		display_stock = SaveManager.inventory_snapshot()
+		var stored := SaveManager.warehouse_snapshot()
+		for item_id in stored: display_stock[item_id] = int(display_stock.get(item_id,0)) + int(stored[item_id])
 	_cancel_button.configure("关闭")
 	_cancel_button.grab_focus()
-	var stock := SaveManager.inventory_snapshot()
-	var stored := SaveManager.warehouse_snapshot()
-	for item_id in stored:
-		stock[item_id] = int(stock.get(item_id, 0)) + int(stored[item_id])
-	if not _slot_by_id.has("wood"):
-		var reserved: SproutItemSlot = _slot_by_id["reserved_04"]
-		_slots_grid.remove_child(reserved)
-		reserved.queue_free()
-		_slot_by_id.erase("reserved_04")
-		var wood_slot := _create_slot("wood", "木材", 0)
-		_slots_grid.add_child(wood_slot)
-		_slots_grid.move_child(wood_slot, 3)
-		_slot_by_id["wood"] = wood_slot
-	var rewards: Array = preload("res://data/maze/elder_firewood.gd").REWARD_ITEMS.duplicate(true)
-	rewards.append({"id": "slime_gel", "name": "史莱姆凝胶"})
-	for i in rewards.size():
-		var item: Dictionary = rewards[i]
-		if _slot_by_id.has(item.id): continue
-		var reserved_id := "reserved_%02d" % (i + 5)
-		var reserved: SproutItemSlot = _slot_by_id[reserved_id]
-		_slots_grid.remove_child(reserved)
-		reserved.queue_free()
-		_slot_by_id.erase(reserved_id)
-		var slot := _create_slot(item.id, item.name, 0)
-		_slots_grid.add_child(slot)
-		_slots_grid.move_child(slot, i + 4)
-		_slot_by_id[item.id] = slot
+	for item_id in display_stock:
+		if not _slot_by_id.has(item_id):
+			var info := preload("res://scripts/cooking/recipe_catalog.gd").get_ingredient(item_id)
+			var slot := _create_slot(item_id, str(info.get("name",item_id)), 0)
+			_slots_grid.add_child(slot)
+			_slot_by_id[item_id] = slot
 	for item_id in _slot_by_id:
 		var slot: SproutItemSlot = _slot_by_id[item_id]
-		var quantity := int(stock.get(item_id, 0))
-		_set_slot(slot, quantity, false, true)
-		# 槽位保持正常色彩与数量，选择回调由只读模式拒绝。
-	_compact_backpack_slots()
-	_message.text = "材料与食材"
+		_set_slot(slot, int(display_stock.get(item_id,0)), false, true)
+	_heading.text = "背包" if temporary else "仓库"
+	_compact_backpack_slots(display_stock)
+	_message.text = "完成探索后带回餐厅，\n中途放弃将失去所有食材" if temporary else "材料与食材"
 	_message.show()
 	_scroll.scroll_vertical = 0
 
@@ -658,9 +713,23 @@ func _restore_slot_order() -> void:
 			_slots_grid.move_child(_backpack_slot_order[index], index)
 	_backpack_slot_order.clear()
 
-func _compact_backpack_slots() -> void:
+func _compact_backpack_slots(stock: Dictionary = {}) -> void:
 	# 背包是只读汇总视图：有库存的槽位稳定保持原顺序并压到前排，空槽统一置后。
 	_backpack_slot_order = _slots_grid.get_children()
+	if not stock.is_empty():
+		var occupied_by_stock: Array[SproutItemSlot] = []
+		var empty_by_stock: Array[SproutItemSlot] = []
+		for child in _slots_grid.get_children():
+			if not child is SproutItemSlot: continue
+			var slot := child as SproutItemSlot
+			if int(stock.get(slot.item_id, 0)) > 0: occupied_by_stock.append(slot)
+			else: empty_by_stock.append(slot)
+		var ordered_by_stock: Array[SproutItemSlot] = occupied_by_stock + empty_by_stock
+		for index in ordered_by_stock.size(): _slots_grid.move_child(ordered_by_stock[index], index)
+		_backpack_slot_order.clear()
+		for slot in ordered_by_stock:
+			_backpack_slot_order.append(slot)
+		return
 	var occupied: Array[SproutItemSlot] = []
 	var empty: Array[SproutItemSlot] = []
 	for child in _slots_grid.get_children():
@@ -680,5 +749,19 @@ func _input(event: InputEvent) -> void:
 	if not _backpack_view or not _open: return
 	if event is InputEventKey:
 		get_viewport().set_input_as_handled()
-		if event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
-			_on_cancel_pressed()
+		if event.pressed:
+			match event.keycode:
+				KEY_ESCAPE:
+					if not event.echo: _on_cancel_pressed()
+				KEY_DOWN:
+					_scroll.scroll_vertical += int(GRID_CELL_SIZE.y + 4)
+				KEY_UP:
+					_scroll.scroll_vertical -= int(GRID_CELL_SIZE.y + 4)
+				KEY_PAGEDOWN:
+					_scroll.scroll_vertical += int(GRID_VISIBLE_HEIGHT)
+				KEY_PAGEUP:
+					_scroll.scroll_vertical -= int(GRID_VISIBLE_HEIGHT)
+				KEY_HOME:
+					_scroll.scroll_vertical = 0
+				KEY_END:
+					_scroll.scroll_vertical = int(_scroll.get_v_scroll_bar().max_value)

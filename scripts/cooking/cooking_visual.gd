@@ -10,6 +10,11 @@ const POT_SCALE := 0.94
 const POT_OFFSET := Vector2(46.08, 190)
 const POT_PATH := "res://assets/ui/cooking/pot_base.png"
 const FIRE_PATH := "res://assets/ui/cooking/flame.png"
+const POINTER_PATH := "res://assets/ui/cooking/cooking_pointer_v1.png"
+const POINTER_HEIGHT := 104.0
+# 原图 alpha>=0.05 的主体边界为(453,112,348,1012)，四边各留2像素。
+# 外部极低 alpha 杂点不作为显示尺寸；此矩形不修改源图，也不裁两尖。
+const POINTER_REGION := Rect2(451, 110, 352, 1016)
 const ZONE_RED := Color("#ed6457")
 const ZONE_YELLOW := Color("#ffdb69")
 const ZONE_GREEN := Color("#7bc986")
@@ -17,6 +22,7 @@ const ZONE_GREEN := Color("#7bc986")
 var pointer_position := -1.0
 var perfect_width := 0.16
 var good_width := 0.80
+var zone_center := 0.0
 var running := false
 var tutorial_highlight := false
 var animation_time := 0.0
@@ -24,11 +30,26 @@ var ingredients: Dictionary = {}
 var _icons: Dictionary = {}
 var _pot: Texture2D
 var _fire: Texture2D
+var _pointer: AtlasTexture
+var _pointer_sprite: Sprite2D
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_pot = _load_texture(POT_PATH)
 	_fire = _sprite_region(FIRE_PATH, Rect2(230, 75, 810, 1100))
+	var pointer_source := _load_texture(POINTER_PATH)
+	if pointer_source != null:
+		# 原图像素与真实 alpha 不变，仅以非透明边界去除显示留白。
+		_pointer = AtlasTexture.new()
+		_pointer.atlas = pointer_source
+		_pointer.region = POINTER_REGION
+		_pointer.filter_clip = true
+		_pointer_sprite = Sprite2D.new()
+		_pointer_sprite.name = "GoldPointer"
+		_pointer_sprite.texture = _pointer
+		# 只让高分辨率指针平滑缩小，不改变锅体、食材等既有像素采样。
+		_pointer_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		add_child(_pointer_sprite)
 	set_process(false)
 	queue_redraw()
 
@@ -63,18 +84,22 @@ func set_tutorial_highlight(value: bool) -> void:
 func set_ingredients(value: Dictionary) -> void:
 	ingredients.clear()
 	_icons.clear()
+	var display := preload("res://scripts/ui/components/loot_modal.gd").new()
 	for item_id in value:
 		var entry := Catalog.get_ingredient(str(item_id))
 		if entry.is_empty() or int(value[item_id]) <= 0:
 			continue
 		ingredients[str(item_id)] = int(value[item_id])
+		# 正式原料可暂缺已批准图片；显示名称，不加载空路径或借用成品图。
+		if str(entry.get("icon", "")).is_empty(): continue
 		var source := _load_texture(str(entry.get("icon", "")))
 		if source == null:
 			continue
 		var atlas := AtlasTexture.new()
 		atlas.atlas = source
 		atlas.region = entry.get("icon_region", Rect2(Vector2.ZERO, source.get_size()))
-		_icons[str(item_id)] = atlas
+		_icons[str(item_id)] = display.display_texture(atlas)
+	display.free()
 	queue_redraw()
 
 func _process(delta: float) -> void:
@@ -111,7 +136,8 @@ func countdown_center() -> Vector2:
 
 func zone_boundaries() -> PackedFloat32Array:
 	# [-1, 1] 的判定半宽映射到 [0, 1]，须再除以二。
-	return PackedFloat32Array([0.0, 0.5 - good_width * 0.25, 0.5 - perfect_width * 0.25, 0.5 + perfect_width * 0.25, 0.5 + good_width * 0.25, 1.0])
+	var center := (zone_center + 1.0) * 0.5
+	return PackedFloat32Array([0.0, center - good_width * 0.25, center - perfect_width * 0.25, center + perfect_width * 0.25, center + good_width * 0.25, 1.0])
 
 func _draw() -> void:
 	var factor := _design_scale()
@@ -127,7 +153,7 @@ func _draw() -> void:
 	for index in range(boundaries.size() - 1):
 		var start := boundaries[index]
 		var end := boundaries[index + 1]
-		var stars := Judgement.stars_for_position((start + end) - 1.0, perfect_width, good_width)
+		var stars := Judgement.stars_for_position((start + end) - 1.0, perfect_width, good_width, zone_center)
 		_draw_band(start, end, ZONE_GREEN if stars == 3 else (ZONE_YELLOW if stars == 2 else ZONE_RED))
 	var outer := PackedVector2Array()
 	var inner := PackedVector2Array()
@@ -159,16 +185,15 @@ func _draw_band(start: float, end: float, color: Color) -> void:
 func _draw_pointer() -> void:
 	var fraction := (pointer_position + 1.0) * 0.5
 	var center := _arc_centerline(fraction)
-	if tutorial_highlight:
-		draw_circle(center, 51.0, Color(1.0, 0.96, 0.69, 0.3))
 	var normal := _arc_normal(fraction)
 	var tangent := Vector2(-normal.y, normal.x)
-	# 与弧带在同一绘制坐标内沿中线滑动，缩短尖端避免视觉上脱离色带。
-	var diamond := PackedVector2Array([center + normal * 38.0, center + tangent * 22.0,
-		center - normal * 38.0, center - tangent * 22.0])
-	draw_colored_polygon(diamond, Color("#41433e"))
-	diamond.append(diamond[0])
-	draw_polyline(diamond, Color("#fff6dd"), 5.0, true)
+	if _pointer == null:
+		return
+	var factor := _design_scale()
+	# 原轨迹交点仍为纹理中心，两尖沿色带法线转向；评分与速度不参与显示变换。
+	_pointer_sprite.position = _design_offset() + center * factor
+	_pointer_sprite.rotation = tangent.angle()
+	_pointer_sprite.scale = Vector2.ONE * (factor * POINTER_HEIGHT / _pointer.region.size.y)
 
 func _draw_ingredients() -> void:
 	var count := ingredients.size()
@@ -181,8 +206,11 @@ func _draw_ingredients() -> void:
 		center.y += wiggle * 9.0
 		var texture: Texture2D = _icons.get(id)
 		if texture != null:
-			var icon_size := Vector2(160, 144)
+			var source_size := texture.get_size()
+			var icon_size := source_size * minf(160.0 / source_size.x, 144.0 / source_size.y)
 			draw_texture_rect(texture, Rect2(center - icon_size * 0.5, icon_size), false)
+		else:
+			draw_string(SproutTheme.FONT_CN, center + Vector2(-110, 12), str(Catalog.get_ingredient(id).get("name", id)), HORIZONTAL_ALIGNMENT_CENTER, 220, 36, SproutTheme.INK)
 		var number := str(ingredients[id])
 		var baseline := center + Vector2(55, 72)
 		draw_string_outline(SproutTheme.FONT_CN, baseline, number, HORIZONTAL_ALIGNMENT_LEFT, -1, 58, 10, Color("#553824"))

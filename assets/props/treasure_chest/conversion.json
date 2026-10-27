@@ -1,0 +1,29 @@
+{
+  "gif_sha256": "3291af26e2ffd88fae4653c3b50d6ff1054a2f0fa183b8ddeaa08abdb079cf2d",
+  "size": [
+    256,
+    256
+  ],
+  "frame_count": 8,
+  "durations_ms": [
+    120,
+    120,
+    120,
+    120,
+    120,
+    120,
+    120,
+    120
+  ],
+  "rgba_roundtrip_exact": true,
+  "frame_sha256": [
+    "e679d6aa263a2d16f89da17ea39186e4c89f69abf3873cb7dd6225f52767455d",
+    "8e3915bad727c2af319322dc65ff2b3624e8f8611fb6e16be1d485919f8bf74c",
+    "e59843b9243aff44db687b88a99253a3c27a8bea89b1ce0c951d52e00e820890",
+    "55ec9a546624785cfa40808c90e40cb1627ec341e0014668bfff339308d5b315",
+    "5226be42f4501f64e586884bb821fd1549d2a544a3b2abf65767e252e7aae804",
+    "5a40e49de736284cb6a98eb2e4b363af0fd23f866fc7685208b69195f7c6446d",
+    "a033bab8cfc8baa6cbea05cf9629ea98a40ef66f13909c0513c80047ba845417",
+    "e296c9c0cb9730bfa0db4dc3892f6e0d60357fcea0d1a828fa4d750758c6bf51"
+  ]
+}

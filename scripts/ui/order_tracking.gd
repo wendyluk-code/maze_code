@@ -4,6 +4,7 @@ extends Control
 const PANEL_WIDTH := 260.0
 # 入口与详情共用左边缘，沿用16像素屏幕安全边距。
 const PANEL_POSITION := Vector2(16, 66)
+const RESTAURANT_PANEL_HEIGHT := 411.0
 const EXPAND_DURATION := 0.25
 const COMPLETION_COLOR := Color("#dce8c6")
 const STATUS_ICON = preload("res://scripts/ui/task_status_icon.gd")
@@ -12,6 +13,7 @@ const DISH_ICON: Texture2D = preload("res://assets/ui/ingredients/salt_grilled_r
 const MEAT_ICON: Texture2D = preload("res://assets/ui/ingredients/rockmane_meat.png")
 const SALT_ICON: Texture2D = preload("res://assets/ui/ingredients/rock_salt.png")
 var _panel: PanelContainer
+var _scroll: ScrollContainer
 var _task_button: Button
 var _notification: Label
 var _order_status: Button
@@ -40,7 +42,14 @@ var _exploration_task: PanelContainer
 var _exploration_title: Label
 var _exploration_name: Label
 var _exploration_status: Button
+var _collection_task: PanelContainer
+var _collection_name: Label
+var _collection_status: Button
+var _collection_subtasks: Control
+var _collection_was_active := false
+var _collection_feedback_left := 0.0
 var _empty_tasks: Label
+var _customer_tasks: VBoxContainer
 var _quest_view_signature := ""
 var _refresh_elapsed := 0.0
 
@@ -51,6 +60,7 @@ func _ready() -> void:
 	theme = SproutTheme.make_theme()
 	visible = false
 	_build()
+	enable_restaurant_scrolling()
 	_set_explanation_glow(0.0)
 	visibility_changed.connect(_on_visibility_changed)
 	call_deferred("refresh_saved_state")
@@ -63,6 +73,8 @@ func _on_visibility_changed() -> void:
 		_immediate_cleanup()
 
 func _process(delta: float) -> void:
+	if _collection_feedback_left > 0 and _panel.is_visible_in_tree() and (not is_instance_valid(_scroll) or _scroll.get_global_rect().encloses(_collection_task.get_global_rect())):
+		_collection_feedback_left = maxf(0.0, _collection_feedback_left - delta)
 	_refresh_elapsed += delta
 	if _refresh_elapsed >= 0.2:
 		_refresh_elapsed = 0.0
@@ -148,6 +160,7 @@ func _build() -> void:
 	heading.add_child(title)
 	_order_status = _make_status_button()
 	heading.add_child(_order_status)
+	_order_status.hide()
 	var dish_row := HBoxContainer.new()
 	dish_row.add_theme_constant_override("separation", 8)
 	main_content.add_child(dish_row)
@@ -172,12 +185,55 @@ func _build() -> void:
 	_add_task_heading(cooking, _cook_title, "cooking")
 	_cook_status = _add_item_row(cooking, "盐烤岩鬃肉", "salt_grilled_rockmane")
 	_build_exploration(outer)
+	_build_collection(outer)
 	_empty_tasks = _make_label("暂无进行中的任务", 16, SproutTheme.INK_MUTED)
 	outer.add_child(_empty_tasks)
 	_update_entry()
 
 func _panel_position() -> Vector2:
 	return PANEL_POSITION
+
+## 两张地图共用最大高度限制；内容不足时收缩，超出时滚动。
+func enable_restaurant_scrolling() -> void:
+	if is_instance_valid(_scroll): return
+	var content := _order_main.get_parent() as VBoxContainer
+	_panel.remove_child(content)
+	_scroll = ScrollContainer.new()
+	_scroll.name = "TaskScroll"
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	_scroll.mouse_force_pass_scroll_events = false
+	_panel.add_child(_scroll)
+	var bar := _scroll.get_v_scroll_bar()
+	bar.custom_minimum_size.x = 8
+	var track := StyleBoxFlat.new()
+	track.bg_color = Color.TRANSPARENT
+	track.content_margin_left = 4
+	track.content_margin_right = 4
+	bar.add_theme_stylebox_override("scroll", track)
+	for state in ["grabber", "grabber_highlight", "grabber_pressed"]:
+		var style := StyleBoxFlat.new()
+		style.bg_color = Color(0.60, 0.44, 0.22, 0.28 if state == "grabber" else 0.42)
+		style.set_corner_radius_all(4)
+		style.content_margin_left = 4
+		style.content_margin_right = 4
+		bar.add_theme_stylebox_override(state, style)
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_scroll.add_child(content)
+	content.minimum_size_changed.connect(_queue_panel_height)
+	_queue_panel_height()
+
+func _queue_panel_height() -> void:
+	call_deferred("_fit_panel_height")
+
+func _fit_panel_height() -> void:
+	if not is_instance_valid(_scroll): return
+	var content := _scroll.get_child(0) as Control
+	var padding := _panel.get_theme_stylebox("panel").get_minimum_size().y
+	var height := minf(RESTAURANT_PANEL_HEIGHT, content.get_combined_minimum_size().y + padding)
+	_panel.custom_minimum_size = Vector2(PANEL_WIDTH, height)
+	_panel.size = Vector2(PANEL_WIDTH, height)
 
 func _main_task_style() -> StyleBoxFlat:
 	return _box(Color("#d8b16c"), Color("#987039"), 2, 10)
@@ -199,51 +255,156 @@ func _build_exploration(parent: Node) -> void:
 	heading.add_child(_exploration_title)
 	_exploration_status = _make_status_button()
 	heading.add_child(_exploration_status)
+	_exploration_status.hide()
 	_exploration_name = _make_label("", 18, SproutTheme.INK)
 	_exploration_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_exploration_name.custom_minimum_size.x = PANEL_WIDTH - 48.0
 	content.add_child(_exploration_name)
 	# 子任务由注册表预留；未设计时不生成占位进度或虚假的完成条件。
 
+func _build_collection(parent: Node) -> void:
+	_collection_task = PanelContainer.new()
+	_collection_task.name = "CollectionTask"
+	_collection_task.add_theme_stylebox_override("panel", _main_task_style())
+	parent.add_child(_collection_task)
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 6)
+	_collection_task.add_child(content)
+	var heading := HBoxContainer.new()
+	content.add_child(heading)
+	heading.add_theme_constant_override("separation", 6)
+	_add_status_icon(heading, "collection")
+	var title := _make_label("探索任务", 19, SproutTheme.INK)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	heading.add_child(title)
+	_collection_name = _make_label("帮助白虎爷爷收集木材", 18, SproutTheme.INK)
+	_collection_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_collection_name.custom_minimum_size.x = PANEL_WIDTH - 48.0
+	content.add_child(_collection_name)
+	var indent := MarginContainer.new()
+	_collection_subtasks = indent
+	indent.add_theme_constant_override("margin_left", 12)
+	parent.add_child(indent)
+	var subtasks := VBoxContainer.new()
+	indent.add_child(subtasks)
+	var materials := _make_subtask(subtasks, "CollectionMaterialsTask", false)
+	_add_task_heading(materials, _make_label("收集材料", 16, SproutTheme.INK), "collection_materials")
+	_collection_status = _add_item_row(materials, "木材", "wood")
+
 func _sync_quest_content() -> void:
+	if not is_instance_valid(_customer_tasks):
+		_customer_tasks = VBoxContainer.new()
+		_customer_tasks.add_theme_constant_override("separation", 10)
+		_order_main.get_parent().add_child(_customer_tasks)
 	var snapshot: Dictionary = SaveManager.quest_snapshot()
+	var elder_state: Dictionary = SaveManager.elder_firewood_state()
+	if _collection_was_active and elder_state.status == "archived":
+		_collection_feedback_left = 1.2
+	_collection_was_active = elder_state.status == "active"
 	_notification.visible = SaveManager.has_unread_quests()
-	var signature := JSON.stringify(snapshot.active)
-	if signature == _quest_view_signature:
-		return
+	# 库存变化也属于视图签名；定义和实例不另存采集累计进度。
+	var signature := JSON.stringify([snapshot.active, elder_state, _collection_feedback_left > 0, SaveManager.inventory_snapshot()])
+	if signature == _quest_view_signature: return
 	_quest_view_signature = signature
+	for key in _status_icons.keys():
+		if str(key).begins_with("customer_"): _status_icons.erase(key)
+	for child in _customer_tasks.get_children():
+		_customer_tasks.remove_child(child)
+		child.queue_free()
+	var has_customer_orders := false
 	var order_active := false
 	var exploration: Dictionary = {}
+	var collection: Dictionary = {}
 	for quest in snapshot.active:
-		if quest.type == "order":
+		if quest.type == "order" and quest.has("order_id"):
+			has_customer_orders = true
+			var order := SaveManager.restaurant_customer_order(quest.order_id)
+			var group := VBoxContainer.new()
+			group.add_theme_constant_override("separation", 10)
+			_customer_tasks.add_child(group)
+			var panel := PanelContainer.new()
+			panel.add_theme_stylebox_override("panel", _main_task_style())
+			group.add_child(panel)
+			var content := VBoxContainer.new()
+			content.add_theme_constant_override("separation", 6)
+			panel.add_child(content)
+			var heading := HBoxContainer.new()
+			heading.add_theme_constant_override("separation", 6)
+			content.add_child(heading)
+			_add_status_icon_to(heading, "customer_%s" % str(order.id))
+			var title := _make_label("订单任务", 19, SproutTheme.INK)
+			title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			heading.add_child(title)
+			var dish_row := HBoxContainer.new()
+			dish_row.add_theme_constant_override("separation", 8)
+			content.add_child(dish_row)
+			dish_row.add_child(_make_item_icon(str(order.item_id)))
+			var dish_name := _make_label("交出%s" % str(order.item_name), 18, SproutTheme.INK)
+			dish_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			dish_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			dish_row.add_child(dish_name)
+			var indent := MarginContainer.new()
+			indent.add_theme_constant_override("margin_left", 12)
+			group.add_child(indent)
+			var subtasks := VBoxContainer.new()
+			subtasks.add_theme_constant_override("separation", 8)
+			indent.add_child(subtasks)
+			var recipe := preload("res://scripts/cooking/recipe_catalog.gd").get_recipe(order.item_id)
+			var ingredients_panel := _make_subtask(subtasks, "CustomerIngredients_%s" % str(order.id), false)
+			var ingredients_title := _make_label("领取食材", 16, SproutTheme.INK)
+			_add_task_heading(ingredients_panel, ingredients_title, "customer_ingredients_%s" % str(order.id))
+			for id in recipe.ingredients:
+				var ingredient := preload("res://scripts/cooking/recipe_catalog.gd").get_ingredient(id)
+				var counter := _add_item_row(ingredients_panel, str(ingredient.name), str(id))
+				_set_counter(counter, int(SaveManager.inventory_quantity(id) >= int(recipe.ingredients[id])))
+			var cooking_panel := _make_subtask(subtasks, "CustomerCooking_%s" % str(order.id), false)
+			var cooking_title := _make_label("制作料理", 16, SproutTheme.INK)
+			_add_task_heading(cooking_panel, cooking_title, "customer_cooking_%s" % str(order.id))
+			var cooked := _add_item_row(cooking_panel, str(order.item_name), str(order.item_id))
+			_set_counter(cooked, SaveManager.inventory_quantity(order.item_id))
+		elif quest.type == "order":
 			order_active = true
 			_order_title.text = str(quest.type_name)
 			_order_name.text = str(quest.title)
 			for subtask in quest.subtasks:
-				if subtask.id == "collect_ingredients":
-					_ingredients_title.text = str(subtask.title)
-				elif subtask.id == "cook_dish":
-					_cook_title.text = str(subtask.title)
-		elif quest.type == "exploration":
-			exploration = quest
-	# 已完成主任务仅保留在本地日志，完成动效也不能重新显示它。
-	var show_order := order_active
-	_order_main.visible = show_order
-	_order_subtasks.visible = show_order
+				if subtask.id == "collect_ingredients": _ingredients_title.text = str(subtask.title)
+				elif subtask.id == "cook_dish": _cook_title.text = str(subtask.title)
+		elif quest.id == "elder_firewood": collection = quest
+		elif quest.type == "exploration": exploration = quest
+	_order_main.visible = order_active
+	_order_subtasks.visible = order_active
 	_exploration_task.visible = not exploration.is_empty()
 	if not exploration.is_empty():
 		_exploration_title.text = str(exploration.type_name)
 		_exploration_name.text = str(exploration.title)
 		_set_task_state("exploration", false)
-	_empty_tasks.visible = not show_order and exploration.is_empty()
-	_panel.custom_minimum_size = Vector2(PANEL_WIDTH, 0.0)
-	_panel.reset_size()
+	_collection_task.visible = not collection.is_empty() or _collection_feedback_left > 0
+	_collection_subtasks.visible = _collection_task.visible
+	if _collection_task.visible:
+		if not collection.is_empty(): _collection_name.text = str(collection.title)
+		var delivered: bool = elder_state.status == "archived"
+		var collected: bool = delivered or (elder_state.valid and elder_state.wood >= elder_state.required)
+		_set_counter(_collection_status, int(collected))
+		_collection_status.text = "%d/%d" % [elder_state.required if delivered else elder_state.wood, elder_state.required] if elder_state.valid else "异常"
+		_status_icons.collection_materials.progress = 1.0 if collected else 0.0
+		_status_icons.collection.progress = 1.0 if delivered else 0.0
+	_empty_tasks.visible = not order_active and not has_customer_orders and exploration.is_empty() and not _collection_task.visible
+	if is_instance_valid(_scroll):
+		_queue_panel_height()
+	else:
+		_panel.custom_minimum_size = Vector2(PANEL_WIDTH, 0.0)
+		_panel.reset_size()
 
 func _add_status_icon(parent: Node, kind: String) -> void:
 	var icon := STATUS_ICON.new()
 	icon.name = kind.capitalize() + "StatusIcon"
 	parent.add_child(icon)
 	_status_icons[kind] = icon
+
+func _add_status_icon_to(parent: Node, key: String) -> void:
+	var icon := STATUS_ICON.new()
+	icon.name = "CustomerStatusIcon_%s" % key.replace("/", "_")
+	parent.add_child(icon)
 
 func _add_task_heading(parent: Node, title: Label, kind: String) -> void:
 	var row := HBoxContainer.new()
@@ -264,11 +425,11 @@ func _box(fill: Color, border: Color, border_width: int, padding: int) -> StyleB
 	style.content_margin_bottom = padding
 	return style
 
-func _make_subtask(parent: Node, node_name: String) -> VBoxContainer:
+func _make_subtask(parent: Node, node_name: String, track_tutorial := true) -> VBoxContainer:
 	var panel := PanelContainer.new()
 	panel.name = node_name
 	panel.add_theme_stylebox_override("panel", _box(Color("#fff8e8"), Color("#dfcaa5"), 1, 10))
-	_subtask_panels.append(panel)
+	if track_tutorial: _subtask_panels.append(panel)
 	parent.add_child(panel)
 	var content := VBoxContainer.new()
 	content.add_theme_constant_override("separation", 4)
@@ -288,6 +449,8 @@ func _make_item_icon(item_id: String) -> TextureRect:
 	var texture := AtlasTexture.new()
 	# 收紧透明留白，仅调整显示区域，保留用户提供的原图。
 	match item_id:
+		"wood":
+			texture = preload("res://scripts/maze/exploration_dig_site.gd").wood_texture()
 		"rockmane_meat":
 			texture.atlas = MEAT_ICON
 			texture.region = Rect2(77, 83, 106, 95)
@@ -297,9 +460,23 @@ func _make_item_icon(item_id: String) -> TextureRect:
 		"salt_grilled_rockmane":
 			texture.atlas = DISH_ICON
 			texture.region = Rect2(279, 424, 696, 505)
+		"moondew_honey":
+			texture.atlas = preload("res://assets/ui/ingredients/day1/moondew_honey.png")
+			texture.region = Rect2(76, 76, 104, 104)
+		"slime_gel":
+			texture.atlas = preload("res://assets/ui/ingredients/slime_gel.png")
+			texture.region = Rect2(2, 26, 711, 711)
+		"brick_snail_meat":
+			texture.atlas = preload("res://assets/ui/ingredients/day1/brick_snail_meat.png")
+			texture.region = Rect2(76, 68, 103, 103)
+		"petrifying_lizard_tail":
+			texture.atlas = preload("res://assets/ui/ingredients/day1/petrifying_lizard_tail.png")
+			texture.region = Rect2(76, 69, 104, 104)
 	var icon := TextureRect.new()
 	icon.name = item_id + "Icon"
 	icon.texture = texture
+	if item_id not in ["wood", "rockmane_meat", "rock_salt", "salt_grilled_rockmane", "moondew_honey", "slime_gel", "brick_snail_meat", "petrifying_lizard_tail"]:
+		icon.texture = preload("res://scripts/cooking/recipe_catalog.gd").item_texture(item_id)
 	icon.custom_minimum_size = Vector2(28, 28)
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -383,13 +560,15 @@ func set_explanation_highlight(enabled: bool) -> void:
 		_highlight_tween.tween_method(_set_explanation_glow, 0.4, 1.0, 0.55)
 
 func _set_explanation_glow(strength: float) -> void:
+	# 说明期间允许外发光超出滚动视口，退出说明恢复正常裁切。
+	if is_instance_valid(_scroll): _scroll.clip_contents = not _explanation_highlight
 	for panel in _subtask_panels:
 		var style := panel.get_theme_stylebox("panel") as StyleBoxFlat
 		style.shadow_size = 10 if _explanation_highlight else 0
 		style.shadow_color = Color(Color("#f4b83e"), 0.95 * strength if _explanation_highlight else 0.0)
 
 func _update_entry() -> void:
-	_task_button.text = "当前任务  ▴" if _expanded else "当前任务  ▾"
+	_task_button.text = "当前任务  ▲" if _expanded else "当前任务  ▼"
 
 func _stop_expansion() -> void:
 	if _expand_tween != null:
@@ -401,6 +580,8 @@ func _stop_expansion() -> void:
 
 func _animate_expansion() -> void:
 	# 整块轻移并淡入，不缩放文字；关闭时直接取消，无延迟重新显示回调。
+	# 在同一 HUD 容器内置前，避免迷宫队伍卡挡住任务；不越过模态画布层。
+	get_parent().move_child(self, -1)
 	_stop_expansion()
 	_panel.visible = true
 	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -461,6 +642,13 @@ func _immediate_cleanup() -> void:
 func expanded_panel_rect() -> Rect2:
 	return _panel.get_global_rect() if visible and _panel.visible else Rect2()
 
+## 教程暗幕使用真实布局矩形挖空，不抬高任务控件或改变其输入。
+func explanation_cutout_rects() -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if _explanation_highlight and is_visible_in_tree() and _panel.visible:
+		# 整个订单列表使用实际面板尺寸，圆角与面板样式同为8像素。
+		rects.append(_panel.get_global_rect())
+	return rects
 func _restore_saved_order() -> void:
 	refresh_saved_state()
 
@@ -497,7 +685,7 @@ func refresh_saved_state() -> void:
 	_sync_quest_content()
 	var quests: Dictionary = SaveManager.quest_snapshot()
 	# 首单入口建立后保留空态，但不读取历史任务来填充面板。
-	visible = not quests.active.is_empty() or not _known_order_id.is_empty()
+	visible = not quests.active.is_empty() or not _known_order_id.is_empty() or _collection_feedback_left > 0
 	if not _expanded and _expand_tween == null:
 		_panel.visible = false
 

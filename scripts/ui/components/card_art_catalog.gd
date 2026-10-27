@@ -1,7 +1,7 @@
 extends RefCounted
 ## 全部卡面的唯一ID→插画入口；不持有战斗规则或可携带卡库。
 const ART_PATH := "res://data/battle/tutorial_art.json"
-const DISPLAY_PATH := "res://data/cards/xlsx_remaining_cards.json"
+const DISPLAY_PATH := "res://data/cards/catalog.json"
 static var _illustrations: Dictionary = {}
 
 static func path_for(id: String) -> String:

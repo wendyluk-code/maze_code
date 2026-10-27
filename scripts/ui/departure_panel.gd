@@ -27,7 +27,7 @@ func _ready() -> void:
 	theme = SproutTheme.make_theme()
 	_modal = ColorRect.new()
 	_modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_modal.color = Color(0.04, 0.07, 0.05, 0.78)
+	_modal.color = preload("res://scripts/ui/components/modal_style.gd").BACKDROP
 	_modal.mouse_filter = Control.MOUSE_FILTER_STOP
 	_modal.visible = false
 	add_child(_modal)

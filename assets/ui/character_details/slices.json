@@ -1,0 +1,500 @@
+{
+  "source_size": {
+    "attributes": [
+      1672,
+      941
+    ],
+    "skills": [
+      1672,
+      941
+    ],
+    "breakthrough": [
+      1672,
+      941
+    ]
+  },
+  "source_sha256": {
+    "attributes": "b6c38758e3f6e647d07497a99d971db179f7b146646e7e262a3d00b473fd768b",
+    "skills": "050c4169787cf67db3f3904280350690f00eca5d554a44dbf6b160634013597f",
+    "breakthrough": "b197cd6a237a8443d4d03f60817099dd0d9ea73c29dbb47ebadc1512b421c332"
+  },
+  "assets": [
+    {
+      "name": "paper_tile",
+      "size": [
+        128,
+        60
+      ],
+      "source": "attributes",
+      "boxes": [
+        [
+          930,
+          370,
+          1058,
+          430
+        ]
+      ],
+      "method": "原图无字区域",
+      "nine_patch_margins": null
+    },
+    {
+      "name": "tab_selected",
+      "size": [
+        417,
+        101
+      ],
+      "source": "attributes",
+      "boxes": [
+        [
+          618,
+          12,
+          1035,
+          113
+        ],
+        [
+          932,
+          36,
+          975,
+          90
+        ]
+      ],
+      "method": "无字绿色纸纹二维扩展，羽化拼接",
+      "nine_patch_margins": [
+        82,
+        8,
+        65,
+        8
+      ]
+    },
+    {
+      "name": "tab_idle",
+      "size": [
+        425,
+        95
+      ],
+      "source": "skills",
+      "boxes": [
+        [
+          610,
+          17,
+          1035,
+          112
+        ],
+        [
+          685,
+          17,
+          689,
+          112
+        ]
+      ],
+      "method": "保留左右 82/65 像素，无字竖条横向填充",
+      "nine_patch_margins": [
+        82,
+        8,
+        65,
+        8
+      ]
+    },
+    {
+      "name": "skill_row_active",
+      "size": [
+        975,
+        123
+      ],
+      "source": "skills",
+      "boxes": [
+        [
+          627,
+          151,
+          1602,
+          274
+        ],
+        [
+          1490,
+          151,
+          1494,
+          274
+        ]
+      ],
+      "method": "保留左右 20/20 像素，无字竖条横向填充",
+      "nine_patch_margins": [
+        20,
+        8,
+        20,
+        8
+      ]
+    },
+    {
+      "name": "skill_row_locked",
+      "size": [
+        973,
+        113
+      ],
+      "source": "skills",
+      "boxes": [
+        [
+          629,
+          282,
+          1602,
+          395
+        ],
+        [
+          1450,
+          282,
+          1454,
+          395
+        ]
+      ],
+      "method": "保留左右 20/20 像素，无字竖条横向填充",
+      "nine_patch_margins": [
+        20,
+        8,
+        20,
+        8
+      ]
+    },
+    {
+      "name": "progress_track",
+      "size": [
+        932,
+        58
+      ],
+      "source": "attributes",
+      "boxes": [
+        [
+          655,
+          305,
+          1587,
+          363
+        ],
+        [
+          1000,
+          305,
+          1004,
+          363
+        ]
+      ],
+      "method": "保留左右 12/36 像素，无字竖条横向填充",
+      "nine_patch_margins": [
+        12,
+        8,
+        36,
+        8
+      ]
+    },
+    {
+      "name": "progress_fill",
+      "size": [
+        220,
+        41
+      ],
+      "source": "attributes",
+      "boxes": [
+        [
+          665,
+          313,
+          885,
+          354
+        ]
+      ],
+      "method": "原图绿色填充；左端镜像作为右端",
+      "nine_patch_margins": [
+        20,
+        8,
+        20,
+        8
+      ]
+    },
+    {
+      "name": "breakthrough_base",
+      "size": [
+        424,
+        103
+      ],
+      "source": "attributes",
+      "boxes": [
+        [
+          1300,
+          185,
+          1510,
+          288
+        ],
+        [
+          1300,
+          198,
+          1510,
+          215
+        ],
+        [
+          1535,
+          185,
+          1585,
+          288
+        ]
+      ],
+      "method": "无字宽片柔化拼接；右弧边镜像作左边；去除文字尾部",
+      "nine_patch_margins": [
+        50,
+        12,
+        50,
+        12
+      ]
+    },
+    {
+      "name": "breakthrough_active",
+      "size": [
+        424,
+        103
+      ],
+      "source": "breakthrough",
+      "boxes": [
+        [
+          1300,
+          185,
+          1510,
+          288
+        ],
+        [
+          1300,
+          198,
+          1510,
+          215
+        ],
+        [
+          1535,
+          185,
+          1585,
+          288
+        ]
+      ],
+      "method": "无字宽片柔化拼接；右弧边镜像作左边；去除文字尾部",
+      "nine_patch_margins": [
+        50,
+        12,
+        50,
+        12
+      ]
+    },
+    {
+      "name": "star_lit",
+      "size": [
+        80,
+        80
+      ],
+      "source": "attributes",
+      "boxes": [
+        [
+          91,
+          685,
+          171,
+          765
+        ]
+      ],
+      "method": "原图裁切；轮廓蒙版抗锯齿；外部连通浅纸色去除",
+      "nine_patch_margins": null
+    },
+    {
+      "name": "star_dim",
+      "size": [
+        65,
+        67
+      ],
+      "source": "attributes",
+      "boxes": [
+        [
+          179,
+          693,
+          244,
+          760
+        ]
+      ],
+      "method": "原图裁切；轮廓蒙版抗锯齿；外部连通浅纸色去除",
+      "nine_patch_margins": null
+    },
+    {
+      "name": "attack",
+      "size": [
+        80,
+        78
+      ],
+      "source": "attributes",
+      "boxes": [
+        [
+          687,
+          470,
+          767,
+          548
+        ]
+      ],
+      "method": "原图裁切；轮廓蒙版抗锯齿；外部连通浅纸色去除",
+      "nine_patch_margins": null
+    },
+    {
+      "name": "satiety",
+      "size": [
+        81,
+        82
+      ],
+      "source": "attributes",
+      "boxes": [
+        [
+          684,
+          569,
+          765,
+          651
+        ]
+      ],
+      "method": "原图裁切；轮廓蒙版抗锯齿；外部连通浅纸色去除",
+      "nine_patch_margins": null
+    },
+    {
+      "name": "recovery",
+      "size": [
+        80,
+        71
+      ],
+      "source": "attributes",
+      "boxes": [
+        [
+          684,
+          682,
+          764,
+          753
+        ]
+      ],
+      "method": "原图裁切；轮廓蒙版抗锯齿",
+      "nine_patch_margins": null
+    },
+    {
+      "name": "lock",
+      "size": [
+        96,
+        96
+      ],
+      "source": "skills",
+      "boxes": [
+        [
+          655,
+          289,
+          751,
+          385
+        ]
+      ],
+      "method": "原图裁切；轮廓蒙版抗锯齿",
+      "nine_patch_margins": null
+    },
+    {
+      "name": "skill_gift",
+      "size": [
+        105,
+        105
+      ],
+      "source": "skills",
+      "boxes": [
+        [
+          654,
+          162,
+          759,
+          267
+        ]
+      ],
+      "method": "原图裁切；轮廓蒙版抗锯齿",
+      "nine_patch_margins": null
+    },
+    {
+      "name": "divider",
+      "size": [
+        933,
+        29
+      ],
+      "source": "attributes",
+      "boxes": [
+        [
+          658,
+          430,
+          1591,
+          459
+        ]
+      ],
+      "method": "原图无字区域；按红绿通道色差提取透明度，线条统一暖金色",
+      "nine_patch_margins": null
+    },
+    {
+      "name": "leaf_decoration",
+      "size": [
+        61,
+        83
+      ],
+      "source": "skills",
+      "boxes": [
+        [
+          1518,
+          303,
+          1579,
+          386
+        ]
+      ],
+      "method": "原图无字区域；按红绿通道色差提取透明度，线条统一暖金色",
+      "nine_patch_margins": null
+    },
+    {
+      "name": "paper_panel",
+      "size": [
+        256,
+        256
+      ],
+      "source": "attributes",
+      "boxes": [
+        [
+          930,
+          370,
+          1058,
+          430
+        ],
+        [
+          620,
+          126,
+          748,
+          159
+        ],
+        [
+          610,
+          370,
+          635,
+          430
+        ],
+        [
+          1612,
+          370,
+          1637,
+          430
+        ],
+        [
+          900,
+          875,
+          1156,
+          900
+        ]
+      ],
+      "method": "无字纸面和边缘组合九宫格；右上角镜像左上角",
+      "nine_patch_margins": [
+        25,
+        33,
+        25,
+        25
+      ]
+    },
+    {
+      "name": "gold",
+      "size": [
+        1254,
+        1254
+      ],
+      "source": "assets/ui/hud_currency/gold.png",
+      "boxes": [],
+      "method": "复用已有金币，像素不变",
+      "nine_patch_margins": null
+    }
+  ],
+  "six_stars": "重复 star_lit/star_dim 共六次；不包含固定数量状态"
+}

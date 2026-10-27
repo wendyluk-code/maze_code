@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="cover" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#b7f27b"/>
+      <stop offset="0.48" stop-color="#69bd4f"/>
+      <stop offset="1" stop-color="#2f873e"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffe66c"/>
+      <stop offset="0.52" stop-color="#f5b52e"/>
+      <stop offset="1" stop-color="#d77b12"/>
+    </linearGradient>
+    <linearGradient id="page" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff7d9"/>
+      <stop offset="1" stop-color="#e5c982"/>
+    </linearGradient>
+  </defs>
+  <g stroke="#60351f" stroke-width="4" stroke-linejoin="round">
+    <!-- cream silhouette and book body -->
+    <path fill="#fff8dc" d="M17 16h78c11 0 18 8 18 19v61c0 8-6 15-15 15H28c-9 0-16-7-16-16V28c0-7 2-12 5-12z"/>
+    <path fill="url(#gold)" d="M20 19h76c8 0 14 7 14 16v60c0 7-5 12-12 12H29c-7 0-12-5-12-13V29c0-6 1-10 3-10z"/>
+    <path fill="url(#page)" d="M23 78h83v18c0 5-3 8-9 8H31c-5 0-8-3-8-8z"/>
+    <path fill="none" stroke="#d4a55b" stroke-width="2" d="M27 87h73M27 93h73"/>
+    <!-- green cover -->
+    <path fill="url(#cover)" d="M22 23h72c8 0 13 5 13 13v43c0 7-5 12-13 12H22c-6 0-10-5-10-12V36c0-8 4-13 10-13z"/>
+    <path fill="#d8ff9b" stroke="none" opacity=".7" d="M24 29h34c-5 7-12 12-25 17-7 3-10 2-10-3 0-7 0-11 1-14z"/>
+    <!-- gold page corners -->
+    <path fill="url(#gold)" d="M22 23h18c0 8-5 13-13 16H12v-3c0-8 4-13 10-13z"/>
+    <path fill="url(#gold)" d="M76 23h18c8 0 13 5 13 13v3H91c-9-3-14-8-15-16z"/>
+    <path fill="url(#gold)" d="M22 91h18c0-6-5-10-13-13H12v1c0 7 4 12 10 12z"/>
+    <path fill="url(#gold)" d="M76 91h18c8 0 13-5 13-12v-1H91c-9 3-14 7-15 13z"/>
+    <!-- recipe clasp -->
+    <path fill="#75422b" d="M91 46h17c5 0 8 4 8 8v17c0 5-3 8-8 8H91z"/>
+    <path fill="#ffd44d" d="M92 52h13c3 0 5 2 5 5v11c0 3-2 5-5 5H92z"/>
+    <path fill="#75422b" d="M96 57h8v10h-8z" stroke="none"/>
+    <!-- chef hat emblem -->
+    <path fill="#fff8dc" d="M55 63c-8 0-13-5-13-11 0-6 5-11 11-11 1-8 7-13 14-13s13 5 14 13c7 0 12 5 12 11 0 6-5 11-13 11v12H55z"/>
+    <path fill="#f2c238" d="M53 75h29v8H53z"/>
+    <path fill="none" d="M57 75v-8h21v8"/>
+    <!-- bookmark -->
+    <path fill="#4b9f4b" d="M44 98h12v19l-6-4-6 4z"/>
+  </g>
+</svg>

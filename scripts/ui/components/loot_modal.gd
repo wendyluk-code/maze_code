@@ -2,13 +2,35 @@ extends SproutModal
 ## 通用获得物品展示；调用方先完成领取事务，再传入展示数据。
 const COIN := preload("res://assets/ui/chests/gold_coin.png")
 const INK := SproutTheme.INK
+var item_row_height := 106.0
 var item_views: Array[Dictionary] = []
 var _grid: GridContainer
 var _scroll: ScrollContainer
+var _content_center: CenterContainer
+var _display_textures: Dictionary = {}
+
+func display_texture(texture: Texture2D) -> Texture2D:
+	if texture == null: return null
+	if _display_textures.has(texture): return _display_textures[texture]
+	var image := texture.get_image()
+	if image == null or image.is_empty(): return texture
+	var minimum := image.get_size()
+	var maximum := Vector2i(-1, -1)
+	for y in image.get_height():
+		for x in image.get_width():
+			if image.get_pixel(x, y).a >= 0.1:
+				minimum = minimum.min(Vector2i(x, y))
+				maximum = maximum.max(Vector2i(x, y))
+	if maximum.x < 0: return texture
+	# 与金币一样按可见轮廓等比显示；只裁展示副本，不改源素材。
+	var region := Rect2i(minimum, maximum - minimum + Vector2i.ONE)
+	var result := ImageTexture.create_from_image(image.get_region(region))
+	_display_textures[texture] = result
+	return result
 
 func _build() -> void:
 	_overlay = ColorRect.new()
-	_overlay.color = Color(0.04, 0.09, 0.07, 0.56)
+	_overlay.color = preload("res://scripts/ui/components/modal_style.gd").BACKDROP
 	_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(_overlay)
@@ -31,19 +53,21 @@ func _build() -> void:
 	heading.add_child(_title_label)
 	_body_label = Label.new()
 	_body_label.hide()
+	_body_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_body_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	outer.add_child(_body_label)
 	_scroll = ScrollContainer.new()
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	outer.add_child(_scroll)
-	var center := CenterContainer.new()
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_scroll.add_child(center)
+	_content_center = CenterContainer.new()
+	_content_center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_content_center.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_scroll.add_child(_content_center)
 	_grid = GridContainer.new()
 	_grid.add_theme_constant_override("h_separation", 12)
 	_grid.add_theme_constant_override("v_separation", 12)
-	center.add_child(_grid)
+	_content_center.add_child(_grid)
 	var actions := CenterContainer.new()
 	outer.add_child(actions)
 	_confirm_button = SproutButton.new()
@@ -77,10 +101,12 @@ func show_items(items: Array[Dictionary]) -> void:
 		_add_item(item)
 	_grid.columns = clampi(items.size(), 1, 3)
 	var rows := mini(2, ceili(float(items.size()) / 3.0))
-	_scroll.custom_minimum_size.y = maxf(106, rows * 106 + (rows - 1) * 12)
+	_scroll.custom_minimum_size.y = maxf(item_row_height, rows * item_row_height + (rows - 1) * 12)
 	_scroll.scroll_vertical = 0
 	var width := maxf(340, _grid.columns * 112 + (_grid.columns - 1) * 12 + 64)
 	var height := _scroll.custom_minimum_size.y + 140
+	_scroll.custom_minimum_size.x = width - 64
+	_content_center.custom_minimum_size = Vector2(width - 64, _scroll.custom_minimum_size.y)
 	_panel.custom_minimum_size = Vector2(width, height)
 	_panel.offset_left = -width / 2
 	_panel.offset_right = width / 2
@@ -90,13 +116,13 @@ func show_items(items: Array[Dictionary]) -> void:
 
 func _add_item(item: Dictionary) -> void:
 	var tile := VBoxContainer.new()
-	tile.custom_minimum_size = Vector2(112, 106)
+	tile.custom_minimum_size = Vector2(112, item_row_height)
 	tile.add_theme_constant_override("separation", 6)
 	_grid.add_child(tile)
 	var center := CenterContainer.new()
 	tile.add_child(center)
 	var icon := TextureRect.new()
-	icon.texture = item.get("icon") as Texture2D
+	icon.texture = display_texture(item.get("icon") as Texture2D)
 	icon.custom_minimum_size = Vector2(43, 43)
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

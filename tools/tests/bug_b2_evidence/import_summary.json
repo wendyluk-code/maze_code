@@ -1,0 +1,28 @@
+{
+  "mode": "import",
+  "exit_code": 0,
+  "timed_out": false,
+  "errors": [],
+  "environment_errors": [
+    "ERROR: Failed to read the root certificate store.\r",
+    "ERROR: Cannot save file 'F:/SteamLibrary/steamapps/common/Godot Engine/editor_data/editor_settings-4.7.tres'.\r",
+    "ERROR: Error saving editor settings to F:/SteamLibrary/steamapps/common/Godot Engine/editor_data/editor_settings-4.7.tres\r"
+  ],
+  "certificate_warning": true,
+  "real_saves_unchanged": true,
+  "command": [
+    "--path",
+    "C:\\Users\\KSG\\.codex\\worktrees\\2264\\maze_code",
+    "--audio-driver",
+    "Dummy",
+    "--rendering-method",
+    "gl_compatibility",
+    "--headless",
+    "--editor",
+    "--quit",
+    "--",
+    "--report=C:\\Users\\KSG\\.codex\\worktrees\\2264\\maze_code\\tools\\tests\\bug_b2_output\\import_20261022_211829\\report.json",
+    "--output-dir=C:\\Users\\KSG\\.codex\\worktrees\\2264\\maze_code\\tools\\tests\\bug_b2_output\\import_20261022_211829\\screenshots"
+  ],
+  "output": "C:\\Users\\KSG\\.codex\\worktrees\\2264\\maze_code\\tools\\tests\\bug_b2_output\\import_20261022_211829"
+}

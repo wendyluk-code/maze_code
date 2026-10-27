@@ -10,6 +10,22 @@ const YAYA_COLLAB := "res://assets/ui/battle/cards/yaya/hotpot_collab.png"
 const TIESHAN_ROLE := "res://assets/ui/party_cards/tieshan.png"
 const EDGE_ROOT := "res://assets/ui/card_materials/edge_v4/"
 static var _edge_layout: Dictionary = {}
+const STATUS_ATLAS := "res://assets/ui/card_materials/bt_03/status_icons.png"
+
+static func status_icon(id: String) -> AtlasTexture:
+	var regions := {
+		"attack": Rect2(106, 74, 340, 418),
+		"health": Rect2(603, 51, 329, 439),
+		"mana": Rect2(1100, 46, 359, 450),
+		"satiety": Rect2(57, 574, 414, 376),
+		"hunger": Rect2(577, 559, 383, 394),
+		"revive": Rect2(1128, 541, 302, 426),
+	}
+	var result := AtlasTexture.new()
+	result.atlas = load(STATUS_ATLAS)
+	result.region = regions[id]
+	result.filter_clip = true
+	return result
 
 static func edge_layer(id: String) -> Dictionary:
 	if _edge_layout.is_empty():

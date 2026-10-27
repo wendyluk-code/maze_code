@@ -50,6 +50,7 @@ func select_category(category_id: String) -> void:
 	selected_id = category_id
 	for i in _buttons.size():
 		var id := str(_categories[i].get("id", ""))
+		SproutTheme.apply_tab_button_colors(_buttons[i], SproutTheme.INK)
 		_buttons[i].add_theme_stylebox_override("normal", SproutTheme.selected_style() if id == selected_id else SproutTheme.unselected_style())
 		_buttons[i].add_theme_stylebox_override("hover", SproutTheme.selected_style() if id == selected_id else SproutTheme.button_style(SproutTheme.GREEN_HOVER))
 	category_changed.emit(selected_id)

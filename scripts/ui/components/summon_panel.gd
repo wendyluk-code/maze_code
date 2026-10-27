@@ -14,6 +14,7 @@ var ten_button: Button
 var single_price: Label
 var ten_price: RichTextLabel
 var balance_reader: Callable
+var rarity_badges: Dictionary = {}
 var _balance := -1
 var _refresh_elapsed := 0.0
 
@@ -40,16 +41,17 @@ func _ready() -> void:
 		rule_texture.region = Rect2(300, 50, 100, 8)
 		rule.texture = rule_texture
 	_art("ApprovedArtwork", "key_visual", Rect2(350, 140, 1030, 454))
-	_vertical_name("DingdangName", "叮\n当", Rect2(447, 389, 34, 72))
-	_vertical_name("SaliaName", "萨\n莉\n亚", Rect2(980, 267, 34, 106))
-	_vertical_name("YufengName", "御\n风", Rect2(1238, 337, 34, 72))
-	single_button = _make_button("SingleDraw", "抽1次", Rect2(530, 594, 330, 67), 1, SINGLE_COST)
-	ten_button = _make_button("TenDraw", "抽10次", Rect2(888, 594, 331, 67), 10, TEN_COST)
+	_vertical_name("DingdangName", "叮\n当", "dingdang", Rect2(447, 389, 34, 72))
+	_vertical_name("SaliaName", "萨\n莉\n亚", "salia", Rect2(980, 267, 34, 106))
+	_vertical_name("YufengName", "御\n风", "yufeng", Rect2(1238, 337, 34, 72))
+
+	single_button = _make_button("SingleDraw", "抽1次", Rect2(491.5, 594, 330, 67), 1, SINGLE_COST)
+	ten_button = _make_button("TenDraw", "抽10次", Rect2(849.5, 594, 331, 67), 10, TEN_COST)
 	# 文案和价格统一使用游戏字体，状态变化直接作用于原生文本。
 	single_price = Label.new()
 	single_price.name = "SinglePrice"
 	single_price.text = "1000金币"
-	single_price.position = Vector2(523, 668) * SOURCE_SCALE
+	single_price.position = Vector2(484.5, 668) * SOURCE_SCALE
 	single_price.size = Vector2(344, 31) * SOURCE_SCALE
 	single_price.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	single_price.add_theme_font_size_override("font_size", 18)
@@ -59,7 +61,7 @@ func _ready() -> void:
 	ten_price.name = "TenPrice"
 	ten_price.bbcode_enabled = true
 	ten_price.scroll_active = false
-	ten_price.position = Vector2(881, 668) * SOURCE_SCALE
+	ten_price.position = Vector2(842.5, 668) * SOURCE_SCALE
 	ten_price.size = Vector2(345, 31) * SOURCE_SCALE
 	ten_price.add_theme_font_override("normal_font", SproutTheme.FONT_CN)
 	ten_price.add_theme_font_size_override("normal_font_size", 18)
@@ -68,31 +70,34 @@ func _ready() -> void:
 	visibility_changed.connect(_visibility_changed)
 	refresh_balance()
 
-func _vertical_name(node_name: String, caption: String, rect: Rect2) -> void:
-	var label := Label.new()
-	label.name = node_name
-	label.text = caption
-	label.position = rect.position * SOURCE_SCALE
-	label.size = rect.size * SOURCE_SCALE
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+func _vertical_name(node_name: String, caption: String, id: String, rect: Rect2) -> void:
+	# 同一个连续底板容纳稀有度和竖排姓名，字标不再漂浮在旁边。
+	var plate := Panel.new()
+	plate.name = node_name
+	plate.position = (rect.position - Vector2(14, 42)) * SOURCE_SCALE
+	plate.size = Vector2(62, rect.size.y + 48) * SOURCE_SCALE
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var backing := SproutTheme.thin_panel_style(Color("#fff3da"))
 	backing.border_color = Color("#b78a50")
 	backing.set_border_width_all(1)
 	backing.set_corner_radius_all(17)
 	backing.set_content_margin_all(0)
-	backing.expand_margin_left = 4
-	backing.expand_margin_right = 4
-	backing.expand_margin_top = 4
-	backing.expand_margin_bottom = 4
-	label.add_theme_stylebox_override("normal", backing)
+	plate.add_theme_stylebox_override("panel", backing)
+	add_child(plate)
+	rarity_badges[id] = preload("res://scripts/ui/components/rarity_badge.gd").attach(plate, id, Rect2(Vector2(5, 5) * SOURCE_SCALE, Vector2(52, 34) * SOURCE_SCALE))
+	var label := Label.new()
+	label.text = caption
+	label.position = Vector2(0, 42) * SOURCE_SCALE
+	label.size = Vector2(62, rect.size.y) * SOURCE_SCALE
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", 20)
 	label.add_theme_color_override("font_color", SproutTheme.INK)
 	label.add_theme_constant_override("line_spacing", 1)
 	label.add_theme_constant_override("outline_size", 0)
 	label.add_theme_color_override("font_shadow_color", Color.TRANSPARENT)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(label)
+	plate.add_child(label)
 
 func _art(node_name: String, asset: String, source_rect: Rect2) -> TextureRect:
 	var art := TextureRect.new()

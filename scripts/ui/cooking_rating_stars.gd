@@ -2,6 +2,7 @@ extends Control
 ## 固定三颗星槽：金色亮星与浅色凹槽，不依赖字体里的星号字形。
 const CENTERS := [Vector2(48, 60), Vector2(132, 47), Vector2(216, 60)]
 const RADII := [31.0, 38.0, 31.0]
+var uniform := false
 var quality := 0
 var elapsed := 0.0
 
@@ -51,8 +52,8 @@ func _solid(center: Vector2, radius: float, color: Color) -> void:
 
 func _draw() -> void:
 	for index in 3:
-		var center: Vector2 = CENTERS[index]
-		var radius: float = RADII[index]
+		var center: Vector2 = Vector2(48 + 84 * index, 54) if uniform else CENTERS[index]
+		var radius: float = 31.0 if uniform else RADII[index]
 		# 三个槽位始终可见，缺星不移动、不用文字补位。
 		_solid(center + Vector2(0, 3), radius, Color("#b99055"))
 		_solid(center, radius, Color("#cba66a"))

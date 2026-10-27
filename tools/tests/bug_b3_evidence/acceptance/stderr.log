@@ -1,0 +1,25 @@
+ERROR: Failed to read the root certificate store.
+   at: get_system_ca_certificates (platform/windows/os_windows.cpp:2582)
+ERROR: QTE03 FAIL: 脚底半径连续路段：(116.0, 724.0) → (57.0, 711.0)
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _check (res://tools/tests/ch1_qte_03_input.gd:22)
+       [1] _geometry (res://tools/tests/ch2_entry_state.gd:27)
+       [2] _run (res://tools/tests/bug_b3_scene.gd:14)
+ERROR: QTE03 FAIL: 脚底半径连续路段：(57.0, 711.0) → (13.0, 699.0)
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _check (res://tools/tests/ch1_qte_03_input.gd:22)
+       [1] _geometry (res://tools/tests/ch2_entry_state.gd:27)
+       [2] _run (res://tools/tests/bug_b3_scene.gd:14)
+ERROR: QTE03 FAIL: 脚底不能跨图边缘但出口提示可达
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _check (res://tools/tests/ch1_qte_03_input.gd:22)
+       [1] _geometry (res://tools/tests/ch2_entry_state.gd:33)
+       [2] _run (res://tools/tests/bug_b3_scene.gd:14)
+ERROR: QTE03 FAIL: 边缘站位追击能造成伤害：south_chest
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _check (res://tools/tests/ch1_qte_03_input.gd:22)
+       [1] _case (res://tools/tests/bug_b3_scene.gd:60)

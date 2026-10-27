@@ -17,7 +17,7 @@ var close_button: Button
 var locked_toast: Label
 var expanded := false
 var visible_resources: Array[Dictionary] = []
-var _projection := MapProjection.new()
+var _projection = MapProjection.new()
 var _locked_before := false
 var _physics_before := true
 var _focus_before: Control
@@ -25,8 +25,12 @@ var _refresh_time := 0.0
 var _unlocked := false
 var _map_space: Control
 var _header: HBoxContainer
+var _hud_visibility = preload("res://scripts/ui/components/maze_hud_visibility.gd").new()
 
 func _ready() -> void:
+	if maze.region_id == "moss_pool": _projection = preload("res://data/maze/moss_pool_projection.gd").new()
+	if maze.region_id == "salt_pool": _projection = preload("res://data/maze/salt_pool_projection.gd").new()
+	if maze.region_id == "fenshui": _projection = preload("res://data/maze/fenshui_projection.gd").new()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	theme = SproutTheme.make_theme()
@@ -56,6 +60,7 @@ func _build_mini() -> void:
 	shadow.add_theme_stylebox_override("panel",shadow_style)
 	mini_button.add_child(shadow)
 	mini_view = MapView.new()
+	mini_view.region_id = maze.region_id
 	mini_view.compact = true
 	mini_view.size = mini_button.size
 	mini_button.add_child(mini_view)
@@ -74,7 +79,7 @@ func _button(text: String) -> SproutButton:
 
 func _build_overlay() -> void:
 	overlay = ColorRect.new()
-	overlay.color = Color(0.025,0.045,0.035,0.94)
+	overlay.color = preload("res://scripts/ui/components/modal_style.gd").BACKDROP
 	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(overlay)
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -85,6 +90,7 @@ func _build_overlay() -> void:
 	_map_space.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(_map_space)
 	full_view = MapView.new()
+	full_view.region_id = maze.region_id
 	_map_space.add_child(full_view)
 	_map_space.resized.connect(_layout_full_map)
 	_header = HBoxContainer.new()
@@ -108,7 +114,7 @@ func _build_overlay() -> void:
 	var space := Control.new()
 	space.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_header.add_child(space)
-	close_button = _button("×")
+	close_button = preload("res://scripts/ui/components/modal_style.gd").close_button()
 	close_button.tooltip_text = "关闭地图"
 	_header.add_child(close_button)
 	close_button.custom_minimum_size = Vector2(44,44)
@@ -144,12 +150,19 @@ func refresh_resources() -> void:
 	var progress: Dictionary = SaveManager.departure_state().map
 	_unlocked = not progress.unlocked_floors.is_empty() and progress.visible_regions.has("old_salt_pool")
 	visible_resources.clear()
-	for config in Chests.all():
+	for config in Chests.all(maze.region_id):
 		_add_resource(config, "chest", SaveManager.is_chest_claimed(config.id))
+	if not _unlocked: return
+	# 所有地区共用浅层总图，一条跨区连接只登记一枚标记。
+	visible_resources.append({"id":"maze_entry_fenshui", "kind":"settlement", "position":MapProjection.new().project(preload("res://data/maze/settlement_exit.gd").POSITION)})
+	var garden_projection := preload("res://data/maze/fenshui_projection.gd").new()
+	visible_resources.append({"id":"salt_moss_pool", "kind":"settlement", "position":preload("res://data/maze/moss_pool_roads.gd").SALT_LINK_ATLAS})
+	visible_resources.append({"id":"fenshui_moss_pool", "kind":"settlement", "position":garden_projection.project(preload("res://data/maze/moss_pool_roads.gd").FENSHUI_PORTAL)})
+	visible_resources.append({"id":"fenshui_salt_pool", "kind":"settlement", "position":garden_projection.project(preload("res://data/maze/salt_pool_roads.gd").FENSHUI_PORTAL)})
 
 func _add_resource(config: Dictionary, kind: String, claimed: bool) -> void:
-	var point := _projection.project(config.position)
-	if not claimed and MapProjection.is_revealed(point, _unlocked):
+	var point: Vector2 = _projection.project(config.position)
+	if not claimed and ((kind == "settlement" and _unlocked) or MapProjection.is_revealed(point, _unlocked)):
 		visible_resources.append({"id": config.id, "kind": kind, "position": point})
 
 func _process(delta: float) -> void:
@@ -159,10 +172,11 @@ func _process(delta: float) -> void:
 	if _refresh_time <= 0:
 		refresh_resources()
 		_refresh_time = 0.15
-	var point := _projection.project(maze.player.position)
-	mini_view.sync(point, maze.player.facing, visible_resources, _unlocked)
+	var point: Vector2 = _projection.project(maze.player.position)
+	var direction: Vector2 = _projection.project_direction(maze.player.position,maze.player.facing) if _projection.has_method("project_direction") else maze.player.facing
+	mini_view.sync(point, direction, visible_resources, _unlocked)
 	if expanded:
-		full_view.sync(point, maze.player.facing, visible_resources, _unlocked)
+		full_view.sync(point, direction, visible_resources, _unlocked)
 	mini_button.disabled = expanded or not maze._entry_ready or maze._busy or maze.player.input_locked or maze.confirmation.visible
 
 func open_map() -> void:
@@ -171,6 +185,7 @@ func open_map() -> void:
 	_locked_before = maze.player.input_locked
 	_physics_before = maze.player.is_physics_processing()
 	_focus_before = get_viewport().gui_get_focus_owner()
+	_hide_exploration_hud()
 	expanded = true
 	mini_button.hide()
 	maze.player.input_locked = true
@@ -180,7 +195,8 @@ func open_map() -> void:
 	maze._update_chest_target()
 	mini_button.disabled = true
 	refresh_resources()
-	full_view.sync(_projection.project(maze.player.position), maze.player.facing, visible_resources, _unlocked)
+	var direction: Vector2 = _projection.project_direction(maze.player.position,maze.player.facing) if _projection.has_method("project_direction") else maze.player.facing
+	full_view.sync(_projection.project(maze.player.position), direction, visible_resources, _unlocked)
 	locked_toast.dismiss()
 	overlay.show()
 	_layout()
@@ -199,10 +215,22 @@ func close_map() -> void:
 	maze._update_prompts()
 	maze._update_chest_target()
 	mini_button.disabled = false
+	_hud_visibility.restore()
 	if is_instance_valid(_focus_before) and _focus_before.is_visible_in_tree():
 		_focus_before.grab_focus()
 	else:
 		get_viewport().gui_release_focus()
+
+func _hide_exploration_hud() -> void:
+	var nodes: Array = [get_parent().get_node_or_null("StaminaCounter")]
+	var flow = maze.get("capture_flow")
+	if is_instance_valid(flow):
+		nodes.append(flow.get("skill_bar"))
+		nodes.append(flow.get("controls_hint"))
+	_hud_visibility.suppress(nodes)
+
+func _exit_tree() -> void:
+	_hud_visibility.restore()
 
 func _input(event: InputEvent) -> void:
 	if not expanded or not event is InputEventKey:

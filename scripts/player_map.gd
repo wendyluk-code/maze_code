@@ -4,6 +4,7 @@ extends CharacterBody2D
 signal interacted(target: Node2D)
 
 const SPEED := 260.0
+const SPRINT_MULTIPLIER := 1.5
 const INTERACT_RANGE := 95.0
 const SPAWN_INIT_PENDING := 0
 const SPAWN_INIT_READY := 1
@@ -47,6 +48,12 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	add_to_group("player")
+	var sprint_wind := preload("res://scripts/characters/sprint_wind.gd").new()
+	sprint_wind.name = "SprintWind"
+	add_child(sprint_wind)
+	var carried_icons := preload("res://scripts/ui/components/carried_material_icons.gd").new()
+	carried_icons.name = "CarriedMaterialIcons"
+	add_child(carried_icons)
 	# TutorialGuide 打开首句对白时会禁用玩家物理帧；出生定位必须在这里完成，
 	# 不能等待首个物理帧，否则开场画面会渲染场景中的占位位置。
 	_ready_in_progress = true
@@ -59,11 +66,16 @@ func _ready() -> void:
 		call_deferred("_try_resolve_spawn")
 
 func _physics_process(delta: float) -> void:
+	if input_locked:
+		velocity = Vector2.ZERO
+		_walking = false
+		return
 	if spawn_init_state == SPAWN_INIT_PENDING:
 		_try_resolve_spawn()
 
 	var input_dir := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
-	velocity = input_dir * SPEED
+	velocity = input_dir * SPEED * (SPRINT_MULTIPLIER if Input.is_physical_key_pressed(KEY_SHIFT) else 1.0)
+	var before_move := global_position
 	move_and_slide()
 
 	if walk_zone and walk_zone.polygons.size() > 0:
@@ -81,6 +93,8 @@ func _physics_process(delta: float) -> void:
 			else:
 				position = last_valid
 
+	if spawn_ready and global_position.distance_squared_to(before_move) > 0.001 and (Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_D)):
+		SaveManager.record_customer_walk(delta)
 	if input_dir.x > 0.1:
 		facing = Vector2.RIGHT
 	elif input_dir.x < -0.1:
@@ -141,7 +155,7 @@ func _process(delta: float) -> void:
 	_update_hint()
 
 func _unhandled_input(event: InputEvent) -> void:
-	if input_locked:
+	if input_locked or not is_physics_processing() or event.is_echo():
 		return
 	if event.is_action_pressed("interact"):
 		var t := nearest_interactable()
@@ -191,7 +205,7 @@ func _update_hint() -> void:
 		return
 	var best := nearest_interactable()
 	if best:
-		label.text = "【E】与「%s」交互" % display_name_of(best)
+		label.text = "【E】丢弃" if display_name_of(best) == "垃圾桶" else "【E】与「%s」交互" % display_name_of(best)
 	else:
 		label.text = ""
 

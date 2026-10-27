@@ -1,0 +1,260 @@
+{
+  "res://assets/characters/yf02/01_yufeng_sword/frame_00.png": {
+    "rect": [
+      66,
+      185,
+      306,
+      281
+    ],
+    "height": 281
+  },
+  "res://assets/characters/yf02/01_yufeng_sword/frame_01.png": {
+    "rect": [
+      69,
+      148,
+      321,
+      319
+    ],
+    "height": 281
+  },
+  "res://assets/characters/yf02/01_yufeng_sword/frame_02.png": {
+    "rect": [
+      68,
+      185,
+      357,
+      281
+    ],
+    "height": 281
+  },
+  "res://assets/characters/yf02/01_yufeng_sword/frame_03.png": {
+    "rect": [
+      67,
+      187,
+      378,
+      279
+    ],
+    "height": 281
+  },
+  "res://assets/characters/yf02/01_yufeng_sword/frame_04.png": {
+    "rect": [
+      69,
+      184,
+      276,
+      282
+    ],
+    "height": 281
+  },
+  "res://assets/characters/yf02/01_yufeng_sword/frame_05.png": {
+    "rect": [
+      66,
+      185,
+      306,
+      281
+    ],
+    "height": 281
+  },
+  "res://assets/characters/yf02/03_salia_cast/frame_00.png": {
+    "rect": [
+      65,
+      108,
+      326,
+      359
+    ],
+    "height": 359
+  },
+  "res://assets/characters/yf02/03_salia_cast/frame_01.png": {
+    "rect": [
+      66,
+      103,
+      381,
+      363
+    ],
+    "height": 359
+  },
+  "res://assets/characters/yf02/03_salia_cast/frame_02.png": {
+    "rect": [
+      88,
+      82,
+      339,
+      385
+    ],
+    "height": 359
+  },
+  "res://assets/characters/yf02/03_salia_cast/frame_03.png": {
+    "rect": [
+      66,
+      112,
+      382,
+      354
+    ],
+    "height": 359
+  },
+  "res://assets/characters/yf02/03_salia_cast/frame_04.png": {
+    "rect": [
+      69,
+      92,
+      331,
+      375
+    ],
+    "height": 359
+  },
+  "res://assets/characters/yf02/03_salia_cast/frame_05.png": {
+    "rect": [
+      65,
+      108,
+      326,
+      359
+    ],
+    "height": 359
+  },
+  "res://assets/characters/yufeng/yufeng_idle_0.png": {
+    "rect": [
+      0,
+      0,
+      95,
+      134
+    ],
+    "height": 134
+  },
+  "res://assets/characters/yufeng/yufeng_idle_1.png": {
+    "rect": [
+      0,
+      0,
+      96,
+      134
+    ],
+    "height": 134
+  },
+  "res://assets/characters/yufeng/yufeng_idle_2.png": {
+    "rect": [
+      0,
+      0,
+      89,
+      134
+    ],
+    "height": 134
+  },
+  "res://assets/characters/yufeng/yufeng_idle_3.png": {
+    "rect": [
+      0,
+      0,
+      90,
+      134
+    ],
+    "height": 134
+  },
+  "res://assets/characters/yufeng/yufeng_walk_0.png": {
+    "rect": [
+      0,
+      0,
+      105,
+      134
+    ],
+    "height": 134
+  },
+  "res://assets/characters/yufeng/yufeng_walk_1.png": {
+    "rect": [
+      0,
+      0,
+      105,
+      134
+    ],
+    "height": 134
+  },
+  "res://assets/characters/yufeng/yufeng_walk_2.png": {
+    "rect": [
+      0,
+      0,
+      100,
+      134
+    ],
+    "height": 134
+  },
+  "res://assets/characters/yufeng/yufeng_walk_3.png": {
+    "rect": [
+      0,
+      0,
+      98,
+      134
+    ],
+    "height": 134
+  },
+  "res://assets/characters/salia/salia_idle_0.png": {
+    "rect": [
+      0,
+      0,
+      140,
+      163
+    ],
+    "height": 163
+  },
+  "res://assets/characters/salia/salia_idle_1.png": {
+    "rect": [
+      0,
+      0,
+      139,
+      163
+    ],
+    "height": 163
+  },
+  "res://assets/characters/salia/salia_idle_2.png": {
+    "rect": [
+      0,
+      0,
+      139,
+      163
+    ],
+    "height": 163
+  },
+  "res://assets/characters/salia/salia_idle_3.png": {
+    "rect": [
+      0,
+      0,
+      135,
+      163
+    ],
+    "height": 163
+  },
+  "res://assets/characters/salia/salia_walk_0.png": {
+    "rect": [
+      0,
+      0,
+      143,
+      163
+    ],
+    "height": 163
+  },
+  "res://assets/characters/salia/salia_walk_1.png": {
+    "rect": [
+      0,
+      0,
+      145,
+      163
+    ],
+    "height": 163
+  },
+  "res://assets/characters/salia/salia_walk_2.png": {
+    "rect": [
+      0,
+      0,
+      144,
+      163
+    ],
+    "height": 163
+  },
+  "res://assets/characters/salia/salia_walk_3.png": {
+    "rect": [
+      0,
+      0,
+      143,
+      163
+    ],
+    "height": 163
+  },
+  "res://assets/characters/yf02/03_salia_cast_side/frame_00.png": {"rect":[0,0,512,512],"height":260.4,"foot":[256,460]},
+  "res://assets/characters/yf02/03_salia_cast_side/frame_01.png": {"rect":[0,0,512,512],"height":260.4,"foot":[256,460]},
+  "res://assets/characters/yf02/03_salia_cast_side/frame_02.png": {"rect":[0,0,512,512],"height":260.4,"foot":[256,460]},
+  "res://assets/characters/yf02/03_salia_cast_side/frame_03.png": {"rect":[0,0,512,512],"height":260.4,"foot":[256,460]},
+  "res://assets/characters/yf02/03_salia_cast_side/frame_04.png": {"rect":[0,0,512,512],"height":260.4,"foot":[256,460]},
+  "res://assets/characters/yf02/03_salia_cast_side/frame_05.png": {"rect":[0,0,512,512],"height":260.4,"foot":[256,460]}
+}

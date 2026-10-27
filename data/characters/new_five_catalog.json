@@ -1,0 +1,237 @@
+{
+	"jiaopopo": {
+		"name": "椒婆婆",
+		"rarity": "SR",
+		"faction": "fire",
+		"attack": 3,
+		"attack_growth": 2,
+		"health": 18,
+		"health_growth": 3,
+		"satiety": 3,
+		"recovery": 0.02,
+		"recovery_growth": 0.001,
+		"portrait": "res://assets/characters/jiaopopo/face.tres",
+		"detail_portrait": "res://assets/characters/jiaopopo/portrait_v1.png",
+		"active_name": "呛锅",
+		"active_description": "抛出香料罐，留下造成持续伤害和减速的辣烟。",
+		"active_rules_text": "射程260像素，烟区半径65像素，持续3秒，每秒造成基准伤害的35%，减速20%。同一时间仅保留一片烟区。",
+		"interval_start": 3.6,
+		"interval_end": 3,
+		"skills": [
+			[
+				"呛锅",
+				"解锁呛锅：烟区每秒伤害35%，减速20%。"
+			],
+			[
+				"呛锅",
+				"每秒伤害提高至40%。"
+			],
+			[
+				"呛锅",
+				"烟区半径提高至80像素。"
+			],
+			[
+				"呛锅",
+				"减速提高至30%。"
+			],
+			[
+				"呛锅",
+				"持续时间提高至4秒。"
+			],
+			[
+				"呛锅",
+				"小型普通敌人停留2秒后退避0.6秒，每片烟仅一次。"
+			]
+		],
+		"implementation_status": "catalog_only",
+		"skill_pending": false
+	},
+	"ahong": {
+		"name": "阿轰",
+		"rarity": "R",
+		"faction": "lightning",
+		"attack": 2,
+		"attack_growth": 1,
+		"health": 26,
+		"health_growth": 4,
+		"satiety": 2,
+		"recovery": 0.01,
+		"recovery_growth": 0.0005,
+		"portrait": "res://assets/characters/ahong/face.tres",
+		"detail_portrait": "res://assets/characters/ahong/portrait_v1.png",
+		"active_name": "雷鸣足迹",
+		"active_description": "入队后，团队在战斗状态中移动才留下麻痹雷印。",
+		"active_rules_text": "团队被动：阿轰入队且团队在战斗状态时，主角每移动48像素留下雷印，生成间隔至少0.6秒。印记半径24像素、持续3秒，最多6枚。怪物触碰麻痹0.4秒，同一目标3秒内不重复麻痹。落在水中时，同一连通水域带电1秒。退出战斗立即清除；不造成伤害、不改变移速。",
+		"interval_start": 0,
+		"interval_end": 0,
+		"skills": [
+			[
+				"雷鸣足迹",
+				"战斗移动留雷印，踩中麻痹；水中印记传导至同一水域。"
+			],
+			[
+				"余雷",
+				"地面印记持续时间提高至4秒。"
+			],
+			[
+				"雷纹扩散",
+				"地面印记半径提高至30像素。"
+			],
+			[
+				"震颤",
+				"麻痹持续时间提高至0.5秒。"
+			],
+			[
+				"雷阵",
+				"同时存在的印记上限提高至8枚。"
+			],
+			[
+				"水域共鸣",
+				"水域带电持续时间提高至2秒。"
+			]
+		],
+		"implementation_status": "catalog_only",
+		"skill_pending": false
+	},
+	"xiluomei": {
+		"name": "汐罗美",
+		"rarity": "SSR",
+		"faction": "water",
+		"attack": 4,
+		"attack_growth": 3,
+		"health": 16,
+		"health_growth": 3,
+		"satiety": 2,
+		"recovery": 0.015,
+		"recovery_growth": 0.0005,
+		"portrait": "res://assets/characters/xiluomei/face.tres",
+		"detail_portrait": "res://assets/characters/xiluomei/portrait_v1.png",
+		"active_name": "潮汐之网",
+		"active_description": "水网聚拢敌人，再次释放推离，不再释放则收网。",
+		"active_rules_text": "射程280像素，半径90像素。首段伤害50%，牵引小型普通敌人40像素。1.5秒内再按释放外潮，伤害70%并推离30像素；否则收网伤害90%，减速30%持续1秒。两段选择互斥，大型与精英不位移。",
+		"interval_start": 3.2,
+		"interval_end": 2.6,
+		"skills": [
+			[
+				"潮汐之网",
+				"解锁水网、收网和外潮。"
+			],
+			[
+				"潮汐之网",
+				"收网伤害提高至110%。"
+			],
+			[
+				"潮汐之网",
+				"水网半径提高至105像素。"
+			],
+			[
+				"潮汐之网",
+				"外潮伤害提高至90%。"
+			],
+			[
+				"潮汐之网",
+				"首段伤害提高至70%。"
+			],
+			[
+				"潮汐之网",
+				"收网束缚小型普通敌人0.6秒；外潮推距45像素。"
+			]
+		],
+		"implementation_status": "catalog_only",
+		"skill_pending": false
+	},
+	"chengyan": {
+		"name": "澄砚",
+		"rarity": "SR",
+		"faction": "water",
+		"attack": 3,
+		"attack_growth": 2,
+		"health": 14,
+		"health_growth": 2,
+		"satiety": 2,
+		"recovery": 0.015,
+		"recovery_growth": 0.0005,
+		"portrait": "res://assets/characters/chengyan/face.tres",
+		"detail_portrait": "res://assets/characters/chengyan/portrait_v1.png",
+		"active_name": "归流护持",
+		"active_description": "每趟探索首次受到致命伤害时保命，并逐渐恢复生命。",
+		"active_rules_text": "团队被动：澄砚入队时，每趟探索首次受到致命伤害保留1点生命，获得1秒无敌，随后5秒内恢复团队最大生命的10%。六星恢复20%、无敌2秒。次数随本趟探索保存，读档与换队不重置，仅结束本趟探索后再次正式出发恢复。不改变移速，不要求攻击触发。2至5星依次提高恢复至12%、15%、无敌至1.5秒、恢复至18%。",
+		"interval_start": 0,
+		"interval_end": 0,
+		"skills": [
+			[
+				"归流护持",
+				"每趟首次致命伤保留1生命，无敌1秒，5秒内回复10%生命。"
+			],
+			[
+				"归流护持",
+				"生命恢复比例提高至12%。"
+			],
+			[
+				"归流护持",
+				"生命恢复比例提高至15%。"
+			],
+			[
+				"归流护持",
+				"无敌持续时间提高至1.5秒。"
+			],
+			[
+				"归流护持",
+				"生命恢复比例提高至18%。"
+			],
+			[
+				"归流护持",
+				"生命恢复比例提高至20%，无敌持续时间提高至2秒。"
+			]
+		],
+		"implementation_status": "catalog_only",
+		"skill_pending": false
+	},
+	"lanjiao": {
+		"name": "岚角",
+		"rarity": "R",
+		"faction": "wind",
+		"attack": 2,
+		"attack_growth": 2,
+		"health": 20,
+		"health_growth": 3,
+		"satiety": 2,
+		"recovery": 0.02,
+		"recovery_growth": 0.001,
+		"portrait": "res://assets/characters/lanjiao/face.tres",
+		"detail_portrait": "res://assets/characters/lanjiao/portrait_v1.png",
+		"active_name": "顶风开路",
+		"active_description": "向前冲撞推开敌人，撞上实体障碍时追加伤害。",
+		"active_rules_text": "蓄势0.2秒，0.25秒内冲出100像素，基础伤害80%。推移小型普通敌人30像素，撞墙追加50%伤害，每目标一次。不穿墙、不无敌；大型敌人不位移。",
+		"interval_start": 1.8,
+		"interval_end": 1.4,
+		"skills": [
+			[
+				"顶风开路",
+				"解锁冲撞与撞墙追加伤害。"
+			],
+			[
+				"顶风开路",
+				"冲撞伤害提高至90%。"
+			],
+			[
+				"顶风开路",
+				"冲撞距离提高至120像素。"
+			],
+			[
+				"顶风开路",
+				"撞墙追加伤害提高至70%。"
+			],
+			[
+				"转身顺风",
+				"冲撞结束后移动速度提高15%，持续1秒。"
+			],
+			[
+				"顶风开路",
+				"冲撞伤害100%，撞墙追加伤害90%。"
+			]
+		],
+		"implementation_status": "catalog_only",
+		"skill_pending": false
+	}
+}

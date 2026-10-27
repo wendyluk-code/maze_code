@@ -1,0 +1,30 @@
+diff --git a/scripts/ui/components/maze_map.gd b/scripts/ui/components/maze_map.gd
+index c00b90e..dda0c31 100644
+--- a/scripts/ui/components/maze_map.gd
++++ b/scripts/ui/components/maze_map.gd
+@@ -27,2 +27,3 @@ var _map_space: Control
+ var _header: HBoxContainer
++var _hud_visibility = preload("res://scripts/ui/components/maze_hud_visibility.gd").new()
+ 
+@@ -173,2 +174,3 @@ func open_map() -> void:
+ 	_focus_before = get_viewport().gui_get_focus_owner()
++	_hide_exploration_hud()
+ 	expanded = true
+@@ -201,2 +203,3 @@ func close_map() -> void:
+ 	mini_button.disabled = false
++	_hud_visibility.restore()
+ 	if is_instance_valid(_focus_before) and _focus_before.is_visible_in_tree():
+@@ -206,2 +209,13 @@ func close_map() -> void:
+ 
++func _hide_exploration_hud() -> void:
++	var nodes: Array = [get_parent().get_node_or_null("StaminaCounter")]
++	var flow = maze.get("capture_flow")
++	if is_instance_valid(flow):
++		nodes.append(flow.get("skill_bar"))
++		nodes.append(flow.get("controls_hint"))
++	_hud_visibility.suppress(nodes)
++
++func _exit_tree() -> void:
++	_hud_visibility.restore()
++
+ func _input(event: InputEvent) -> void:

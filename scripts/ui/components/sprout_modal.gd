@@ -22,7 +22,7 @@ func _ready() -> void:
 
 func _build() -> void:
 	_overlay = ColorRect.new()
-	_overlay.color = Color(0.08, 0.12, 0.08, 0.48)
+	_overlay.color = preload("res://scripts/ui/components/modal_style.gd").BACKDROP
 	_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(_overlay)
@@ -47,13 +47,7 @@ func _build() -> void:
 	_title_label.add_theme_font_size_override("font_size", 24)
 	_title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	heading.add_child(_title_label)
-	_close_button = Button.new()
-	_close_button.text = "×"
-	_close_button.tooltip_text = "关闭弹窗"
-	_close_button.custom_minimum_size = Vector2(42, 42)
-	_close_button.focus_mode = Control.FOCUS_ALL
-	_close_button.theme = SproutTheme.make_theme()
-	_close_button.add_theme_font_size_override("font_size", 26)
+	_close_button = preload("res://scripts/ui/components/modal_style.gd").close_button()
 	_close_button.pressed.connect(_on_close_pressed)
 	heading.add_child(_close_button)
 
