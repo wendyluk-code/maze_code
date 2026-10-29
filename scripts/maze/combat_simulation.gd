@@ -6,6 +6,7 @@ const Rock = preload("res://scripts/maze/rockmane_combat.gd")
 const Crystals = preload("res://scripts/maze/salt_crystals.gd")
 const Frog = preload("res://scripts/maze/wind_frog_combat.gd")
 const WaterSpacing = preload("res://scripts/maze/water_spacing.gd")
+const FenshuiTrial = preload("res://scripts/maze/fenshui_borrow_lightning.gd")
 const STATS = {
 	"rockmane":{"attack":8,"hp":120,"windup":0.7},
 	"mimic_crab":{"attack":5,"hp":28,"interval":2.0,"windup":0.65,"speed":80.0,"trigger":100.0,"leash":145.0,"home_limit":75.0,"reach":34.0},
@@ -212,6 +213,9 @@ static func advance(run: Dictionary, point: Vector2, dt: float, sprinting: bool 
 		if recoiling:
 			a.velocity=a.get("hit_velocity",[0.0,0.0]).duplicate()
 			continue
+		if FenshuiTrial.enabled(c,row):
+			FenshuiTrial.advance(run,row,point,dt,s,Skills)
+			continue
 		if a.mode=="idle" and distance<=s.trigger and not protected(row,point): a.mode="chase"
 		if a.mode in ["chase","windup"]:
 			a.away = a.away+dt if distance>s.leash else 0.0
@@ -321,6 +325,7 @@ static func attack(run: Dictionary, point: Vector2, aim: Vector2 = Vector2.RIGHT
 
 static func valid(c: Dictionary) -> bool:
 	if not Skills.valid(c): return false
+	if c.has("fs01_trial") and not c.fs01_trial is bool: return false
 	if c.has("rock_shake_left") and not Skills.number(c.rock_shake_left,0.45): return false
 	for flag in ["frog_encounter","frog_unlocked","salt_encounters","rock_encounter"]:
 		if c.has(flag) and not c[flag] is bool: return false
@@ -343,6 +348,7 @@ static func valid(c: Dictionary) -> bool:
 		var a: Variant=c.actors.get(row.id)
 		if not a is Dictionary or not _point(a.get("position")) or not _point(a.get("velocity")): return false
 		if not _valid_hit(a): return false
+		if not FenshuiTrial.valid(a): return false
 		if a.has("swim_heading") and (not _point(a.swim_heading) or vec(a.swim_heading).length()>1.001): return false
 		if a.has("swim_left") and (typeof(a.swim_left) not in [TYPE_INT,TYPE_FLOAT] or not is_finite(float(a.swim_left)) or a.swim_left<0 or a.swim_left>3.5): return false
 		if a.has("attack_aim") and (not _point(a.attack_aim) or vec(a.attack_aim).length()>1.001): return false

@@ -835,6 +835,10 @@ character_details_modal.gd 复用 SproutModal、SproutTheme、原属性皮肤及
 复用 capture_attempt_modal 的 status 标签，字号由24减至18，位置、颜色和捕获规则保持。双分辨率预览位于 output/capture_hint_preview/font18；10项场景检查通过，但运行期间正式存档指纹变化，来源未确定，隔离验收未完全通过，未回写或恢复正式存档。截图供用户确认字号。
 用户再次要求缩小后，捕获底部提示更新为16字号；位置与颜色保持。双分辨率截图见 output/capture_hint_preview/font16，10项场景检查通过；同期仍检测到正式存档指纹变化，来源未确定，未回写正式存档，完整隔离验收未通过。
 
+### 分水庭隔离试玩说明
+
+tools/previews/fenshui_borrow_lightning.gd 复用 feedback_toast.gd 的深色提示背景与共用字体；只在独立试玩入口于(300,76)显示两行15字号说明，不遮左上状态栏、不锁输入。白箭头和金色水纹由 fenshui_trial_effects.gd 按已保存阶段绘制；正常地图不加载。验收入口与边界见 docs/fs01_borrow_lightning.md。
+
 ### 盐晶开采反馈
 盐晶成功采集复用 loot_modal.gd 的 show_items()，显示岩盐图标、名称、数量和“收下”，与挖掘凉须草一致；奖励仍只由原采矿保存事务发放。先锁住移动与战斗，留出0.45秒播放裂纹，再显示物品窗；收下恢复原输入状态。耗尽和首次非土提示继续使用原短暂提示。
 

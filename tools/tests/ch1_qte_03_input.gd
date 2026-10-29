@@ -10,8 +10,12 @@ var checks := 0
 var failures := 0
 var results: Array = []
 var observed_resolutions: Array = []
+var _virtual_mouse_position := Vector2.ZERO
 
 func _ready() -> void:
+	if ProjectSettings.get_setting_with_override("display/window/size/no_focus"):
+		get_window().unfocusable = true
+		get_viewport().notify_mouse_entered()
 	call_deferred("_run")
 
 func _check(ok: bool, label: String, detail: Dictionary = {}) -> void:
@@ -89,9 +93,9 @@ func _run_quality(quality: int, resolution: Vector2i, output_dir: String) -> voi
 	_check(is_instance_valid(hover_region), "品质%d：仓库悬停区域存在" % quality)
 	if not is_instance_valid(hover_region):
 		return
-	get_viewport().warp_mouse(hover_region.get_global_rect().get_center()); await get_tree().process_frame
+	await _move_mouse(hover_region.get_global_rect().get_center())
 	_check(float(scroll.get_v_scroll_bar().self_modulate.a) > 0.5, "品质%d：悬停显示滚动条" % quality)
-	get_viewport().warp_mouse(Vector2(4, 4)); await get_tree().process_frame
+	await _move_mouse(Vector2(4, 4))
 	_check(float(scroll.get_v_scroll_bar().self_modulate.a) < 0.1, "品质%d：移出隐藏滚动条" % quality)
 	_check(is_instance_valid(warehouse.get("_meat_slot").get("_icon_button")) and is_instance_valid(warehouse.get("_salt_slot").get("_icon_button")), "品质%d：仓库图标按钮存在" % quality)
 	await _click(warehouse.get("_meat_slot").get("_icon_button"))
@@ -103,8 +107,7 @@ func _run_quality(quality: int, resolution: Vector2i, output_dir: String) -> voi
 	_check(is_instance_valid(selected_list) and selected_list.get_child_count() >= 2, "品质%d：已选区显示图标名称与加减行" % quality)
 	if quality == 1:
 		var wheel_point := scroll.get_global_rect().get_center()
-		get_viewport().warp_mouse(wheel_point)
-		await get_tree().process_frame
+		await _move_mouse(wheel_point)
 		for _i in 7:
 			var wheel_down := InputEventMouseButton.new(); wheel_down.position = wheel_point; wheel_down.button_index = MOUSE_BUTTON_WHEEL_DOWN; wheel_down.pressed = true
 			get_viewport().push_input(wheel_down); await get_tree().process_frame
@@ -307,10 +310,19 @@ func _send_key(keycode: Key) -> void:
 	event = InputEventKey.new(); event.keycode = keycode; event.pressed = false
 	get_viewport().push_input(event); await get_tree().process_frame
 
-func _click(control: Control) -> void:
-	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
-	var center := control.get_global_rect().get_center(); get_viewport().warp_mouse(center)
+func _move_mouse(point: Vector2) -> void:
+	# 只更新游戏内部指针，不能移动操作系统光标或切换系统鼠标模式。
+	var event := InputEventMouseMotion.new()
+	event.position = point
+	event.global_position = point
+	event.relative = point - _virtual_mouse_position
+	_virtual_mouse_position = point
+	get_viewport().push_input(event, true)
 	await get_tree().process_frame
+
+func _click(control: Control) -> void:
+	var center := control.get_global_rect().get_center()
+	await _move_mouse(center)
 	await get_tree().process_frame
 	center = control.get_global_rect().get_center()
 	var event := InputEventMouseButton.new(); event.button_index = MOUSE_BUTTON_LEFT; event.button_mask = MOUSE_BUTTON_MASK_LEFT; event.position = center; event.pressed = true
