@@ -110,6 +110,7 @@ static func damage(run: Dictionary, id: String, amount: int = -1) -> void:
 	var c: Dictionary = run.combat
 	if not Catalog.targetable(c,id): return
 	var actual: float=preload("res://scripts/maze/silverfish_combat.gd").damage_amount(c,id,int(c.attack) if amount<0 else amount)
+	actual=preload("res://scripts/maze/thunder_eel_combat.gd").damage_amount(c,id,actual)
 	c.actors[id].hp = maxf(1 if protected_slime(run, id) else 0, c.actors[id].hp-actual)
 	var direction:=vec(c.hero).direction_to(vec(c.actors[id].position))
 	if direction.is_zero_approx(): direction=Vector2.DOWN

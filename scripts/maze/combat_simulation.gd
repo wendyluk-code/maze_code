@@ -8,6 +8,7 @@ const Frog = preload("res://scripts/maze/wind_frog_combat.gd")
 const WaterSpacing = preload("res://scripts/maze/water_spacing.gd")
 const FenshuiTrial = preload("res://scripts/maze/fenshui_borrow_lightning.gd")
 const Silverfish = preload("res://scripts/maze/silverfish_combat.gd")
+const ThunderEel = preload("res://scripts/maze/thunder_eel_combat.gd")
 const STATS = {
 	"rockmane":{"attack":8,"hp":120,"windup":0.7},
 	"mimic_crab":{"attack":5,"hp":28,"interval":2.0,"windup":0.65,"speed":80.0,"trigger":100.0,"leash":145.0,"home_limit":75.0,"reach":34.0},
@@ -211,6 +212,9 @@ static func advance(run: Dictionary, point: Vector2, dt: float, sprinting: bool 
 		# 玩家可以站在可交互物件旁；魔物接近物件边缘后仍可攻击，避免安全岛。
 		var attack_distance := distance if row.get("region","") in ["fenshui","salt_pool"] else pos.distance_to(Catalog.nearest_clear_point(point))
 		a.cooldown = maxf(0.0,a.cooldown-dt)
+		if ThunderEel.enabled(c,row.id):
+			ThunderEel.advance(run,row,point,dt,s,Skills)
+			continue
 		if recoiling:
 			a.velocity=a.get("hit_velocity",[0.0,0.0]).duplicate()
 			continue
@@ -354,6 +358,7 @@ static func valid(c: Dictionary) -> bool:
 		if not _valid_hit(a): return false
 		if not FenshuiTrial.valid(a): return false
 		if not Silverfish.valid(a): return false
+		if not ThunderEel.valid(a): return false
 		if a.has("swim_heading") and (not _point(a.swim_heading) or vec(a.swim_heading).length()>1.001): return false
 		if a.has("swim_left") and (typeof(a.swim_left) not in [TYPE_INT,TYPE_FLOAT] or not is_finite(float(a.swim_left)) or a.swim_left<0 or a.swim_left>3.5): return false
 		if a.has("attack_aim") and (not _point(a.attack_aim) or vec(a.attack_aim).length()>1.001): return false

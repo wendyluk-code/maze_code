@@ -28,6 +28,9 @@ var membrane: Sprite2D
 var membrane_sheets: Dictionary={}
 var fish_combat: Dictionary={}
 var fish_state: Dictionary={}
+var eel_combat: Dictionary={}
+var eel_state: Dictionary={}
+var eel_contacts: Array[float]=[]
 
 func _ready() -> void:
 	position = config.position
@@ -71,11 +74,23 @@ func _ready() -> void:
 	body.centered = false
 	body.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	add_child(body)
-	if config.kind=="silverfish":
+	if config.kind in ["silverfish","thunder_eel"]:
 		# 新位图只在建节点时解码；保留独立透明膜，不用程序重画膜面。
 		for key in ["idle","swim","attack"]:
 			membrane_sheets[key]=ImageTexture.create_from_image(Image.load_from_file(config.animation_dir+"shield_"+key+".png"))
-		action_sheets.stranded=ImageTexture.create_from_image(Image.load_from_file(config.animation_dir+"stranded.png"))
+		if config.kind=="silverfish":
+			action_sheets.stranded=ImageTexture.create_from_image(Image.load_from_file(config.animation_dir+"stranded.png"))
+		else:
+			# 岸行候选复用主体，不重画：去水纹、慢蜿蜒，逐帧脚底贴地。
+			action_sheets.shore=action_sheets.swim
+			var swim_image: Image=action_sheets.swim.get_image()
+			var side:=swim_image.get_width()/4
+			for frame in 16:
+				var bottom:=0
+				for y in side:
+					for x in side:
+						if swim_image.get_pixel((frame%4)*side+x,(frame/4)*side+y).a>=0.5: bottom=maxi(bottom,y)
+				eel_contacts.append(float(bottom+1))
 		membrane=Sprite2D.new()
 		membrane.centered=false
 		membrane.texture_filter=CanvasItem.TEXTURE_FILTER_LINEAR
@@ -109,18 +124,24 @@ func _draw_frame(index: int) -> void:
 		body.region_rect=Rect2(Vector2(index,facing)*cell,cell)
 		body.scale=Vector2.ONE*float(config.width)/cell.x
 		body.offset=-cell*Vector2(0.5,158.0/192.0 if config.kind=="wind_frog" else float(config.get("anchor",0.65)))
+		if action=="shore": body.offset.y=-eel_contacts[facing*4+index]+2.0
 		if is_instance_valid(membrane):
 			var Fish=preload("res://scripts/maze/silverfish_combat.gd")
-			var formal: bool=not fish_combat.is_empty() and Fish.enabled(fish_combat,config.id)
-			var forming: bool=formal and fish_state.get("fish_phase","")=="forming"
-			membrane.visible=formal and (Fish.shielded(fish_combat,config.id) or forming) and membrane_sheets.has(action)
+			var Eel=preload("res://scripts/maze/thunder_eel_combat.gd")
+			var is_eel: bool=config.kind=="thunder_eel"
+			var combat: Dictionary=eel_combat if is_eel else fish_combat
+			var state: Dictionary=eel_state if is_eel else fish_state
+			var formal: bool=not combat.is_empty() and (Eel.enabled(combat,config.id) if is_eel else Fish.enabled(combat,config.id))
+			var forming: bool=formal and state.get("eel_phase" if is_eel else "fish_phase","")=="forming"
+			var shielded: bool=formal and (Eel.shielded(combat,config.id) if is_eel else Fish.shielded(combat,config.id))
+			membrane.visible=formal and (shielded or forming) and membrane_sheets.has(action)
 			if membrane.visible:
 				membrane.texture=membrane_sheets[action]
 				membrane.region_enabled=true
 				membrane.region_rect=body.region_rect
 				membrane.scale=body.scale
 				membrane.offset=body.offset
-				membrane.modulate.a=1.0-clampf(float(fish_state.fish_left),0,1) if forming else 1.0
+				membrane.modulate.a=1.0-clampf(float(state.get("eel_left" if is_eel else "fish_left",0.0)),0,1) if forming else 1.0
 		label.position.y=-cell.y*body.scale.y*0.65-38-combat_label_offset
 		return
 	body.texture = frames[index]
@@ -161,7 +182,8 @@ func _process(delta: float) -> void:
 		for ring in wake_rings: ring.age+=delta
 		wake_rings=wake_rings.filter(func(r): return r.age<1.1)
 		wake_clock+=delta
-		if water_velocity.length_squared()>1.0 and action!="defeated" and wake_clock>=0.22:
+		if action=="shore": wake_rings.clear()
+		if water_velocity.length_squared()>1.0 and action not in ["defeated","shore"] and wake_clock>=0.22:
 			wake_clock=0.0
 			wake_rings.append({"point":position-water_velocity.normalized()*8.0,"age":0.0})
 		queue_redraw()
@@ -206,6 +228,7 @@ static func make_hp_label() -> Label:
 
 
 func frame_index() -> int:
+	if action=="shore": return int(action_time/0.32)%4
 	if action=="stranded": return 2+int(action_time/0.18)%2
 	if action=="special":
 		if frog_state.get("frog_phase","")=="dormant": return 2 if float(frog_state.frog_left)<0.35 else 3
@@ -215,6 +238,22 @@ func frame_index() -> int:
 
 func sync_action(actor: Dictionary, combat: Dictionary={}) -> void:
 	if action_sheets.is_empty(): return
+	if config.kind=="thunder_eel":
+		eel_combat=combat
+		eel_state=actor
+		var Eel=preload("res://scripts/maze/thunder_eel_combat.gd")
+		if actor.hp>0 and Eel.enabled(combat,config.id):
+			var phase: String=actor.get("eel_phase","idle")
+			var on_shore: bool=not Eel.Water.water(Vector2(actor.position[0],actor.position[1]))
+			var next: String="shore" if on_shore else ("attack" if phase=="charging" else ("swim" if Vector2(actor.velocity[0],actor.velocity[1]).length_squared()>0.01 else "idle"))
+			if next!=action:
+				action=next
+				action_time=0.0
+			if phase=="charging":
+				action_duration=0.8
+				action_time=maxf(0.0,action_duration-float(actor.eel_left))
+			_draw_frame(frame_index())
+			return
 	if config.kind=="silverfish":
 		fish_combat=combat
 		fish_state=actor
