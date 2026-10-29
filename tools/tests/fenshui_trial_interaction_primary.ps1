@@ -2,6 +2,7 @@ param(
  [string]$ProjectRoot=(Resolve-Path "$PSScriptRoot/../..").Path,
  [Parameter(Mandatory=$true)][string]$OutputRoot,
  [Parameter(Mandatory=$true)][string]$SourceSave,
+ [string]$ScenePath="res://tools/tests/fenshui_trial_interaction.tscn",
  [string]$Godot="D:/Tools/Godot/Godot_v4.7.2-stable_win64_console.exe",
  [switch]$AllowPrimaryScreenForThisExperiment
 )
@@ -14,7 +15,7 @@ New-Item -ItemType Directory -Force $out | Out-Null
 $profile=Join-Path $out "profile"
 New-Item -ItemType Directory -Force $profile | Out-Null
 $before=(Get-FileHash -LiteralPath $SourceSave -Algorithm SHA256).Hash
-$summary=[ordered]@{started_at=(Get-Date -Format o);head=(git -C $root rev-parse HEAD);source=$SourceSave;source_sha256_before=$before;sequence=@("free_battle_1152x648","free_battle_1280x720","skills_and_damage","success","failure","cancel","eel","legacy_replay");max_seconds=120;timing_diag_enabled=$false;working_directory=$root}
+$summary=[ordered]@{started_at=(Get-Date -Format o);head=(git -C $root rev-parse HEAD);source=$SourceSave;source_sha256_before=$before;entry_scene=$ScenePath;sequence=$(if($ScenePath -eq "res://tools/tests/fenshui_trial_interaction.tscn"){@("free_battle_1152x648","free_battle_1280x720","skills_and_damage","success","failure","cancel","eel","legacy_replay")}else{@()});max_seconds=120;timing_diag_enabled=$false;working_directory=$root}
 $psi=[Diagnostics.ProcessStartInfo]::new($Godot)
 $psi.WorkingDirectory=$root
 $psi.UseShellExecute=$false
@@ -25,7 +26,7 @@ $psi.Environment["MAZE_QTE03_PROFILE"]=$profile
 $psi.Environment["FS01_DIAG_SOURCE"]=$SourceSave
 $psi.Environment.Remove("FS01_TIMING_DIAG") | Out-Null
 $psi.Environment["GODOT_EDITOR_CUSTOM_FEATURES"]="maze_automated_test"
-$args=@("--path",$root,"--audio-driver","Dummy","--screen","0","--resolution","1280x720","--scene","res://tools/tests/fenshui_trial_interaction.tscn","--log-file",(Join-Path $out "engine.log"),"--","--fs01-check",("--report="+(Join-Path $out "report.json")),("--output-dir="+$out))
+$args=@("--path",$root,"--audio-driver","Dummy","--screen","0","--resolution","1280x720","--scene",$ScenePath,"--log-file",(Join-Path $out "engine.log"),"--","--fs01-check",("--report="+(Join-Path $out "report.json")),("--output-dir="+$out))
 foreach($arg in $args){$psi.ArgumentList.Add($arg)}
 $summary.command=$args
 $summary.profile=$profile
@@ -45,3 +46,4 @@ try {
  $summary | ConvertTo-Json -Depth 8
 }
 if(!$summary.source_unchanged){throw "源档发生变化，停止且不回写"}
+if($summary.timed_out -or $summary.exit_code -ne 0 -or $summary.errors.Count -gt 0){throw "原生验收未通过，详见本次summary和原报告"}

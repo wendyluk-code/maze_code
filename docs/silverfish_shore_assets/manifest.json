@@ -1,0 +1,117 @@
+{
+  "style_source": "已保存飞书正文版本1284的画风原文，见同目录完整提示词；本批未重抓飞书最新正文。",
+  "authorization": "同批动作膜补齐与睁眼侧身摆尾改稿范围；不改变角色或画风。",
+  "generation": [
+    {
+      "timestamp": "2026-10-29T17:16:02.868Z",
+      "status": "success",
+      "requested_model": "seasunCodex/gpt-6-luna",
+      "response_model": "gpt-6-luna",
+      "requested_image_model": "gpt-image-2.5-sunburst",
+      "effective_image_tool": {
+        "type": "image_generation",
+        "background": "transparent",
+        "model": "gpt-image-2-codex",
+        "moderation": "auto",
+        "n": 1,
+        "output_compression": 100,
+        "output_format": "png",
+        "quality": "auto",
+        "size": "auto"
+      },
+      "width": 1254,
+      "height": 1254,
+      "elapsed_seconds": 64.08,
+      "output": "E:\\codexWorktree\\76a9\\代号：料理迷宫\\output\\fish-shore-20261030\\art\\idle-shield-raw.png"
+    },
+    {
+      "timestamp": "2026-10-29T17:17:12.605Z",
+      "status": "success",
+      "requested_model": "seasunCodex/gpt-6-luna",
+      "response_model": "gpt-6-luna",
+      "requested_image_model": "gpt-image-2.5-sunburst",
+      "effective_image_tool": {
+        "type": "image_generation",
+        "background": "transparent",
+        "model": "gpt-image-2-codex",
+        "moderation": "auto",
+        "n": 1,
+        "output_compression": 100,
+        "output_format": "png",
+        "quality": "auto",
+        "size": "auto"
+      },
+      "width": 1254,
+      "height": 1254,
+      "elapsed_seconds": 54.69,
+      "output": "E:\\codexWorktree\\76a9\\代号：料理迷宫\\output\\fish-shore-20261030\\art\\attack-shield-raw.png"
+    },
+    {
+      "timestamp": "2026-10-29T17:18:54.370Z",
+      "status": "success",
+      "requested_model": "seasunCodex/gpt-6-luna",
+      "response_model": "gpt-6-luna",
+      "requested_image_model": "gpt-image-2.5-sunburst",
+      "effective_image_tool": {
+        "type": "image_generation",
+        "background": "transparent",
+        "model": "gpt-image-2-codex",
+        "moderation": "auto",
+        "n": 1,
+        "output_compression": 100,
+        "output_format": "png",
+        "quality": "auto",
+        "size": "auto"
+      },
+      "width": 1254,
+      "height": 1254,
+      "elapsed_seconds": 47.09,
+      "output": "E:\\codexWorktree\\76a9\\代号：料理迷宫\\output\\fish-shore-20261030\\art\\stranded-raw.png"
+    }
+  ],
+  "processed": [
+    {
+      "action": "idle",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alpha_range": [
+        0,
+        140
+      ]
+    },
+    {
+      "action": "attack",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alpha_range": [
+        0,
+        140
+      ]
+    },
+    {
+      "action": "stranded",
+      "size": [
+        512,
+        512
+      ],
+      "alpha_range": [
+        0,
+        255
+      ]
+    }
+  ],
+  "stranded_playback": "仅使用末两列睁眼侧身帧，每0.18秒轮换；前两列倒地过渡不循环。",
+  "swim_source": "原已批准output/fenshui-assets/combat-look-v1/fish-shield.png逐字节复制。"
+}

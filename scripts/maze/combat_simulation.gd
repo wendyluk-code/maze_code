@@ -7,6 +7,7 @@ const Crystals = preload("res://scripts/maze/salt_crystals.gd")
 const Frog = preload("res://scripts/maze/wind_frog_combat.gd")
 const WaterSpacing = preload("res://scripts/maze/water_spacing.gd")
 const FenshuiTrial = preload("res://scripts/maze/fenshui_borrow_lightning.gd")
+const Silverfish = preload("res://scripts/maze/silverfish_combat.gd")
 const STATS = {
 	"rockmane":{"attack":8,"hp":120,"windup":0.7},
 	"mimic_crab":{"attack":5,"hp":28,"interval":2.0,"windup":0.65,"speed":80.0,"trigger":100.0,"leash":145.0,"home_limit":75.0,"reach":34.0},
@@ -216,6 +217,9 @@ static func advance(run: Dictionary, point: Vector2, dt: float, sprinting: bool 
 		if FenshuiTrial.enabled(c,row):
 			FenshuiTrial.advance(run,row,point,dt,s,Skills)
 			continue
+		if Silverfish.enabled(c,row.id):
+			Silverfish.advance(run,row,point,dt,s,Skills)
+			continue
 		if a.mode=="idle" and distance<=s.trigger and not protected(row,point): a.mode="chase"
 		if a.mode in ["chase","windup"]:
 			a.away = a.away+dt if distance>s.leash else 0.0
@@ -349,6 +353,7 @@ static func valid(c: Dictionary) -> bool:
 		if not a is Dictionary or not _point(a.get("position")) or not _point(a.get("velocity")): return false
 		if not _valid_hit(a): return false
 		if not FenshuiTrial.valid(a): return false
+		if not Silverfish.valid(a): return false
 		if a.has("swim_heading") and (not _point(a.swim_heading) or vec(a.swim_heading).length()>1.001): return false
 		if a.has("swim_left") and (typeof(a.swim_left) not in [TYPE_INT,TYPE_FLOAT] or not is_finite(float(a.swim_left)) or a.swim_left<0 or a.swim_left>3.5): return false
 		if a.has("attack_aim") and (not _point(a.attack_aim) or vec(a.attack_aim).length()>1.001): return false

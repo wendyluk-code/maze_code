@@ -24,6 +24,10 @@ var rock_state: Dictionary = {}
 var water_velocity := Vector2.ZERO
 var wake_clock := 0.0
 var wake_rings: Array[Dictionary] = []
+var membrane: Sprite2D
+var membrane_sheets: Dictionary={}
+var fish_combat: Dictionary={}
+var fish_state: Dictionary={}
 
 func _ready() -> void:
 	position = config.position
@@ -67,6 +71,16 @@ func _ready() -> void:
 	body.centered = false
 	body.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	add_child(body)
+	if config.kind=="silverfish":
+		# 新位图只在建节点时解码；保留独立透明膜，不用程序重画膜面。
+		for key in ["idle","swim","attack"]:
+			membrane_sheets[key]=ImageTexture.create_from_image(Image.load_from_file(config.animation_dir+"shield_"+key+".png"))
+		action_sheets.stranded=ImageTexture.create_from_image(Image.load_from_file(config.animation_dir+"stranded.png"))
+		membrane=Sprite2D.new()
+		membrane.centered=false
+		membrane.texture_filter=CanvasItem.TEXTURE_FILTER_LINEAR
+		membrane.hide()
+		add_child(membrane)
 	label = Label.new()
 	label.text = str(config.power)
 	label.add_theme_font_override("font",STATS_FONT)
@@ -95,6 +109,18 @@ func _draw_frame(index: int) -> void:
 		body.region_rect=Rect2(Vector2(index,facing)*cell,cell)
 		body.scale=Vector2.ONE*float(config.width)/cell.x
 		body.offset=-cell*Vector2(0.5,158.0/192.0 if config.kind=="wind_frog" else float(config.get("anchor",0.65)))
+		if is_instance_valid(membrane):
+			var Fish=preload("res://scripts/maze/silverfish_combat.gd")
+			var formal: bool=not fish_combat.is_empty() and Fish.enabled(fish_combat,config.id)
+			var forming: bool=formal and fish_state.get("fish_phase","")=="forming"
+			membrane.visible=formal and (Fish.shielded(fish_combat,config.id) or forming) and membrane_sheets.has(action)
+			if membrane.visible:
+				membrane.texture=membrane_sheets[action]
+				membrane.region_enabled=true
+				membrane.region_rect=body.region_rect
+				membrane.scale=body.scale
+				membrane.offset=body.offset
+				membrane.modulate.a=1.0-clampf(float(fish_state.fish_left),0,1) if forming else 1.0
 		label.position.y=-cell.y*body.scale.y*0.65-38-combat_label_offset
 		return
 	body.texture = frames[index]
@@ -128,7 +154,9 @@ func update_motion(velocity: Vector2) -> void:
 
 func _process(delta: float) -> void:
 	elapsed += delta
-	action_time += delta
+	# 正式鱼的预警、冲刺和搁浅帧直接跟随已提交剩余时间，不再叠加一遍渲染delta。
+	if fish_combat.is_empty() or not preload("res://scripts/maze/silverfish_combat.gd").enabled(fish_combat,config.id) or fish_state.get("fish_phase","") not in ["warning","rush","stranded"]:
+		action_time += delta
 	if config.kind in ["silverfish","thunder_eel"]:
 		for ring in wake_rings: ring.age+=delta
 		wake_rings=wake_rings.filter(func(r): return r.age<1.1)
@@ -178,14 +206,31 @@ static func make_hp_label() -> Label:
 
 
 func frame_index() -> int:
+	if action=="stranded": return 2+int(action_time/0.18)%2
 	if action=="special":
 		if frog_state.get("frog_phase","")=="dormant": return 2 if float(frog_state.frog_left)<0.35 else 3
 		return {"emerging":0,"warning":1,"airborne":2,"landing":3}.get(frog_state.get("frog_phase",""),1)
 	if action in ["attack","defeated"]: return mini(3,int(action_time/action_duration*4.0))
 	return int(action_time/0.18)%4 if not action_sheets.is_empty() else int(elapsed/0.18)%4
 
-func sync_action(actor: Dictionary) -> void:
+func sync_action(actor: Dictionary, combat: Dictionary={}) -> void:
 	if action_sheets.is_empty(): return
+	if config.kind=="silverfish":
+		fish_combat=combat
+		fish_state=actor
+		if actor.hp>0 and preload("res://scripts/maze/silverfish_combat.gd").enabled(combat,config.id):
+			var phase: String=actor.get("fish_phase","idle")
+			var next: String="stranded" if phase=="stranded" else ("attack" if phase in ["warning","rush"] else ("swim" if Vector2(actor.velocity[0],actor.velocity[1]).length_squared()>0.01 else "idle"))
+			if next!=action:
+				action=next
+				action_time=0.0
+			if phase in ["warning","rush"]:
+				update_motion(Vector2(actor.fish_aim[0],actor.fish_aim[1]))
+				action_duration=preload("res://scripts/maze/fenshui_borrow_lightning.gd").WARNING_FISH
+				action_time=action_duration-float(actor.fish_left) if phase=="warning" else action_duration
+			if phase=="stranded": action_time=2.5-float(actor.fish_left)
+			_draw_frame(frame_index())
+			return
 	if config.kind=="wind_frog":
 		frog_state=actor
 		body.position.y=-36.0*sin((1.0-float(actor.frog_left)/0.35)*PI) if actor.frog_phase=="airborne" else 0.0

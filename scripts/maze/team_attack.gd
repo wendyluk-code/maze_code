@@ -109,7 +109,8 @@ static func protected_slime(run: Dictionary, id: String) -> bool:
 static func damage(run: Dictionary, id: String, amount: int = -1) -> void:
 	var c: Dictionary = run.combat
 	if not Catalog.targetable(c,id): return
-	c.actors[id].hp = maxi(1 if protected_slime(run, id) else 0, c.actors[id].hp - (int(c.attack) if amount < 0 else amount))
+	var actual: float=preload("res://scripts/maze/silverfish_combat.gd").damage_amount(c,id,int(c.attack) if amount<0 else amount)
+	c.actors[id].hp = maxf(1 if protected_slime(run, id) else 0, c.actors[id].hp-actual)
 	var direction:=vec(c.hero).direction_to(vec(c.actors[id].position))
 	if direction.is_zero_approx(): direction=Vector2.DOWN
 	c.actors[id].hit_velocity=[direction.x*100.0,direction.y*100.0]

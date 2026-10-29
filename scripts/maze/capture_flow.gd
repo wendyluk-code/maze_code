@@ -138,6 +138,10 @@ func attach(owner_maze: Node2D) -> void:
 		crystal_visual.flow=self
 		maze.add_child(crystal_visual)
 	if maze.region_id=="fenshui":
+		var fish_warning:=preload("res://scripts/maze/silverfish_warning.gd").new()
+		fish_warning.flow=self
+		fish_warning.z_index=1
+		maze.add_child(fish_warning)
 		var frog_visual := preload("res://scripts/maze/wind_frog_visual.gd").new()
 		frog_visual.flow=self
 		maze.add_child(frog_visual)
@@ -231,7 +235,7 @@ func _process(delta: float) -> void:
 		_flash_body(monsters[id].body, float(actor.get("flash_remaining", 0.0)))
 		monsters[id].position = Run.Combat.vec(actor.position)
 		monsters[id].update_motion(Run.Combat.vec(actor.velocity))
-		monsters[id].sync_action(actor)
+		monsters[id].sync_action(actor,combat)
 		monsters[id].visible = run.monsters[id].status=="alive" or (monsters[id].config.has("animation_dir") and run.monsters[id].status=="pending")
 		monsters[id].label.text = "ATK:%d" % Run.Combat.STATS[monsters[id].config.kind].attack
 		monsters[id].hp_label.text="HP:%d/%d" % [actor.hp,Run.Combat.STATS[monsters[id].config.kind].hp]
@@ -296,6 +300,7 @@ func _process(delta: float) -> void:
 					monster_flash_display[monsters[id].body.get_instance_id()]=Run.Combat.FLASH_DURATION
 				monsters[id].position = Run.Combat.vec(updated.actors[id].position)
 				monsters[id].update_motion(Run.Combat.vec(updated.actors[id].velocity))
+				monsters[id].sync_action(updated.actors[id],updated)
 				_flash_body(monsters[id].body, float(updated.actors[id].get("flash_remaining", 0.0)))
 			if updated.hp <= 0 or maze._busy: break
 			if is_instance_valid(maze.exploration_guide) and maze.exploration_guide.before_combat(Run.snapshot(SaveManager)):
