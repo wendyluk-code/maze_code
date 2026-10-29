@@ -1,6 +1,6 @@
 # 分水庭最小现有成果提取记录
 
-2026-10-29，#2必要输入准备。状态：候选基线；后续配置Blender已解除三张纹理的导入/加载阻断，来源启动检查通过；旧档无头首进程9项中1项失败，第二进程未启动，完整验收仍未完成，不代表#2鱼上岸玩法完成。下文保留首轮失败历史，最新结果见末节。
+2026-10-29，#2必要输入准备。状态：候选基线；隔离Blender配置、三纹理加载和来源启动检查已通过；旧档环境适配后两次独立无头进程均10项0失败，源档未变，原生焦点明确未验证。完整场景与视觉验收仍未完成，不代表#2鱼上岸玩法完成。下文保留失败历史，最新结果见末节。
 
 ## 授权、对象与计时
 
@@ -95,3 +95,31 @@ Godot可执行文件存在：D:/Tools/Godot/Godot_v4.7.2-stable_win64_console.ex
 旧档两进程验证整体仍未完成；本次不将9项1失败改成通过。下一次若调整无头环境接入，应先区分“无头数据恢复/内部输入”与“原生窗口焦点”验收，按来源放行保留原生检查，而非删掉要求。现有desktop_independent_input专项也只在非headless显示服务下检查原生窗口属性；是否采用对应的环境分离方式须由来源确认，本轮未实施。
 
 仍缺副屏，未运行原生窗口焦点、双分辨率截图、完整95项交互或三阶段场景恢复。无头真实场景就绪不等于渲染验收。来源仍需亲验本次交付；#2新玩法与整图均未完成。
+
+## 旧档测试环境适配返修（最新）
+
+来源第2轮完整基线验收仍未通过，集中重评为无头入口误用原生窗口条件，不是战斗实现失败。本批只修改旧档测试、其专用复跑脚本和本报告，不改游戏逻辑、主目录、集成引用。按已确认边界验证旧档加载、推进、保存后再次恢复和环境证据。
+
+按TDD（测试先行）先只增加观测、保留原断言，使用新隔离副本复现红灯。output/fenshui-legacy-adapter-20261029/red/记录PID70812于23:19:10.818～23:19:16.839+08运行，9项1失败。原始值为display_backend="headless"（无头后端）、startup_no_focus=true（启动不可聚焦配置）、unfocusable=false、has_focus=true；native_focus_verified=false（原生焦点未验证）。这次不猜哪项失败，也不把无头属性直接解释为系统焦点变化。
+
+随后参照desktop_independent_input：无头分支检查真实隔离目录及启动no_focus配置；原生分支仍分别断言unfocusable和not has_focus，没有删除或降低原生要求。每份报告保留原始值，本批所有运行均为headless，原生焦点标志均为false。
+
+旧档报告新增restored_state（加载后快照）与saved_state（保存后快照），记录玩家与三只魔物生命、奖励袋、饱食、战斗累计时间、攻击阶段和剩余计时。专用启动器tools/tests/fenshui_trial_legacy_restart.ps1仅复制一次源档到新隔离profile，两次进程串行共享该副本，第二次不重置；验证首次输出与第二次输入存档指纹相同，并比较两份状态。每进程60秒，失败或超时即停、无自动重试；输出目录已存在时拒绝覆盖证据。
+
+实际绿灯证据位于output/fenshui-legacy-adapter-20261029/green/：
+
+- 第一进程PID91132，23:20:09.156～23:20:15.382+08，10项0失败，退出0，无引擎错误。
+- 第二进程PID37880，23:20:15.403～23:20:21.519+08，10项0失败，退出0，无引擎错误。
+- summary.json中second_loaded_first_save=true（第二进程读取首次保存）、state_restored_equal=true（生命/奖励/计时快照相同）、source_unchanged=true（源档未变）、native_focus_verified=false。进程间衔接存档SHA-256均为138578C21963164DEFB6C32027054FD45A706FDC59A7430A75F60E942580444B。
+- 源档前后指纹仍为A3CC5EBCF08AE7740849513CDB57BC3BBC19AAE84EF08807296047170CF0D1B5。正常配置专项在新的normal-config目录另验2项0失败、退出0、startup_no_focus=false，保留report.json和engine.log。
+
+实际使用以下命令，将OutputRoot指定为本轮green目录；复跑必须换新目录，下面自动生成新位置：
+
+~~~powershell
+& ./tools/tests/fenshui_trial_legacy_restart.ps1 -SourceSave 'D:/workspace/代号：料理迷宫/output/fs01/play-final/profile/Godot/app_userdata/maze_code/chapter-ending-test.json' -OutputRoot (Join-Path $PWD ('output/fenshui-legacy-recheck/' + (Get-Date -Format 'yyyyMMdd_HHmmss'))) -Godot 'D:/Tools/Godot/Godot_v4.7.2-stable_win64_console.exe'
+~~~
+
+命令需在仓库根运行，源档与Godot路径须在该机器存在。启动器记录完整参数、带时区起止、PID、退出、超时和源档保护。原有失败日志保留，未把无头画面当作渲染证据。
+
+本批23:17:20.177+08开始，最多8分钟、硬截止23:25+08，继承整票保守40分钟已用及90分钟总额，不重置。本批不导入、不启动图形窗口或系统输入。两次无头恢复通过不等于原生焦点、连续渲染、双分辨率、95项交互或三阶段恢复通过；副屏条件与来源最终验收仍缺，#2新玩法未开始。
+截至23:23:27.731+08收尾检查，主动墙钟约6分08秒，未超过本批预算；原生要求仍留在测试原生分支，本轮没有新增领域规则或游戏能力。
