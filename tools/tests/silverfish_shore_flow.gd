@@ -3,6 +3,8 @@ const Fish=preload("res://scripts/maze/silverfish_combat.gd")
 @export var capture_only:=false
 var pictures: Array=[]
 var runtime_environment: Dictionary={}
+var combat_trace: Array=[]
+var trace_signature: String=""
 
 func _scene_check(_effects: Node) -> void:
  output=_arg("--output-dir=")
@@ -30,6 +32,36 @@ func _scene_check(_effects: Node) -> void:
 
 func actor() -> Dictionary:
  return Run.snapshot(sm).combat.actors[Rules.IDS[0]]
+
+func _trace(edge: String) -> void:
+ var c: Dictionary=Run.snapshot(sm).combat
+ var a: Dictionary=c.actors[Rules.IDS[0]]
+ combat_trace.append({"edge":edge,"section":section,"us":Time.get_ticks_usec(),"throws":c.throws,"hits":c.hits,"hp":a.hp,"phase":a.get("fish_phase","idle"),"left":a.get("fish_left",0),"fish":a.position,"hero":[maze.player.position.x,maze.player.position.y],"distance":Fish.vec(a.position).distance_to(maze.player.position),"cooldown":c.cooldown,"action_left":c.get("action_left",0.0),"pending":Run.snapshot(sm).pending})
+
+func _reset(point: Vector2) -> void:
+ await super._reset(Vector2(781,475) if capture_only else point)
+ if capture_only:
+  _check(await _wait_until(func(): return actor().get("fish_phase","")=="stranded",180),"捕获前由真实岸边站位诱鱼上岸")
+  await _hold(KEY_LEFT,0.35)
+  _trace("诱导上岸并真实侧移后")
+
+func _attack_click() -> void:
+ if capture_only:
+  _check(await _wait_until(func(): return Run.snapshot(sm).combat.cooldown<=0.00001 or maze.capture_flow.dialog.visible,120),"真实普攻等待既有冷却")
+  if maze.capture_flow.dialog.visible: return
+ if capture_only: _trace("点击前")
+ await super._attack_click()
+ if capture_only: _trace("点击后")
+
+func _process(delta: float) -> void:
+ super._process(delta)
+ if not capture_only or not recording or not is_instance_valid(maze): return
+ var c: Dictionary=Run.snapshot(sm).combat
+ var a: Dictionary=c.actors[Rules.IDS[0]]
+ var signature:=JSON.stringify([c.throws,c.hits,a.hp,a.get("fish_phase","idle")])
+ if signature!=trace_signature:
+  trace_signature=signature
+  _trace("投掷命中或阶段变化")
 
 func _shore(size: Vector2i) -> void:
  section="formal_fish_"+str(size)
@@ -105,7 +137,7 @@ func _role_attacks() -> void:
   recording=false
 
 func _finish_fish() -> void:
- FileAccess.open(_arg("--report="),FileAccess.WRITE).store_string(JSON.stringify({"checks":checks,"failures":failures,"results":results,"frame_ms":frame_ms,"long_frames":long_frames,"pictures":pictures,"environment":runtime_environment,"user_dir":OS.get_user_data_dir()},"	"))
+ FileAccess.open(_arg("--report="),FileAccess.WRITE).store_string(JSON.stringify({"checks":checks,"failures":failures,"results":results,"frame_ms":frame_ms,"long_frames":long_frames,"pictures":pictures,"combat_trace":combat_trace,"environment":runtime_environment,"user_dir":OS.get_user_data_dir()},"	"))
  print("正式银鳞鱼场景：",checks,"项，失败",failures)
  get_tree().quit(1 if failures else 0)
 
