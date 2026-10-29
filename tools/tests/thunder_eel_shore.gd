@@ -124,25 +124,76 @@ func coarse_shore() -> void:
 func short_limit() -> void:
  var run:=formal()
  var a: Dictionary=run.combat.actors[EEL]
+ var geometry:=short_limit_geometry()
+ print("短追几何前提：",JSON.stringify(geometry))
+ check(geometry.valid,"由正式直线岸段推导的射线先满足完整水中起点、连续交界至少55与玩家合法前提")
+ if not geometry.valid: return
+ var start:=Combat.vec(geometry.start)
+ var target:=Combat.vec(geometry.target)
+ a.position=geometry.start.duplicate()
  check(Catalog.Fenshui.water(Combat.vec(a.position)),"短追上限样例从已验证完整水中位置开始")
- for i in 100:
-  Combat.advance(run,Vector2(781,475),0.02)
-  if not Catalog.Fenshui.water(Combat.vec(a.position)): break
- var partial: bool=not Catalog.Fenshui.water(Combat.vec(a.position))
- print("交界转向前：",JSON.stringify({"position":a.position,"origin":a.eel_origin,"path":a.eel_path,"phase":a.eel_phase,"partial":partial}))
- for i in 200:
-  Combat.advance(run,Vector2(900,543),0.02)
-  if a.get("eel_phase","") in ["returning","stranded"]: break
- print("交界短追实际轨迹：",JSON.stringify({"origin":a.get("eel_origin"),"path":a.get("eel_path"),"phase":a.get("eel_phase")}))
- check(partial and a.get("eel_phase","")=="returning","沿岸交界未完整上岸时55像素即转回水，不继续追人或蓄电")
+ var previous:=start
  var distance:=0.0
- var previous:=Combat.vec(a.eel_origin)
- for p in a.eel_path:
-  distance+=previous.distance_to(Combat.vec(p))
-  previous=Combat.vec(p)
- check(distance<=55.001 and distance>=54.9 and Combat.valid(run.combat),"短追上限实际55且路径可保存")
- var hp: float=run.combat.hp
+ var partial:=false
+ var legal:=true
+ var within_limit:=true
+ var trail: Array=[]
  for i in 200:
-  Combat.advance(run,Vector2(900,543),0.02)
+  Combat.advance(run,target,0.02)
+  var current:=Combat.vec(a.position)
+  if not Catalog.Fenshui.water(current):
+   partial=true
+   distance+=previous.distance_to(current)
+  elif partial: legal=false
+  if not preload("res://scripts/maze/silverfish_combat.gd").allowed(current) or preload("res://scripts/maze/silverfish_combat.gd").dry(current): legal=false
+  if distance>55.001: within_limit=false
+  trail.append({"position":a.position.duplicate(),"origin":a.eel_origin.duplicate(),"phase":a.eel_phase,"distance":distance})
+  previous=current
+  if a.get("eel_phase","") in ["returning","stranded"]: break
+ print("交界短追实际轨迹：",JSON.stringify(trail))
+ check(partial and a.get("eel_phase","")=="returning","沿岸交界未完整上岸时55像素即转回水，不继续追人或蓄电")
+ check(within_limit and distance<=55.001 and distance>=54.9 and legal and Combat.valid(run.combat),"短追上限实际55且路径可保存")
+ var hp: float=run.combat.hp
+ var cancelled: bool=a.mode!="windup" and a.windup==0
+ var return_trail: Array=[]
+ for i in 200:
+  previous=Combat.vec(a.position)
+  Combat.advance(run,target,0.02)
+  var current:=Combat.vec(a.position)
+  if current.distance_to(previous)>1.101 or not preload("res://scripts/maze/silverfish_combat.gd").allowed(current): legal=false
+  if a.mode=="windup" or a.windup>0: cancelled=false
+  return_trail.append({"position":a.position.duplicate(),"phase":a.eel_phase,"windup":a.windup,"hero_hp":run.combat.hp})
   if a.eel_phase=="forming": break
- check(a.eel_phase=="forming" and run.combat.hp==hp,"交界短追截断后合法回水且未补发电击")
+ print("截断回水实际轨迹：",JSON.stringify(return_trail))
+ check(a.eel_phase=="forming" and run.combat.hp==hp and cancelled and legal,"交界短追截断后合法回水且未补发电击")
+
+func short_limit_geometry() -> Dictionary:
+ # 固定使用正式中央岸路的长直线段；不是按战斗结果随机筛选绿点。
+ var road: Dictionary=Roads.dry_paths()[1]
+ var first: Vector2=road.points[12]
+ var last: Vector2=road.points[13]
+ var tangent:=first.direction_to(last)
+ var normal:=Vector2(-tangent.y,tangent.x)
+ var start: Vector2=first+tangent*20.0+normal*(float(road.width)+float(Catalog.Fenshui.BODY_RADIUS)+2.0)
+ var target:=last-tangent*20.0+normal*float(road.width)
+ var result: Dictionary={"segment":[Combat.pack(first),Combat.pack(last)],"width":road.width,"body_radius":Catalog.Fenshui.BODY_RADIUS,"tangent":Combat.pack(tangent),"normal":Combat.pack(normal),"start":Combat.pack(start),"target":Combat.pack(target),"sampling":0.5,"valid":true,"partial_length":0.0,"samples":[]}
+ var Ground=preload("res://scripts/maze/silverfish_combat.gd")
+ var started:=false
+ var previous: Vector2=start
+ if not Catalog.Fenshui.water(start): result.valid=false
+ var steps:=maxi(1,ceili(start.distance_to(target)/0.5))
+ for i in range(steps+1):
+  var point: Vector2=start.lerp(target,float(i)/steps)
+  var wet: bool=Catalog.Fenshui.water(point)
+  var dry: bool=Ground.dry(point)
+  var allowed: bool=Ground.allowed(point)
+  if not allowed or not Roads.is_walkable(point,Roads.FOOT_RADIUS) or Catalog.Fenshui.protected(point): result.valid=false
+  if not wet:
+   started=true
+   result.partial_length+=previous.distance_to(point)
+  elif started: result.valid=false
+  if dry: result.valid=false
+  result.samples.append({"position":Combat.pack(point),"water":wet,"dry":dry,"allowed":allowed})
+  previous=point
+ result.valid=result.valid and started and result.partial_length>=57.0
+ return result
