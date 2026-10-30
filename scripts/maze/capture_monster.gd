@@ -31,6 +31,7 @@ var fish_state: Dictionary={}
 var eel_combat: Dictionary={}
 var eel_state: Dictionary={}
 var eel_contacts: Array[float]=[]
+var membrane_pieces: Array[Sprite2D]=[]
 
 func _ready() -> void:
 	position = config.position
@@ -96,6 +97,14 @@ func _ready() -> void:
 		membrane.texture_filter=CanvasItem.TEXTURE_FILTER_LINEAR
 		membrane.hide()
 		add_child(membrane)
+		if config.kind=="silverfish":
+			for i in 4:
+				var piece:=Sprite2D.new()
+				piece.centered=false
+				piece.texture_filter=CanvasItem.TEXTURE_FILTER_LINEAR
+				piece.hide()
+				add_child(piece)
+				membrane_pieces.append(piece)
 	label = Label.new()
 	label.text = str(config.power)
 	label.add_theme_font_override("font",STATS_FONT)
@@ -134,7 +143,8 @@ func _draw_frame(index: int) -> void:
 			var formal: bool=not combat.is_empty() and (Eel.enabled(combat,config.id) if is_eel else Fish.enabled(combat,config.id))
 			var forming: bool=formal and state.get("eel_phase" if is_eel else "fish_phase","")=="forming"
 			var shielded: bool=formal and (Eel.shielded(combat,config.id) if is_eel else Fish.shielded(combat,config.id))
-			membrane.visible=formal and (shielded or forming) and membrane_sheets.has(action)
+			var broken: bool=not is_eel and float(state.get("electric_left",0.0))>0.0
+			membrane.visible=formal and not broken and (shielded or forming) and membrane_sheets.has(action)
 			if membrane.visible:
 				membrane.texture=membrane_sheets[action]
 				membrane.region_enabled=true
@@ -142,6 +152,18 @@ func _draw_frame(index: int) -> void:
 				membrane.scale=body.scale
 				membrane.offset=body.offset
 				membrane.modulate.a=1.0-clampf(float(state.get("eel_left" if is_eel else "fish_left",0.0)),0,1) if forming else 1.0
+			for i in membrane_pieces.size():
+				var piece: Sprite2D=membrane_pieces[i]
+				var progress: float=(4.0-float(state.get("electric_left",0.0)))/0.3
+				piece.visible=formal and broken and progress>=0 and progress<1 and membrane_sheets.has(action)
+				if piece.visible:
+					var quadrant:=Vector2(i%2,i/2)
+					piece.texture=membrane_sheets[action]
+					piece.region_enabled=true
+					piece.region_rect=Rect2(body.region_rect.position+quadrant*cell*0.5,cell*0.5)
+					piece.scale=body.scale
+					piece.position=(body.offset+quadrant*cell*0.5)*body.scale+(quadrant*2-Vector2.ONE)*9.0*progress
+					piece.modulate.a=1.0-progress
 		label.position.y=-cell.y*body.scale.y*0.65-38-combat_label_offset
 		return
 	body.texture = frames[index]
@@ -228,6 +250,9 @@ static func make_hp_label() -> Label:
 
 
 func frame_index() -> int:
+	if config.kind=="thunder_eel" and not eel_combat.is_empty() and preload("res://scripts/maze/thunder_eel_combat.gd").enabled(eel_combat,config.id):
+		if eel_state.get("eel_phase","")=="charging": return clampi(int((1.2-float(eel_state.eel_left))/1.2*2),0,1)
+		if eel_state.get("eel_phase","")=="discharge": return clampi(2+int((0.35-float(eel_state.eel_left))/0.35*2),2,3)
 	if action=="shore": return int(action_time/0.32)%4
 	if action=="stranded": return 2+int(action_time/0.18)%2
 	if action=="special":
@@ -245,12 +270,12 @@ func sync_action(actor: Dictionary, combat: Dictionary={}) -> void:
 		if actor.hp>0 and Eel.enabled(combat,config.id):
 			var phase: String=actor.get("eel_phase","idle")
 			var on_shore: bool=not Eel.Water.water(Vector2(actor.position[0],actor.position[1]))
-			var next: String="shore" if on_shore else ("attack" if phase=="charging" else ("swim" if Vector2(actor.velocity[0],actor.velocity[1]).length_squared()>0.01 else "idle"))
+			var next: String="shore" if on_shore else ("attack" if phase in ["charging","discharge"] else ("swim" if Vector2(actor.velocity[0],actor.velocity[1]).length_squared()>0.01 else "idle"))
 			if next!=action:
 				action=next
 				action_time=0.0
 			if phase=="charging":
-				action_duration=0.8
+				action_duration=Eel.CHARGE_TIME
 				action_time=maxf(0.0,action_duration-float(actor.eel_left))
 			_draw_frame(frame_index())
 			return

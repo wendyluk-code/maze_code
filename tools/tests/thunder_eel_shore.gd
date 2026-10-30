@@ -89,9 +89,9 @@ func electricity_edges() -> void:
  var run:=formal()
  var a: Dictionary=run.combat.actors[EEL]
  tick(run,Vector2(890,485),0.02)
- check(a.get("eel_phase","")=="charging","水中沿原70范围和0.8前摇开始蓄电")
+ check(a.get("eel_phase","")=="charging","水中开始已确认125范围与1.2秒前摇")
  var hp: float=run.combat.hp
- tick(run,Vector2(890,485),0.8)
+ tick(run,Vector2(890,485),1.2)
  check(run.combat.hp==hp-5,"水中原蓄电结束仅扣原5点攻击")
  tick(run,Vector2(890,485),0.3)
  check(run.combat.hp==hp-5,"放电余段不重复扣血")

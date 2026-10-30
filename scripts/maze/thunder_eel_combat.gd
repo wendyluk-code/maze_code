@@ -1,5 +1,5 @@
 extends RefCounted
-## 正式雷鳗岸水机会；与隔离试玩及范围借电分开。
+## 正式雷鳗岸水机会与局部范围放电；不改旧隔离试玩。
 const Water=preload("res://data/maze/fenshui_encounters.gd")
 const Roads=preload("res://data/maze/fenshui_roads.gd")
 const Ground=preload("res://scripts/maze/silverfish_combat.gd")
@@ -7,6 +7,9 @@ const Spacing=preload("res://scripts/maze/water_spacing.gd")
 const SHORE_LIMIT=55.0
 const STOP_TIME=2.5
 const FORM_TIME=1.0
+const Area=preload("res://scripts/maze/fenshui_electric_area.gd")
+const CHARGE_TIME=1.2
+const DISCHARGE_TIME=0.35
 
 static func enabled(c: Dictionary, id: String) -> bool:
  return c.get("region","")=="fenshui" and not c.get("fs01_trial",false) and id.begins_with("fenshui_thunder_eel_")
@@ -98,6 +101,9 @@ static func advance(run: Dictionary, row: Dictionary, hero: Vector2, dt: float, 
   if not wet: phase(a,"returning")
   elif a.eel_left<=0.00001: phase(a,"idle")
   return
+ if a.eel_phase=="discharge":
+  if a.eel_left<=0.00001: phase(a,"chasing")
+  return
  var distance:=pos.distance_to(hero)
  if a.eel_phase=="idle" and c.hp>0 and distance<=stats.trigger and not Water.protected(hero): phase(a,"chasing")
  if a.eel_phase in ["chasing","charging"]:
@@ -115,22 +121,16 @@ static func advance(run: Dictionary, row: Dictionary, hero: Vector2, dt: float, 
  if a.eel_phase=="charging":
   a.windup=a.eel_left
   if a.eel_left<=0.00001:
-   if c.hp>0 and wet and distance<=stats.reach and water_line(pos,hero):
-    c.hp=maxf(0,c.hp-skills.incoming_damage(run,int(stats.attack)))
-    c.last_attacker=row.kind
-    var direction:=pos.direction_to(hero)
-    c.hit_velocity=pack(direction*150.0)
-    c.hit_remaining=0.12
-    c.flash_remaining=0.1
-   phase(a,"chasing")
+   phase(a,"discharge",DISCHARGE_TIME)
+   discharge(run,row,hero,int(stats.attack),skills)
   return
  if float(a.get("hit_remaining",0.0))>0.0: return
  if wet:
   a.eel_origin=pack(pos)
   a.eel_path=[]
- if wet and distance<=stats.reach and water_line(pos,hero):
+ if wet and distance<=Area.RADIUS and water_line(pos,hero):
   if a.cooldown<=0.00001:
-   phase(a,"charging",stats.windup)
+   phase(a,"charging",CHARGE_TIME)
    a.cooldown=stats.interval
   return
  var remaining:=maxf(0.0,SHORE_LIMIT-travelled(a))
@@ -150,6 +150,25 @@ static func water_line(start: Vector2, finish: Vector2) -> bool:
   if not Water.water(start.lerp(finish,float(i)/steps),0.0): return false
  return true
 
+static func discharge(run: Dictionary, row: Dictionary, hero: Vector2, amount: int, skills: Script) -> void:
+ var c: Dictionary=run.combat
+ var center:=vec(c.actors[row.id].position)
+ var shape:=Area.polygon(center,row.id)
+ c.electric_serial=int(c.get("electric_serial",0))+1
+ if c.hp>0 and Area.contains(shape,hero):
+  c.hp=maxf(0,c.hp-skills.incoming_damage(run,amount))
+  c.last_attacker=row.kind
+  c.hit_velocity=pack(center.direction_to(hero)*150.0)
+  c.hit_remaining=0.12
+  c.flash_remaining=0.1
+ for id in c.actors:
+  if not id.begins_with("fenshui_silverfish_") or run.monsters[id].status!="alive": continue
+  var fish: Dictionary=c.actors[id]
+  if fish.hp<=0 or not Area.contains(shape,vec(fish.position)): continue
+  fish.hp=maxf(0,float(fish.hp)-amount)
+  fish.flash_remaining=0.1
+  fish.electric_left=4.0
+
 static func point(value: Variant) -> bool:
  if not value is Array or value.size()!=2: return false
  for number in value:
@@ -159,7 +178,7 @@ static func point(value: Variant) -> bool:
 static func valid(a: Dictionary) -> bool:
  if not a.has("eel_phase"):
   return not a.has("eel_left") and not a.has("eel_origin") and not a.has("eel_path")
- if a.eel_phase not in ["idle","chasing","charging","stranded","returning","forming"]: return false
+ if a.eel_phase not in ["idle","chasing","charging","discharge","stranded","returning","forming"]: return false
  var left: Variant=a.get("eel_left")
  if typeof(left) not in [TYPE_FLOAT,TYPE_INT] or not is_finite(float(left)) or left<0 or left>STOP_TIME: return false
  if not point(a.get("eel_origin")) or not Water.water(vec(a.eel_origin)): return false

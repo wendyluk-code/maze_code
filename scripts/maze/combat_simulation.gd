@@ -195,6 +195,11 @@ static func advance(run: Dictionary, point: Vector2, dt: float, sprinting: bool 
 	c.hero = pack(point)
 	c.elapsed += dt
 	# 近战先于投射物结算：同一推进中主角归零优先失败。
+	# 先统一推进旧窗口，再结算本次电击；新命中的所有鱼均得到完整4秒。
+	if c.get("region","")=="fenshui" and not c.get("fs01_trial",false):
+		for id in c.actors:
+			if id.begins_with("fenshui_silverfish_") and run.monsters[id].status=="alive" and c.actors[id].hp>0 and c.actors[id].has("electric_left"):
+				c.actors[id].electric_left=maxf(0.0,float(c.actors[id].electric_left)-dt)
 	for row in Catalog.rows(c):
 		var a: Dictionary = c.actors[row.id]
 		if run.monsters[row.id].status!="alive" or a.hp<=0: continue
@@ -333,6 +338,7 @@ static func attack(run: Dictionary, point: Vector2, aim: Vector2 = Vector2.RIGHT
 
 static func valid(c: Dictionary) -> bool:
 	if not Skills.valid(c): return false
+	if c.has("electric_serial") and (not Skills.number(c.electric_serial,9007199254740991.0) or float(c.electric_serial)!=floor(float(c.electric_serial))): return false
 	if c.has("fs01_trial") and not c.fs01_trial is bool: return false
 	if c.has("rock_shake_left") and not Skills.number(c.rock_shake_left,0.45): return false
 	for flag in ["frog_encounter","frog_unlocked","salt_encounters","rock_encounter"]:

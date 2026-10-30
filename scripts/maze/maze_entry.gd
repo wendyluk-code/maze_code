@@ -154,6 +154,10 @@ func _ready() -> void:
 		yf_encounter=preload("res://scripts/maze/yufeng_salia_encounter.gd").new()
 		add_child(yf_encounter)
 		yf_encounter.attach(self)
+		var electric_effects=preload("res://scripts/maze/fenshui_electric_effects.gd").new()
+		electric_effects.name="FenshuiElectricEffects"
+		add_child(electric_effects)
+		move_child(electric_effects,player.get_index())
 	if region_id == "maze_entry":
 		exploration_guide = preload("res://scripts/ch2_exploration_guide.gd").new()
 		exploration_guide.maze = self

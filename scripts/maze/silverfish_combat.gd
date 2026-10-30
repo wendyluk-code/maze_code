@@ -13,7 +13,7 @@ static func enabled(c: Dictionary, id: String) -> bool:
 static func shielded(c: Dictionary, id: String) -> bool:
  if not enabled(c,id): return false
  var a: Dictionary=c.actors[id]
- return a.hp>0 and a.get("fish_phase","") not in ["stranded","returning","forming"] and Water.water(vec(a.position),0.0)
+ return a.hp>0 and float(a.get("electric_left",0.0))<=0.0 and a.get("fish_phase","") not in ["stranded","returning","forming"] and Water.water(vec(a.position),0.0)
 
 static func damage_amount(c: Dictionary, id: String, amount: float) -> float:
  return maxf(1.0,amount*0.25) if amount>0 and shielded(c,id) else amount
@@ -103,6 +103,9 @@ static func advance(run: Dictionary, row: Dictionary, point: Vector2, dt: float,
   if a.fish_left<=0.00001: phase(a,"idle",0)
 
 static func valid(a: Dictionary) -> bool:
+ if a.has("electric_left"):
+  var remaining: Variant=a.electric_left
+  if typeof(remaining) not in [TYPE_FLOAT,TYPE_INT] or not is_finite(float(remaining)) or remaining<0 or remaining>4.0: return false
  if not a.has("fish_phase"):
   return not a.has("fish_left") and not a.has("fish_origin") and not a.has("fish_aim") and not a.has("fish_hit")
  if a.fish_phase not in ["idle","warning","rush","stranded","returning","forming","recover"]: return false

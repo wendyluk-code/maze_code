@@ -2,7 +2,9 @@ param(
  [ValidateSet("unit","restart")][string]$Mode="unit",
  [string]$ProjectRoot=(Resolve-Path "$PSScriptRoot/../..").Path,
  [Parameter(Mandatory=$true)][string]$OutputRoot,
- [string]$Godot="D:/Tools/Godot/Godot_v4.7.2-stable_win64_console.exe"
+ [string]$Godot="D:/Tools/Godot/Godot_v4.7.2-stable_win64_console.exe",
+ [string]$ScriptPath="res://tools/tests/thunder_eel_shore.gd",
+ [string]$ScenePath="res://tools/tests/thunder_eel_shore_restart.tscn"
 )
 $ErrorActionPreference="Stop"
 $ProjectRoot=[IO.Path]::GetFullPath($ProjectRoot)
@@ -19,8 +21,8 @@ foreach($phase in $(if($Mode -eq "restart"){@("seed","restore")}else{@("unit")})
  foreach($key in @("APPDATA","LOCALAPPDATA","MAZE_QTE03_PROFILE")){$psi.Environment[$key]=(Join-Path $OutputRoot "profile")}
  $psi.Environment["GODOT_EDITOR_CUSTOM_FEATURES"]="maze_automated_test"
  $arguments=@("--headless","--path",$ProjectRoot,"--audio-driver","Dummy","--log-file",(Join-Path $OutputRoot ($phase+".log")))
- if($Mode -eq "restart"){$arguments+=@("--scene","res://tools/tests/thunder_eel_shore_restart.tscn","--",("--phase="+$phase),("--report="+(Join-Path $OutputRoot ($phase+".json"))))}
- else{$arguments+=@("--script","res://tools/tests/thunder_eel_shore.gd")}
+ if($Mode -eq "restart"){$arguments+=@("--scene",$ScenePath,"--",("--phase="+$phase),("--report="+(Join-Path $OutputRoot ($phase+".json"))))}
+ else{$arguments+=@("--script",$ScriptPath)}
  foreach($arg in $arguments){$psi.ArgumentList.Add($arg)}
  $row.command=$arguments
  $p=[Diagnostics.Process]::Start($psi)

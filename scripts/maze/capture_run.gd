@@ -623,7 +623,8 @@ static func combat_tick(sm: Node, point: Vector2, dt: float, visible: Rect2 = Re
 	sm.get("_state")[sm.MAZE_STATE_KEY].position=run.combat.hero.duplicate()
 	var frog_changed: bool = run.combat.get("frog_encounter",false) and run.combat.actors[Catalog.Frog.ID]!=before.actors[Catalog.Frog.ID]
 	var rock_changed: bool=run.combat.get("rock_encounter",false) and run.combat.actors[Catalog.Rock.ID]!=before.actors[Catalog.Rock.ID]
-	if mining.changed or not mining.feedback.is_empty() or rock_changed or frog_changed or healing or lesson_changed or awarded or migrated or refreshed or run.combat.hp!=before.hp or run.combat.hits!=before.hits or run.combat.throws!=before.throws or run.combat.get("blocks",0)!=before.get("blocks",0) or run.combat.checkpoint>=0.5:
+	var electric_changed: bool=run.combat.get("electric_serial",0)!=before.get("electric_serial",0)
+	if electric_changed or mining.changed or not mining.feedback.is_empty() or rock_changed or frog_changed or healing or lesson_changed or awarded or migrated or refreshed or run.combat.hp!=before.hp or run.combat.hits!=before.hits or run.combat.throws!=before.throws or run.combat.get("blocks",0)!=before.get("blocks",0) or run.combat.checkpoint>=0.5:
 		run.combat.checkpoint=0.0
 		var committed:=_commit(sm,previous)
 		if committed.success: committed["mining_feedback"]=mining.feedback
