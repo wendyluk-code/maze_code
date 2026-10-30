@@ -1,5 +1,5 @@
 extends Node2D
-## 所有绘制限定在伤害也使用的同一多边形；不持有或修改战斗状态。
+## 水面范围与伤害共用多边形；身体电花独立叠加，不持有或修改战斗状态。
 const Run=preload("res://scripts/maze/capture_run.gd")
 const Eel=preload("res://scripts/maze/thunder_eel_combat.gd")
 const Area=preload("res://scripts/maze/fenshui_electric_area.gd")
@@ -39,5 +39,8 @@ func _draw() -> void:
      for i in shape.size():
       var first:=shape[i]-center
       var last:=shape[(i+1)%shape.size()]-center
-      draw_colored_polygon(PackedVector2Array([center+first*maxf(0.0,progress-0.055),center+first*progress,center+last*progress,center+last*maxf(0.0,progress-0.055)]),Color(1.0,0.9,0.55,0.65*(1.0-progress*0.5)))
+      var inner:=maxf(0.0,progress-0.055)
+      var band:=PackedVector2Array([center+first*inner,center+first*progress,center+last*progress])
+      if inner>0.0: band.append(center+last*inner)
+      draw_colored_polygon(band,Color(1.0,0.9,0.55,0.65*(1.0-progress*0.5)))
    draw_texture_rect_region(discharge,Rect2(Eel.vec(a.position)-Vector2(48,58),Vector2(96,96)),Rect2(frame,Vector2(256,256)),Color(1,1,1,0.3+strength*0.7))

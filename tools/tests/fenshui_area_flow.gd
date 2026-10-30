@@ -2,6 +2,7 @@ extends "res://tools/tests/thunder_eel_shore_flow.gd"
 const Area=preload("res://scripts/maze/fenshui_electric_area.gd")
 const FISH="fenshui_silverfish_1"
 var area_events: Array=[]
+@export var drawing_case:=false
 
 func _scene_check(_effects: Node) -> void:
  output=_arg("--output-dir=")
@@ -30,15 +31,38 @@ func _scene_check(_effects: Node) -> void:
     a.fish_hit=false
     a.fish_phase="recover"
     a.fish_left=2.5
-  if failures==0:
+  if failures==0 and drawing_case:
+   await _draw_samples()
+  elif failures==0:
    for size in [Vector2i(1152,648),Vector2i(1280,720)]:
     get_window().size=size
     await _area_scene(size)
  _check(not invalid_seen,"正式范围借电全过程战斗状态合法")
- _check(not frame_ms.is_empty() and frame_ms.max()<250,"正式范围借电保留250毫秒交互帧门槛",{"max_ms":frame_ms.max() if not frame_ms.is_empty() else -1})
+ if not drawing_case: _check(not frame_ms.is_empty() and frame_ms.max()<250,"正式范围借电保留250毫秒交互帧门槛",{"max_ms":frame_ms.max() if not frame_ms.is_empty() else -1})
  FileAccess.open(_arg("--report="),FileAccess.WRITE).store_string(JSON.stringify({"checks":checks,"failures":failures,"results":results,"frame_ms":frame_ms,"long_frames":long_frames,"pictures":pictures,"trace":trace,"area_events":area_events,"environment":environment,"user_dir":OS.get_user_data_dir()},"\t"))
  print("正式范围借电场景：",checks,"项，失败",failures)
  get_tree().quit(1 if failures else 0)
+
+func _draw_samples() -> void:
+ # 新绘制错误的最小受控复现，不替代完整多怪流程或其帧门槛。
+ await _reset(Vector2(1040,490))
+ maze.capture_flow.set_process(false)
+ for left in [0.35,0.349,0.34,0.30,0.20,0.05,0.0]:
+  var run: Dictionary=Run.snapshot(sm)
+  for id in [EEL,"fenshui_thunder_eel_2"]:
+   var a: Dictionary=run.combat.actors[id]
+   a.eel_origin=a.position.duplicate()
+   a.eel_path=[]
+   a.eel_phase="discharge"
+   a.eel_left=left
+   a.mode="chase"
+   a.windup=0.0
+  run.combat.actors[FISH].electric_left=4.0-(0.35-left)
+  sm.data[Run.KEY]=run
+  _check(Run.valid(run),"释放绘制样例状态合法："+str(left))
+  await get_tree().process_frame
+  await get_tree().process_frame
+  await _image("draw_release_"+str(left).replace(".","_"))
 
 func _area_scene(size: Vector2i) -> void:
  section="范围借电"+str(size)
