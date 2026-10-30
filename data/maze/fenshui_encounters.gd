@@ -24,6 +24,8 @@ static func protected(point: Vector2, margin: float = 0.0) -> bool:
 
 static func water(point: Vector2, radius: float = BODY_RADIUS) -> bool:
 	if protected(point,radius): return false
+	if radius==0.0:
+		return Roads.is_walkable(point,0.0) and Roads.terrain_multiplier(point)==Roads.WATER_SPEED
 	for i in 9:
 		var p := point if i==8 else point+Vector2.RIGHT.rotated(i*TAU/8.0)*radius
 		if not Roads.is_walkable(p,0.0) or Roads.terrain_multiplier(p)!=Roads.WATER_SPEED: return false

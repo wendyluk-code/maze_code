@@ -36,11 +36,15 @@ func _draw() -> void:
     if not charging:
      var progress:=clampf(1.0-float(a.eel_left)/Eel.DISCHARGE_TIME,0.02,1.0)
      # 多边形以中心向各方向直线截断，向内缩放的每段仍在同一有效区域内。
+     draw_set_transform(center)
      for i in shape.size():
       var first:=shape[i]-center
       var last:=shape[(i+1)%shape.size()]-center
       var inner:=maxf(0.0,progress-0.055)
       var band:=PackedVector2Array([center+first*inner,center+first*progress,center+last*progress])
       if inner>0.0: band.append(center+last*inner)
-      draw_colored_polygon(band,Color(1.0,0.9,0.55,0.65*(1.0-progress*0.5)))
+      var local_band:=PackedVector2Array()
+      for point in band: local_band.append(point-center)
+      draw_colored_polygon(local_band,Color(1.0,0.9,0.55,0.65*(1.0-progress*0.5)))
+     draw_set_transform(Vector2.ZERO)
    draw_texture_rect_region(discharge,Rect2(Eel.vec(a.position)-Vector2(48,58),Vector2(96,96)),Rect2(frame,Vector2(256,256)),Color(1,1,1,0.3+strength*0.7))
