@@ -21,7 +21,9 @@ const Roads := preload("res://data/maze/entry_roads.gd")
 
 static func snapshot(sm: Node) -> Dictionary:
 	var raw: Variant = sm.get("_state").get(KEY, {})
-	return raw.duplicate(true) if raw is Dictionary else {}
+	var run: Dictionary=raw.duplicate(true) if raw is Dictionary else {}
+	if run.get("combat") is Dictionary: Combat.FenshuiTrial.restore_recovery(run.combat)
+	return run
 
 static func catalog_version(run: Dictionary) -> int:
 	return int(run.get("catalog_version", 1))
@@ -520,7 +522,7 @@ static func portal_combat_locked(sm: Node) -> bool:
 static func change_region(sm: Node, region: String, point: Vector2) -> Dictionary:
 	var run := snapshot(sm)
 	if portal_combat_locked(sm): return {"success":false,"reason":"in_combat"}
-	if region not in ["maze_entry","fenshui","salt_pool","moss_pool"] or not valid(run) or not run.get("active",false) or not str(run.pending).is_empty(): return {"success":false,"reason":"invalid_region_change"}
+	if region not in ["maze_entry","fenshui","salt_pool","moss_pool","waterkeeper_cottage"] or not valid(run) or not run.get("active",false) or not str(run.pending).is_empty(): return {"success":false,"reason":"invalid_region_change"}
 	var previous: Dictionary = sm.get("_state").duplicate(true)
 	var c: Dictionary = run.combat
 	if region == "maze_entry" and sm.maze_exploration_state().region == "fenshui":
@@ -621,7 +623,8 @@ static func combat_tick(sm: Node, point: Vector2, dt: float, visible: Rect2 = Re
 	sm.get("_state")[sm.MAZE_STATE_KEY].position=run.combat.hero.duplicate()
 	var frog_changed: bool = run.combat.get("frog_encounter",false) and run.combat.actors[Catalog.Frog.ID]!=before.actors[Catalog.Frog.ID]
 	var rock_changed: bool=run.combat.get("rock_encounter",false) and run.combat.actors[Catalog.Rock.ID]!=before.actors[Catalog.Rock.ID]
-	if mining.changed or not mining.feedback.is_empty() or rock_changed or frog_changed or healing or lesson_changed or awarded or migrated or refreshed or run.combat.hp!=before.hp or run.combat.hits!=before.hits or run.combat.throws!=before.throws or run.combat.get("blocks",0)!=before.get("blocks",0) or run.combat.checkpoint>=0.5:
+	var electric_changed: bool=run.combat.get("electric_serial",0)!=before.get("electric_serial",0)
+	if electric_changed or mining.changed or not mining.feedback.is_empty() or rock_changed or frog_changed or healing or lesson_changed or awarded or migrated or refreshed or run.combat.hp!=before.hp or run.combat.hits!=before.hits or run.combat.throws!=before.throws or run.combat.get("blocks",0)!=before.get("blocks",0) or run.combat.checkpoint>=0.5:
 		run.combat.checkpoint=0.0
 		var committed:=_commit(sm,previous)
 		if committed.success: committed["mining_feedback"]=mining.feedback
@@ -667,5 +670,5 @@ static func _at_salt_moss_link(sm: Node, point: Vector2) -> bool:
 	var region: String = sm.maze_exploration_state().region
 	var link = preload("res://data/maze/moss_pool_roads.gd")
 	if region == "salt_pool": return point.distance_to(link.SALT_SIDE_MARKER)<80.0
-	if region == "moss_pool": return point.distance_to(link.SALT_MARKER)<80.0
+	if region == "moss_pool": return point.distance_to(link.SALT_MARKER)<80.0 or point.distance_to(preload("res://data/maze/waterkeeper_cottage_roads.gd").MOSS_MARKER)<80.0
 	return false

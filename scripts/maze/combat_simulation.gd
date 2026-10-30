@@ -6,6 +6,9 @@ const Rock = preload("res://scripts/maze/rockmane_combat.gd")
 const Crystals = preload("res://scripts/maze/salt_crystals.gd")
 const Frog = preload("res://scripts/maze/wind_frog_combat.gd")
 const WaterSpacing = preload("res://scripts/maze/water_spacing.gd")
+const FenshuiTrial = preload("res://scripts/maze/fenshui_borrow_lightning.gd")
+const Silverfish = preload("res://scripts/maze/silverfish_combat.gd")
+const ThunderEel = preload("res://scripts/maze/thunder_eel_combat.gd")
 const STATS = {
 	"rockmane":{"attack":8,"hp":120,"windup":0.7},
 	"mimic_crab":{"attack":5,"hp":28,"interval":2.0,"windup":0.65,"speed":80.0,"trigger":100.0,"leash":145.0,"home_limit":75.0,"reach":34.0},
@@ -192,6 +195,11 @@ static func advance(run: Dictionary, point: Vector2, dt: float, sprinting: bool 
 	c.hero = pack(point)
 	c.elapsed += dt
 	# 近战先于投射物结算：同一推进中主角归零优先失败。
+	# 先统一推进旧窗口，再结算本次电击；新命中的所有鱼均得到完整4秒。
+	if c.get("region","")=="fenshui" and not c.get("fs01_trial",false):
+		for id in c.actors:
+			if id.begins_with("fenshui_silverfish_") and run.monsters[id].status=="alive" and c.actors[id].hp>0 and c.actors[id].has("electric_left"):
+				c.actors[id].electric_left=maxf(0.0,float(c.actors[id].electric_left)-dt)
 	for row in Catalog.rows(c):
 		var a: Dictionary = c.actors[row.id]
 		if run.monsters[row.id].status!="alive" or a.hp<=0: continue
@@ -209,8 +217,17 @@ static func advance(run: Dictionary, point: Vector2, dt: float, sprinting: bool 
 		# 玩家可以站在可交互物件旁；魔物接近物件边缘后仍可攻击，避免安全岛。
 		var attack_distance := distance if row.get("region","") in ["fenshui","salt_pool"] else pos.distance_to(Catalog.nearest_clear_point(point))
 		a.cooldown = maxf(0.0,a.cooldown-dt)
+		if ThunderEel.enabled(c,row.id):
+			ThunderEel.advance(run,row,point,dt,s,Skills)
+			continue
 		if recoiling:
 			a.velocity=a.get("hit_velocity",[0.0,0.0]).duplicate()
+			continue
+		if FenshuiTrial.enabled(c,row):
+			FenshuiTrial.advance(run,row,point,dt,s,Skills)
+			continue
+		if Silverfish.enabled(c,row.id):
+			Silverfish.advance(run,row,point,dt,s,Skills)
 			continue
 		if a.mode=="idle" and distance<=s.trigger and not protected(row,point): a.mode="chase"
 		if a.mode in ["chase","windup"]:
@@ -321,6 +338,8 @@ static func attack(run: Dictionary, point: Vector2, aim: Vector2 = Vector2.RIGHT
 
 static func valid(c: Dictionary) -> bool:
 	if not Skills.valid(c): return false
+	if c.has("electric_serial") and (not Skills.number(c.electric_serial,9007199254740991.0) or float(c.electric_serial)!=floor(float(c.electric_serial))): return false
+	if c.has("fs01_trial") and not c.fs01_trial is bool: return false
 	if c.has("rock_shake_left") and not Skills.number(c.rock_shake_left,0.45): return false
 	for flag in ["frog_encounter","frog_unlocked","salt_encounters","rock_encounter"]:
 		if c.has(flag) and not c[flag] is bool: return false
@@ -331,7 +350,7 @@ static func valid(c: Dictionary) -> bool:
 		if c.has(key):
 			if typeof(c[key]) not in [TYPE_INT,TYPE_FLOAT] or not is_finite(float(c[key])) or c[key]<0 or c[key]>1: return false
 	if c.get("version")!=1: return false
-	if c.get("region","maze_entry") not in ["maze_entry","fenshui","salt_pool","moss_pool"]: return false
+	if c.get("region","maze_entry") not in ["maze_entry","fenshui","salt_pool","moss_pool","waterkeeper_cottage"]: return false
 	if c.has("fenshui_encounters") and not c.fenshui_encounters is bool: return false
 	if not Catalog.valid_layout(c.get("layout",[])): return false
 	for key in ["attack","max_hp","hp","cooldown","elapsed","throws","hits"]:
@@ -343,6 +362,9 @@ static func valid(c: Dictionary) -> bool:
 		var a: Variant=c.actors.get(row.id)
 		if not a is Dictionary or not _point(a.get("position")) or not _point(a.get("velocity")): return false
 		if not _valid_hit(a): return false
+		if not FenshuiTrial.valid(a): return false
+		if not Silverfish.valid(a): return false
+		if not ThunderEel.valid(a): return false
 		if a.has("swim_heading") and (not _point(a.swim_heading) or vec(a.swim_heading).length()>1.001): return false
 		if a.has("swim_left") and (typeof(a.swim_left) not in [TYPE_INT,TYPE_FLOAT] or not is_finite(float(a.swim_left)) or a.swim_left<0 or a.swim_left>3.5): return false
 		if a.has("attack_aim") and (not _point(a.attack_aim) or vec(a.attack_aim).length()>1.001): return false
@@ -382,6 +404,7 @@ static func _point(value: Variant) -> bool:
 
 
 static func terrain(region: String):
+	if region=="waterkeeper_cottage": return preload("res://data/maze/waterkeeper_cottage_roads.gd")
 	if region=="moss_pool": return preload("res://data/maze/moss_pool_roads.gd")
 	if region=="fenshui": return preload("res://data/maze/fenshui_roads.gd")
 	if region=="salt_pool": return preload("res://data/maze/salt_pool_roads.gd")

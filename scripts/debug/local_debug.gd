@@ -2,6 +2,8 @@ extends CanvasLayer
 ## 隐藏的本地调试入口，仅调试构建启用；暂停并保留原暂停状态。
 const Growth = preload("res://scripts/characters/character_progression.gd")
 const Run = preload("res://scripts/maze/capture_run.gd")
+const Transition = preload("res://scripts/ui/components/scene_transition.gd")
+var map_session = preload("res://scripts/debug/map_debug.gd").new()
 var buffer := ""
 var last_digit := 0
 var down: Dictionary = {}
@@ -11,6 +13,31 @@ var amount: SpinBox
 var was_paused := false
 var previous_focus: Control
 var blocked_inputs: Array[Dictionary] = []
+var tabs: TabBar
+var region_select: OptionButton
+var point_select: OptionButton
+var runtime_label: Label
+var resource_page: VBoxContainer
+var map_page: VBoxContainer
+var notification: Label
+var started_at := ""
+var code_stamp := ""
+var switching := false
+
+func heal_party() -> Dictionary:
+	if not OS.is_debug_build(): return {"success":false, "message":"仅调试构建可用"}
+	var sm := get_node("/root/SaveManager")
+	if sm._replaying or sm._prologue_preview: return {"success":false, "message":"重播预览中不能修改存档"}
+	var run := Run.snapshot(sm)
+	if not run.get("active",false) or not Run.valid(run) or not run.has("combat"):
+		return {"success":false, "message":"当前没有进行中的探索"}
+	var previous: Dictionary = sm.data.duplicate(true)
+	run.combat.hp = run.combat.max_hp
+	sm.data[Run.KEY] = run
+	if not sm.save():
+		sm.data = previous
+		return {"success":false, "message":"保存失败，生命恢复已撤回"}
+	return {"success":true, "message":"生命已恢复：%d/%d" % [run.combat.hp,run.combat.max_hp]}
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -19,6 +46,11 @@ func _ready() -> void:
 		set_process(false)
 		set_process_input(false)
 		return
+	started_at = Time.get_datetime_string_from_system().replace("T"," ")
+	var code_parts := ""
+	for file in ["res://scripts/debug/local_debug.gd","res://scripts/debug/map_debug.gd","res://scripts/maze/capture_run.gd","res://scripts/maze/capture_monster.gd","res://scripts/maze/fenshui_electric_effects.gd"]:
+		if FileAccess.file_exists(file): code_parts += FileAccess.get_sha256(file)
+	code_stamp = code_parts.sha256_text().left(12)
 	_build()
 
 func _process(_delta: float) -> void:
@@ -26,11 +58,16 @@ func _process(_delta: float) -> void:
 	for digit in 10:
 		for code in [KEY_0 + digit, KEY_KP_0 + digit]:
 			var pressed := Input.is_physical_key_pressed(code)
-			if pressed and not down.get(code, false): _digit(str(digit))
+			if pressed and not down.get(code, false) and not Input.is_key_pressed(KEY_CTRL): _digit(str(digit))
 			down[code] = pressed
 
 func _input(event: InputEvent) -> void:
 	if not OS.is_debug_build(): return
+	if event is InputEventKey and event.pressed and not event.echo and event.ctrl_pressed:
+		if event.keycode in [KEY_0,KEY_KP_0] or event.physical_keycode in [KEY_0,KEY_KP_0]:
+			if not switching: _feedback(heal_party())
+			get_viewport().set_input_as_handled()
+			return
 	if not panel.visible and event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode < KEY_0 or event.keycode > KEY_9:
 			if event.keycode < KEY_KP_0 or event.keycode > KEY_KP_9: buffer = ""
@@ -63,41 +100,151 @@ func _build() -> void:
 	var box := PanelContainer.new()
 	box.theme = SproutTheme.make_theme()
 	box.add_theme_stylebox_override("panel", SproutTheme.panel_style(Color("#fff2d4")))
-	box.custom_minimum_size = Vector2(540, 440)
+	box.custom_minimum_size = Vector2(760, 520)
 	center.add_child(box)
 	var rows := VBoxContainer.new()
-	rows.add_theme_constant_override("separation", 12)
+	rows.add_theme_constant_override("separation", 8)
 	box.add_child(rows)
 	var title := Label.new()
 	title.text = "本地调试工具"
-	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_font_size_override("font_size", 24)
 	rows.add_child(title)
+	runtime_label = Label.new()
+	runtime_label.add_theme_font_size_override("font_size",12)
+	runtime_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	rows.add_child(runtime_label)
+	tabs = preload("res://scripts/ui/components/sprout_tab_bar.gd").new()
+	tabs.name = "DebugTabs"
+	tabs.add_tab("资源与生命")
+	tabs.add_tab("地图跳转")
+	rows.add_child(tabs)
+	resource_page = VBoxContainer.new()
+	resource_page.custom_minimum_size.y = 220
+	resource_page.add_theme_constant_override("separation",8)
+	rows.add_child(resource_page)
 	var hint := Label.new()
-	hint.text = "修改当前本地存档 · 游戏已暂停\n饱腹度仅作用于当前队伍，不超过角色上限"
-	rows.add_child(hint)
+	hint.text = "资源与满血作用于当前存档；饱腹度不超过角色上限。"
+	hint.add_theme_font_size_override("font_size",14)
+	resource_page.add_child(hint)
 	amount = SpinBox.new()
 	amount.min_value = 1
 	amount.max_value = 1000000
 	amount.value = 1000
-	rows.add_child(amount)
+	resource_page.add_child(amount)
+	var grants := GridContainer.new()
+	grants.columns = 2
+	grants.add_theme_constant_override("h_separation",12)
+	grants.add_theme_constant_override("v_separation",8)
+	resource_page.add_child(grants)
 	for entry in [["金币", "gold"], ["星尘", "dust"], ["队伍饱腹度", "food"], ["补满队伍饱腹度", "fill_food"]]:
-		var button := SproutButton.new()
-		button.configure(entry[0] if entry[1] == "fill_food" else "增加" + entry[0])
-		button.set_icon_visible(false)
-		button.pressed.connect(func():
-			var result := grant(entry[1], int(amount.value))
-			status.text = result.message
-		)
-		rows.add_child(button)
+		_action_button(grants,entry[0] if entry[1] == "fill_food" else "增加"+entry[0],"",func(): _feedback(grant(entry[1],int(amount.value))))
+	_action_button(grants,"回满生命（Ctrl+0）","HealParty",func(): _feedback(heal_party()))
+	map_page = VBoxContainer.new()
+	map_page.custom_minimum_size.y = 220
+	map_page.add_theme_constant_override("separation",8)
+	rows.add_child(map_page)
+	var explanation := Label.new()
+	explanation.text = "跳图自动建立试玩副本，原存档保留。退出试玩可回到原进度。\n切图不更新代码；更换代码版本后需要重启游戏。"
+	explanation.add_theme_font_size_override("font_size",14)
+	map_page.add_child(explanation)
+	var selectors := HBoxContainer.new()
+	selectors.add_theme_constant_override("separation",12)
+	map_page.add_child(selectors)
+	region_select = OptionButton.new()
+	region_select.name = "TargetMap"
+	region_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	region_select.custom_minimum_size.y = 38
+	selectors.add_child(region_select)
+	for row in map_session.regions():
+		region_select.add_item(row.name)
+		region_select.set_item_metadata(region_select.item_count-1,row.id)
+	point_select = OptionButton.new()
+	point_select.name = "TargetPoint"
+	point_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	selectors.add_child(point_select)
+	region_select.item_selected.connect(func(_index): _refresh_points())
+	_refresh_points()
+	var actions := GridContainer.new()
+	actions.columns = 2
+	actions.add_theme_constant_override("h_separation",12)
+	actions.add_theme_constant_override("v_separation",8)
+	map_page.add_child(actions)
+	_action_button(actions,"跳转所选地图","MapJump",func(): _map_action("jump"))
+	_action_button(actions,"重载当前地图（保留进度）","MapReload",func(): _map_action("reload"))
+	_action_button(actions,"重新开始本趟试玩","MapRestart",func(): _map_action("restart"))
+	_action_button(actions,"退出试玩，返回原进度","MapLeave",func(): _map_action("leave"))
+	tabs.tab_changed.connect(func(index):
+		resource_page.visible = index == 0
+		map_page.visible = index == 1
+	)
+	map_page.hide()
 	status = Label.new()
 	status.text = ""
+	status.add_theme_font_size_override("font_size",14)
+	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	rows.add_child(status)
-	var close := SproutButton.new()
-	close.configure("关闭（Esc）")
-	close.set_icon_visible(false)
-	close.pressed.connect(close_panel)
-	rows.add_child(close)
+	_action_button(rows,"关闭（Esc）","DebugClose",close_panel)
 	panel.hide()
+	var notice_root := Control.new()
+	notice_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	notice_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(notice_root)
+	notification = preload("res://scripts/ui/components/feedback_toast.gd").attach_to(notice_root)
+
+func _action_button(parent: Control, text: String, node_name: String, callback: Callable) -> Button:
+	var button := SproutButton.new().configure(text).set_icon_visible(false)
+	if not node_name.is_empty(): button.name = node_name
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(button)
+	button.custom_minimum_size = Vector2(280,40)
+	button.pressed.connect(callback)
+	return button
+
+func _refresh_points() -> void:
+	point_select.clear()
+	var region: String = region_select.get_item_metadata(region_select.selected)
+	for row in map_session.points(region):
+		point_select.add_item(row.name)
+		point_select.set_item_metadata(point_select.item_count-1,row.id)
+
+func _feedback(result: Dictionary) -> void:
+	status.text = result.message
+	if not panel.visible: notification.show_message(result.message,2.5)
+	_refresh_runtime()
+
+func _refresh_runtime() -> void:
+	var region: String = SaveManager.maze_exploration_state().region
+	var map_name := "餐厅" if region == "restaurant" else region
+	for row in map_session.regions():
+		if row.id == region: map_name = row.name
+	runtime_label.text = "启动 %s ｜ 代码摘要 %s ｜ 当前 %s\n目录 %s\n存档：%s（%s）" % [started_at,code_stamp,map_name,ProjectSettings.globalize_path("res://"),"地图试玩副本" if map_session.is_trial() else "当前加载存档",SaveManager._active_save_path.get_file()]
+
+func _map_action(action: String) -> void:
+	if switching or Transition.is_active(get_tree()): return
+	var result: Dictionary
+	if action == "leave":
+		result = map_session.leave(SaveManager)
+	else:
+		var region: String = region_select.get_item_metadata(region_select.selected)
+		var point: String = point_select.get_item_metadata(point_select.selected)
+		if action in ["reload","restart"]:
+			var current: String = SaveManager.maze_exploration_state().region
+			if action == "reload" or map_session.SCENES.has(current):
+				region = current
+				point = "current" if action == "reload" else "entrance"
+		result = map_session.prepare(SaveManager,region,point,action == "restart")
+	if not result.success:
+		_feedback(result)
+		return
+	switching = true
+	close_panel()
+	# 新探索已替换状态；旧图在渐隐期间不能继续读取上一趟怪物。
+	get_tree().paused = true
+	var destination := load(result.scene_path) as PackedScene
+	var error := await Transition.change_scene(get_tree(),destination)
+	get_tree().paused = false
+	switching = false
+	_feedback(result if error == OK else {"success":false,"message":"地图加载失败，可从调试面板退出试玩返回原进度"})
 
 func open_panel() -> void:
 	if not OS.is_debug_build() or panel.visible: return
@@ -106,8 +253,10 @@ func open_panel() -> void:
 	get_tree().paused = true
 	_block_inputs(get_tree().root)
 	panel.show()
+	_refresh_runtime()
 	status.text = "金币 %d　星尘 %d" % [SaveManager.gold_balance(), SaveManager.stardust_balance()]
-	amount.get_line_edit().grab_focus()
+	if tabs.current_tab == 0: amount.get_line_edit().grab_focus()
+	else: region_select.grab_focus()
 
 func close_panel() -> void:
 	if not is_instance_valid(panel) or not panel.visible: return

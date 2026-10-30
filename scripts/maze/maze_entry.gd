@@ -23,6 +23,7 @@ const WhiteTigerElder := preload("res://scripts/maze/white_tiger_elder.gd")
 const RegionRoutes = preload("res://data/maze/region_routes.gd")
 const SaltPool = preload("res://data/maze/salt_pool_roads.gd")
 const MossPool = preload("res://data/maze/moss_pool_roads.gd")
+const Cottage = preload("res://data/maze/waterkeeper_cottage_roads.gd")
 const Fenshui := preload("res://data/maze/fenshui_roads.gd")
 const FenshuiGates = preload("res://data/maze/fenshui_gates.gd")
 var fenshui_gate_prompts: Dictionary = {}
@@ -51,6 +52,7 @@ var workshop_prompt: WorldPrompt
 var exit_prompt: WorldPrompt
 var settlement_prompt: WorldPrompt
 var salt_moss_prompt: WorldPrompt
+var cottage_prompt: WorldPrompt
 var settlement_portal: Node2D
 var _destination := ""
 var _locked_before := false
@@ -89,6 +91,7 @@ func _ready() -> void:
 	background.texture = load("res://assets/maps/fenshui_fences.png") if region_id == "fenshui" else MAP
 	if region_id == "salt_pool": background.texture = load("res://assets/maps/salt_pool.png")
 	if region_id == "moss_pool": background.texture = load("res://assets/maps/moss_pool.png")
+	if region_id == "waterkeeper_cottage": background.texture = load("res://assets/maps/waterkeeper_cottage_soil.png")
 	if region_id == "fenshui": background.scale = Fenshui.SIZE / background.texture.get_size()
 	background.centered = false
 	add_child(background)
@@ -106,6 +109,12 @@ func _ready() -> void:
 	camera.target = player
 	camera.map_size = player.terrain.SIZE
 	add_child(camera)
+	if region_id == "waterkeeper_cottage":
+		var garden = preload("res://scripts/maze/cottage_garden.gd").new()
+		garden.name="CottageGarden"
+		garden.player=player
+		add_child(garden)
+		move_child(garden,player.get_index())
 	if region_id == "maze_entry":
 		elder = WhiteTigerElder.new()
 		elder.name = "WhiteTigerElder"
@@ -119,7 +128,7 @@ func _ready() -> void:
 		settlement_portal = SettlementPortal.new()
 		settlement_portal.position = SettlementExit.POSITION
 		add_child(settlement_portal)
-	elif region_id in ["fenshui","salt_pool","moss_pool"]:
+	elif region_id in ["fenshui","salt_pool","moss_pool","waterkeeper_cottage"]:
 		var marker = preload("res://scripts/maze/spawn_portal.gd").new()
 		marker.name = "SpawnPortal"
 		marker.position = RegionRoutes.route(region_id).marker
@@ -139,6 +148,11 @@ func _ready() -> void:
 		link_portal.name = "SaltMossPortal"
 		link_portal.position = MossPool.SALT_SIDE_MARKER if region_id == "salt_pool" else MossPool.SALT_MARKER
 		add_child(link_portal)
+	if region_id == "moss_pool":
+		var cottage_portal := SettlementPortal.new()
+		cottage_portal.name = "CottagePortal"
+		cottage_portal.position = Cottage.MOSS_MARKER
+		add_child(cottage_portal)
 	_last_position = player.position
 	for portal in get_tree().get_nodes_in_group("maze_portals"):
 		if portal.get_parent() == self: player.portal_obstacles.append(portal)
@@ -154,6 +168,10 @@ func _ready() -> void:
 		yf_encounter=preload("res://scripts/maze/yufeng_salia_encounter.gd").new()
 		add_child(yf_encounter)
 		yf_encounter.attach(self)
+		var electric_effects=preload("res://scripts/maze/fenshui_electric_effects.gd").new()
+		electric_effects.name="FenshuiElectricEffects"
+		add_child(electric_effects)
+		move_child(electric_effects,player.get_index())
 	if region_id == "maze_entry":
 		exploration_guide = preload("res://scripts/ch2_exploration_guide.gd").new()
 		exploration_guide.maze = self
@@ -176,7 +194,9 @@ func _build_ui() -> void:
 	stamina_counter.offset_right -= 80
 	entrance_prompt = WorldPrompt.new()
 	root.add_child(entrance_prompt)
-	entrance_prompt.configure("前往"+str(RegionRoutes.route(region_id).previous_name) if region_id != "maze_entry" else "前往餐厅", player.terrain.ENTRANCE + Vector2(0,-34))
+	# 青苔池原图的来源路标靠近南边界，提示上移以避开固定技能栏。
+	var entrance_offset := Vector2(0,-84) if region_id == "moss_pool" else Vector2(0,-34)
+	entrance_prompt.configure("前往"+str(RegionRoutes.route(region_id).previous_name) if region_id != "maze_entry" else "前往餐厅", player.terrain.ENTRANCE + entrance_offset)
 	entrance_prompt.activated.connect(_open_confirmation.bind(str(RegionRoutes.route(region_id).previous_name) if region_id != "maze_entry" else "餐厅"))
 	workshop_prompt = WorldPrompt.new()
 	root.add_child(workshop_prompt)
@@ -197,6 +217,11 @@ func _build_ui() -> void:
 		var link_point: Vector2 = MossPool.SALT_SIDE_MARKER if region_id == "salt_pool" else MossPool.SALT_MARKER
 		salt_moss_prompt.configure("前往"+link_name,link_point+Vector2(0,-34))
 		salt_moss_prompt.activated.connect(_open_confirmation.bind(link_name))
+	if region_id == "moss_pool":
+		cottage_prompt = WorldPrompt.new()
+		root.add_child(cottage_prompt)
+		cottage_prompt.configure("前往守水人小屋",Cottage.MOSS_MARKER+Vector2(0,-34))
+		cottage_prompt.activated.connect(_open_confirmation.bind("守水人小屋"))
 	if region_id == "fenshui":
 		for gate in FenshuiGates.GATES:
 			var prompt := WorldPrompt.new()
@@ -257,6 +282,7 @@ func _build_ui() -> void:
 	exit_prompt.reparent(_prompt_host,false)
 	settlement_prompt.reparent(_prompt_host,false)
 	if is_instance_valid(salt_moss_prompt): salt_moss_prompt.reparent(_prompt_host,false)
+	if is_instance_valid(cottage_prompt): cottage_prompt.reparent(_prompt_host,false)
 	RenderingServer.frame_pre_draw.connect(_place_resource_prompts)
 	toast_label = Toast.attach_to(root)
 	confirmation = Confirmation.new()
@@ -405,7 +431,10 @@ func _close_loot() -> void:
 	_update_prompts()
 
 func _near_destination() -> String:
+	if region_id == "waterkeeper_cottage":
+		return "青苔池" if player.position.distance_to(Cottage.ENTRANCE)<Cottage.INTERACT_RADIUS else ""
 	if region_id == "moss_pool":
+		if player.position.distance_to(Cottage.MOSS_MARKER)<Cottage.INTERACT_RADIUS: return "守水人小屋"
 		if player.position.distance_to(MossPool.SALT_MARKER)<80.0: return "盐池"
 		return "分水庭" if player.position.distance_to(MossPool.ENTRANCE)<MossPool.INTERACT_RADIUS else ""
 	if region_id == "salt_pool":
@@ -428,7 +457,8 @@ func _near_destination() -> String:
 func _update_prompts() -> void:
 	var available: bool = _entry_ready and not _busy and not player.input_locked and not confirmation.visible
 	var target := _near_destination() if available else ""
-	entrance_prompt.visible = target in ["餐厅","枯水渠","分水庭"]
+	entrance_prompt.visible = target in ["餐厅","枯水渠","分水庭"] or (region_id == "waterkeeper_cottage" and target == "青苔池")
+	if is_instance_valid(cottage_prompt): cottage_prompt.visible = target == "守水人小屋"
 	workshop_prompt.visible = region_id == "maze_entry" and target == "水轮工坊"
 	for destination in fenshui_gate_prompts:
 		fenshui_gate_prompts[destination].visible = target == destination
@@ -461,6 +491,8 @@ func _open_confirmation(destination: String) -> void:
 		confirmation.open_region_choice("青苔池")
 	elif destination == "盐池":
 		confirmation.open_region_choice("盐池")
+	elif destination == "守水人小屋":
+		confirmation.open_region_choice("守水人小屋")
 	else:
 		confirmation.open_destination(destination)
 	_update_prompts()
@@ -478,7 +510,7 @@ func _finish_exploration_choice() -> void:
 	if not confirmation.visible: return
 	var destination := _destination
 	_close_confirmation()
-	if destination in ["下一区域","枯水渠","分水庭","青苔池","盐池"]:
+	if destination in ["下一区域","枯水渠","分水庭","青苔池","盐池","守水人小屋"]:
 		return_to_restaurant(true)
 
 func _confirm_destination() -> void:
@@ -498,7 +530,9 @@ func _confirm_destination() -> void:
 	elif destination in ["枯水渠","分水庭"]:
 		travel_region(RegionRoutes.route(region_id).previous_id, RegionRoutes.route(region_id).return_point)
 	elif destination == "青苔池":
-		travel_region("moss_pool", MossPool.SALT_ARRIVAL if region_id == "salt_pool" else MossPool.SPAWN)
+		travel_region("moss_pool", Cottage.MOSS_RETURN if region_id == "waterkeeper_cottage" else (MossPool.SALT_ARRIVAL if region_id == "salt_pool" else MossPool.SPAWN))
+	elif destination == "守水人小屋":
+		travel_region("waterkeeper_cottage", Cottage.SPAWN)
 	elif destination == "盐池":
 		travel_region("salt_pool", MossPool.SALT_SIDE_ARRIVAL)
 	elif destination in fenshui_gate_prompts or destination == "水轮工坊":
@@ -510,7 +544,7 @@ func travel_region(destination_id: String, point: Vector2) -> void:
 		show_toast("战斗中无法使用路标，请先脱离战斗")
 		return
 	if _busy or not _entry_ready or player.input_locked or Transition.is_active(get_tree()): return
-	var scene_path: String = {"moss_pool":"res://scenes/maze_moss_pool.tscn","salt_pool":"res://scenes/maze_salt_pool.tscn","fenshui":"res://scenes/maze_fenshui.tscn"}.get(destination_id,SaveManager.MAZE_SCENE)
+	var scene_path: String = {"waterkeeper_cottage":"res://scenes/maze_waterkeeper_cottage.tscn","moss_pool":"res://scenes/maze_moss_pool.tscn","salt_pool":"res://scenes/maze_salt_pool.tscn","fenshui":"res://scenes/maze_fenshui.tscn"}.get(destination_id,SaveManager.MAZE_SCENE)
 	var scene := load(scene_path) as PackedScene
 	if scene == null: return
 	var previous: Dictionary = SaveManager.get("_state").duplicate(true)

@@ -8,6 +8,7 @@ uniform bool exploration_view = false;
 uniform bool circular_view = false;
 uniform bool map_unlocked = true;
 uniform bool moss_pool_view = false;
+uniform bool waterkeeper_view = false;
 uniform vec4 view_region = vec4(0.0, 0.0, 1.0, 1.0);
 varying vec4 canvas_tint;
 
@@ -94,6 +95,12 @@ void fragment() {
 		float moss = ellipse_distance(p, vec2(447.0,185.0), vec2(190.0,164.0));
 		moss = min(moss,path_distance(p,vec2(553.0,264.0),vec2(611.0,380.0),22.0));
 		coverage = min(coverage,smoothstep(-8.0,20.0,moss));
+	}
+	if (waterkeeper_view) {
+		float cottage = ellipse_distance(p, vec2(163.0,155.0), vec2(90.0,63.0));
+		cottage = min(cottage,path_distance(p,vec2(243.0,163.0),vec2(285.0,164.0),17.0));
+		cottage = min(cottage,path_distance(p,vec2(149.0,183.0),vec2(187.0,250.0),16.0));
+		coverage = min(coverage,smoothstep(-8.0,20.0,cottage));
 	}
 	if (exploration_view) {
 		float road = max(textureLod(road_reveal, map_uv,0.0).r, textureLod(road_reveal,map_uv,4.4).r * 0.95);

@@ -36,6 +36,7 @@ func _ready() -> void:
 	_fog.shader = FOG
 	_fog.set_shader_parameter("exploration_view", true)
 	_fog.set_shader_parameter("moss_pool_view", region_id == "moss_pool")
+	_fog.set_shader_parameter("waterkeeper_view", region_id == "waterkeeper_cottage")
 	_fog.set_shader_parameter("road_reveal", MapProjection.road_texture())
 	_fog.set_shader_parameter("circular_view", compact)
 	_fog.set_shader_parameter("label_free_map", MAP_NO_LABELS)

@@ -40,21 +40,24 @@ static func is_water_edge(point: Vector2, radius: float = 0.0) -> bool:
 		if fits: return true
 	return false
 
-static func dry_paths() -> Array:
-	return [
+static var _dry_paths: Array = [
 		{"width":22.0,"points":PackedVector2Array([Vector2(15,26),Vector2(88,73),Vector2(125,141),Vector2(264,188),Vector2(354,262),Vector2(425,325),Vector2(462,376),Vector2(413,433),Vector2(275,463),Vector2(161,526),Vector2(24,483)])},
 		{"width":22.0,"points":PackedVector2Array([Vector2(811,12),Vector2(830,80),Vector2(887,118),Vector2(911,160),Vector2(877,230),Vector2(850,296),Vector2(779,340),Vector2(755,404),Vector2(781,475),Vector2(842,533),Vector2(881,594),Vector2(857,659),Vector2(836,739),Vector2(725,784),Vector2(595,807),Vector2(459,841),Vector2(315,910)])},
 		{"width":23.0,"points":PackedVector2Array([Vector2(1700,161),Vector2(1590,203),Vector2(1495,250),Vector2(1399,283),Vector2(1295,317),Vector2(1214,352),Vector2(1298,390),Vector2(1396,427),Vector2(1445,455),Vector2(1476,509),Vector2(1410,563),Vector2(1391,609),Vector2(1511,654),Vector2(1697,726)])},
 		{"width":22.0,"points":PackedVector2Array([Vector2(840,746),Vector2(920,782),Vector2(975,827),Vector2(988,908)])}
 	]
 
+static func dry_paths() -> Array:
+	return _dry_paths
+
 static func is_walkable(point: Vector2, radius: float = FOOT_RADIUS) -> bool:
 	if not point.is_finite() or radius < 0: return false
 	if Gates.blocks(point,radius): return false
 	if Geometry2D.is_point_in_polygon(point,ROAD_EDGE) or is_water_edge(point): return true
 	if not Geometry2D.is_point_in_polygon(point,OUTLINE): return false
-	for i in OUTLINE.size():
-		if point.distance_to(Geometry2D.get_closest_point_to_segment(point,OUTLINE[i],OUTLINE[(i+1)%OUTLINE.size()])) < radius: return false
+	if radius>0.0:
+		for i in OUTLINE.size():
+			if point.distance_to(Geometry2D.get_closest_point_to_segment(point,OUTLINE[i],OUTLINE[(i+1)%OUTLINE.size()])) < radius: return false
 	for island in ISLANDS:
 		if ((point-Vector2(island.x,island.y))/(Vector2(island.z,island.w)+Vector2.ONE*radius)).length() <= 1.0: return false
 	return true

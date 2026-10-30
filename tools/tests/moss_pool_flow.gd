@@ -36,6 +36,8 @@ func _combat_scene() -> void:
 	maze.capture_flow.set_process(false)
 	maze.capture_flow.window_focused = true
 	maze.camera.snap_to_target()
+	# 后台测试冻结了自动刷新；显式刷新一帧，避免把失焦时的旧显隐当成场景结果。
+	maze.capture_flow._process(0.0)
 	_check(maze.player.position.distance_to(Moss.SPAWN)<0.1,"右下道路出生")
 	_check(maze.task_tracker.visible and maze.map_ui.visible and maze.capture_flow.skill_bar.visible,"任务小地图技能UI保留")
 	_check(maze.player.water_ripples == null,"不可涉水区域不生成涉水效果")
@@ -45,15 +47,18 @@ func _combat_scene() -> void:
 	_check(Run.combat_tick(sm,maze.player.position,0.1).success,"新区探索状态可正常推进")
 	await _capture_image("01_moss_spawn")
 	var before: Vector2 = maze.player.position
+	# 当前原图出生道路向左上延伸；单独向上会在约18像素后碰到路边。
 	Input.action_press("ui_up")
+	Input.action_press("ui_left")
 	await get_tree().create_timer(0.35).timeout
 	Input.action_release("ui_up")
+	Input.action_release("ui_left")
 	_check(maze.player.position.y < before.y-20,"真实方向输入沿路移动")
 	Input.action_press("ui_left")
 	await get_tree().create_timer(0.7).timeout
 	Input.action_release("ui_left")
-	_check(Moss.is_walkable(maze.player.position),"持续横向输入不能穿入作物或水池")
-	for p in [Vector2(530,210),Vector2(820,430),Vector2(480,535),Vector2(1000,650),Vector2(770,800),Vector2(950,530),Vector2(15,15)]:
+	_check(Moss.is_walkable(maze.player.position),"持续横向输入不能穿入树林或水池")
+	for p in [Vector2(400,180),Vector2(740,430),Vector2(400,560),Vector2(900,650),Vector2(600,800),Vector2(320,420),Vector2(15,15)]:
 		_check(not Moss.is_walkable(p),"水池瀑布与背景阻挡"+str(p))
 	for road in Moss.roads():
 		for i in range(road.points.size()-1):
@@ -65,7 +70,7 @@ func _combat_scene() -> void:
 	var atlas: Image = load("res://assets/maps/shallow_floor.png").get_image()
 	var anchor: Vector2 = preload("res://data/maze/fenshui_projection.gd").new().project(Moss.FENSHUI_PORTAL)
 	_check(projection.project(Moss.ENTRANCE).distance_to(anchor)<0.01,"跨场景入口映射共用锚点")
-	for p in [Vector2(384,422),Vector2(727,534),Vector2(1371,628),Vector2(1100,738),Vector2(680,960)]:
+	for p in [Vector2(350,382),Vector2(667,575),Vector2(1315,710),Vector2(974,824),Vector2(570,941)]:
 		var mapped: Vector2 = projection.project(p)
 		_check(mapped.x<700 and mapped.y<400,"五段路映射在总图青苔池区域"+str(mapped))
 		var color := atlas.get_pixelv(Vector2i(mapped))
@@ -76,8 +81,10 @@ func _combat_scene() -> void:
 	_check(maze.map_ui.full_view._fog.get_shader_parameter("moss_pool_view"),"青苔池局部揭示")
 	await _capture_image("02_moss_full_map")
 	maze.map_ui.close_map()
+	maze.capture_flow.window_focused = true
+	maze.capture_flow._process(0.0)
 	_check(not maze.player.input_locked and maze.capture_flow.skill_bar.visible,"关闭地图恢复输入和技能UI")
-	maze.player.position = Vector2(1101,827)
+	maze.player.position = Vector2(1050,950)
 	maze.camera.snap_to_target()
 	_check(sm.record_maze_location("moss_pool",maze.player.position).success,"保存青苔池合法站位")
 	sm.load_data()
@@ -90,6 +97,7 @@ func _combat_scene() -> void:
 	maze._update_prompts()
 	maze.camera.snap_to_target()
 	await _capture_image("03_moss_return")
+	_check(not maze.entrance_prompt.button.get_global_rect().intersects(maze.capture_flow.skill_bar.get_global_rect()),"原图来源入口提示不被技能栏遮挡")
 	await _click(maze.entrance_prompt.button)
 	await _click(maze.confirmation.confirm_button)
 	await get_tree().create_timer(1.5).timeout

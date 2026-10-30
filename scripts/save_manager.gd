@@ -339,7 +339,7 @@ func can_enter_maze() -> bool:
 func maze_exploration_state() -> Dictionary:
 	var saved = _state.get(MAZE_STATE_KEY, _empty_maze_state())
 	if not saved is Dictionary or saved.get("version") != 1 \
-			or saved.get("region") not in ["restaurant", "maze_entry", "fenshui", "salt_pool", "moss_pool"] \
+			or saved.get("region") not in ["restaurant", "maze_entry", "fenshui", "salt_pool", "moss_pool", "waterkeeper_cottage"] \
 			or not saved.get("chapter_2_started") is bool:
 		_diagnose("迷宫探索记录无效，回退餐厅")
 		return _empty_maze_state()
@@ -362,19 +362,21 @@ func maze_exploration_state() -> Dictionary:
 	return result
 
 func resume_scene_path() -> String:
+	if maze_exploration_state().region == "waterkeeper_cottage": return "res://scenes/maze_waterkeeper_cottage.tscn"
 	if maze_exploration_state().region == "moss_pool": return "res://scenes/maze_moss_pool.tscn"
 	if maze_exploration_state().region == "salt_pool": return "res://scenes/maze_salt_pool.tscn"
 	if maze_exploration_state().region == "fenshui": return "res://scenes/maze_fenshui.tscn"
 	return MAZE_SCENE if maze_exploration_state().region == "maze_entry" else RESTAURANT_SCENE
 
 func maze_terrain(region: String):
+	if region == "waterkeeper_cottage": return preload("res://data/maze/waterkeeper_cottage_roads.gd")
 	if region == "moss_pool": return preload("res://data/maze/moss_pool_roads.gd")
 	if region == "salt_pool": return preload("res://data/maze/salt_pool_roads.gd")
 	return preload("res://data/maze/fenshui_roads.gd") if region == "fenshui" else MazeRoads
 
 ## 由成功就绪的迷宫场景提交；保存失败同时回滚区域与开始标记。
 func record_maze_location(region: String, point: Vector2) -> Dictionary:
-	if not can_enter_maze() or region not in ["restaurant", "maze_entry", "fenshui", "salt_pool", "moss_pool"] or not maze_terrain(region).is_walkable(point):
+	if not can_enter_maze() or region not in ["restaurant", "maze_entry", "fenshui", "salt_pool", "moss_pool", "waterkeeper_cottage"] or not maze_terrain(region).is_walkable(point):
 		return {"success": false, "reason": "invalid_location", "created": false}
 	var state := maze_exploration_state()
 	var created: bool = region == "maze_entry" and not state.chapter_2_started
