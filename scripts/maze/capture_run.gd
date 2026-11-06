@@ -21,7 +21,9 @@ const Roads := preload("res://data/maze/entry_roads.gd")
 
 static func snapshot(sm: Node) -> Dictionary:
 	var raw: Variant = sm.get("_state").get(KEY, {})
-	return raw.duplicate(true) if raw is Dictionary else {}
+	var run: Dictionary=raw.duplicate(true) if raw is Dictionary else {}
+	if run.get("combat") is Dictionary: Combat.FenshuiTrial.restore_recovery(run.combat)
+	return run
 
 static func catalog_version(run: Dictionary) -> int:
 	return int(run.get("catalog_version", 1))
