@@ -4,6 +4,8 @@ const Water=preload("res://data/maze/fenshui_encounters.gd")
 const Roads=preload("res://data/maze/fenshui_roads.gd")
 const Spacing=preload("res://scripts/maze/water_spacing.gd")
 const Rush=preload("res://scripts/maze/fenshui_borrow_lightning.gd")
+const SilverfishEditor=preload("res://scripts/maze/silverfish_editor.gd")
+const Tuning=preload("res://scripts/maze/combat_tuning.gd")
 const STRANDED_TIME=2.5
 const FORM_TIME=1.0
 
@@ -52,7 +54,7 @@ static func phase(a: Dictionary, name: String, duration: float) -> void:
  a.windup=duration if name=="warning" else 0.0
  a.mode="windup" if name=="warning" else ("idle" if name=="idle" else "chase")
 
-static func advance(run: Dictionary, row: Dictionary, point: Vector2, dt: float, stats: Dictionary, skills: Script) -> void:
+static func advance(run: Dictionary, row: Dictionary, point: Vector2, dt: float, stats: Dictionary, skills: Script, hurt_feedback: Array=[]) -> void:
  var c: Dictionary=run.combat
  var a: Dictionary=c.actors[row.id]
  var pos:=vec(a.position)
@@ -70,27 +72,29 @@ static func advance(run: Dictionary, row: Dictionary, point: Vector2, dt: float,
    var aim:=pos.direction_to(point)
    a.fish_aim=pack(Vector2.DOWN if aim.is_zero_approx() else aim)
    a.fish_hit=false
-   phase(a,"warning",Rush.WARNING_FISH)
+   phase(a,"warning",SilverfishEditor.seconds("windup"))
   else:
    a.mode="idle"
    Spacing.patrol(run,row,dt)
    a.velocity=pack((vec(a.position)-pos)/dt)
  elif current=="warning":
   a.windup=a.fish_left
-  if a.fish_left<=0.00001: phase(a,"rush",Rush.RUSH_LENGTH/Rush.RUSH_SPEED)
+  if a.fish_left<=0.00001: phase(a,"rush",Tuning.effect("fish","distance",Rush.RUSH_LENGTH)/Tuning.effect("fish","speed",Rush.RUSH_SPEED))
  elif current=="rush":
-  var next:=move(run,row.id,pos,vec(a.fish_aim)*Rush.RUSH_SPEED*dt)
+  var next:=move(run,row.id,pos,vec(a.fish_aim)*Tuning.effect("fish","speed",Rush.RUSH_SPEED)*minf(dt,float(a.fish_left)+dt))
   a.position=pack(next)
   a.velocity=pack((next-pos)/dt)
   var closest:=Geometry2D.get_closest_point_to_segment(point,pos,next)
-  if not a.fish_hit and c.hp>0 and not Water.protected(point) and point.distance_to(closest)<=18:
-   c.hp=maxf(0,c.hp-skills.incoming_damage(run,int(stats.attack)))
+  if not a.fish_hit and c.hp>0 and not Water.protected(point) and point.distance_to(closest)<=Tuning.effect("fish","hit_radius",18.0):
+   var hp_before:=float(c.hp)
+   c.hp=maxf(0,c.hp-skills.incoming_damage(run,int(Tuning.effect("fish","damage",float(stats.attack)))))
+   preload("res://scripts/maze/player_hurt_event.gd").record(c,hp_before,"fish",point,pos,hurt_feedback)
    c.last_attacker=row.kind
    c.flash_remaining=0.1
    a.fish_hit=true
   if dry(next): phase(a,"stranded",STRANDED_TIME)
   elif a.fish_left<=0.00001 or next.distance_to(pos)<0.001:
-   phase(a,"recover",0.9) if Water.water(next) else phase(a,"stranded",STRANDED_TIME)
+   phase(a,"recover",SilverfishEditor.seconds("recover")) if Water.water(next) else phase(a,"stranded",STRANDED_TIME)
  elif current=="stranded":
   if a.fish_left<=0.00001: phase(a,"returning",0)
  elif current=="returning":

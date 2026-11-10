@@ -13,6 +13,7 @@ var animation_frame := 0
 var _appearance := HeroAnimation.new()
 var _walking := false
 var capture_flow: Node
+var combat_controller: Node
 var sprint_held := false
 var sprinting := false
 var sprint_exhausted := false
@@ -50,17 +51,21 @@ func _physics_process(delta: float) -> void:
 		_walking = false
 		return
 	var direction := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
+	if is_instance_valid(capture_flow) and capture_flow.player_recovering(): direction=Vector2.ZERO
 	var before := position
 	var charge := 1.0
 	if is_instance_valid(capture_flow): charge=capture_flow.sprint_charge()
 	if sprint_held and charge<=0.00001: sprint_exhausted=true
 	sprinting=sprint_held and not sprint_exhausted and charge>0.0 and not direction.is_zero_approx()
 	var terrain_speed: float = terrain.terrain_multiplier(position) if terrain.has_method("terrain_multiplier") else 1.0
+	if is_instance_valid(capture_flow): terrain_speed*=capture_flow.rock_movement_factor()
 	var next := _move_with_portals(position, direction * SPEED * terrain_speed * (1.5 if sprinting else 1.0) * delta)
 	if not is_instance_valid(capture_flow) or capture_flow.movement_allowed(position,next):
 		position = next
 	if not direction.is_zero_approx():
 		facing = direction
+	if is_instance_valid(combat_controller) and combat_controller.seed_aim_enabled():
+		facing=combat_controller.seed_direction(self)
 	_walking = position.distance_to(before) > 0.01
 	sprinting=sprinting and _walking
 
@@ -71,6 +76,8 @@ func _move_with_portals(origin: Vector2, displacement: Vector2) -> Vector2:
 	var current := origin
 	for i in count:
 		var next: Vector2 = terrain.move_on_road(current, step)
+		if terrain.get_script()==preload("res://data/maze/salt_pool_roads.gd") and not terrain.is_walkable(current):
+			next=preload("res://scripts/maze/rock_charge_terrain.gd").move(current,step)
 		if _portal_step_allowed(current, next):
 			current = next
 		else:
@@ -82,6 +89,7 @@ func _move_with_portals(origin: Vector2, displacement: Vector2) -> Vector2:
 func _portal_step_allowed(origin: Vector2, target: Vector2) -> bool:
 	for portal in portal_obstacles:
 		if is_instance_valid(portal) and portal.blocks_step(origin, target): return false
+	if is_instance_valid(capture_flow) and not capture_flow.movement_allowed(origin,target): return false
 	return true
 
 func _process(delta: float) -> void:

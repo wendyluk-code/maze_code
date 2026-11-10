@@ -1,24 +1,33 @@
 extends RefCounted
-## 分水庭水怪的身体间距与巨蛙落点预留；不修改玩家碰撞。
+## 保留原AI间距，并与分水庭脚底占位及落点预留协作。
+const Bodies=preload("res://scripts/maze/fenshui_bodies.gd")
 static func radius(id: String) -> float:
 	return 48.0 if id.contains("wind_frog") else (29.0 if id.contains("thunder_eel") else 24.0)
 
 static func clear(run: Dictionary, id: String, point: Vector2) -> bool:
+	var normal:=Bodies.enabled(run)
+	var origin:=Bodies.vec(run.combat.actors[id].position)
+	if normal and not Bodies.step(run,id,origin,point): return false
 	for other in run.combat.actors:
 		if other==id or not str(other).begins_with("fenshui_"): continue
 		if run.monsters[other].status not in ["alive","pending"]: continue
 		var a: Dictionary=run.combat.actors[other]
+		if normal and (run.monsters[other].status!="alive" or a.hp<=0): continue
 		var separation:=radius(id)+radius(other)+3.0
-		if point.distance_to(Vector2(a.position[0],a.position[1]))<separation: return false
-		if a.get("frog_phase","") in ["warning","airborne"]:
+		var center:=Vector2(a.position[0],a.position[1])
+		if not normal or a.get("frog_phase","") not in ["airborne","toppling"]:
+			if point.distance_to(center)<separation and (not normal or point.distance_squared_to(center)<=origin.distance_squared_to(center)+0.000001): return false
+		if a.get("frog_phase","") in ["warning","airborne","toppling"]:
 			var start:=Vector2(a.frog_origin[0],a.frog_origin[1])
 			var target:=Vector2(a.frog_target[0],a.frog_target[1])
-			if point.distance_to(Geometry2D.get_closest_point_to_segment(point,start,target))<separation: return false
+			var nearest:=target if normal else Geometry2D.get_closest_point_to_segment(point,start,target)
+			if point.distance_to(nearest)<separation and (not normal or point.distance_squared_to(nearest)<=origin.distance_squared_to(nearest)+0.000001): return false
 	return true
 
 static func line_clear(run: Dictionary, id: String, start: Vector2, finish: Vector2) -> bool:
 	var steps:=maxi(1,ceili(start.distance_to(finish)/6.0))
-	for i in range(steps+1):
+	# 旧档起点可能已在间距内；只验实际迈出的点，clear仍要求向外分离。
+	for i in range(1 if Bodies.enabled(run) else 0,steps+1):
 		if not clear(run,id,start.lerp(finish,float(i)/steps)): return false
 	return true
 

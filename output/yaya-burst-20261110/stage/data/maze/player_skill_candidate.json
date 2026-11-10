@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "groups": {
+    "effect.yaya": {
+      "burst_count": {
+        "label": "每轮种子数量",
+        "unit": "颗",
+        "default": 3,
+        "min": 1,
+        "max": 12,
+        "step": 1,
+        "connected": true,
+        "persist": false
+      },
+      "burst_interval": {
+        "label": "逐颗发射间隔",
+        "unit": "秒",
+        "default": 0.1,
+        "min": 0.05,
+        "max": 0.3,
+        "step": 0.05,
+        "connected": true,
+        "persist": false
+      },
+      "burst_damage_scale": {
+        "label": "单颗伤害倍率（在伤害倍率基础上）",
+        "unit": "%",
+        "default": 25,
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "connected": true,
+        "persist": false
+      },
+      "burst_cooldown": {
+        "label": "整轮最短出招间隔（不短于连发耗时）",
+        "unit": "秒",
+        "default": 0.45,
+        "min": 0.1,
+        "max": 5,
+        "step": 0.05,
+        "connected": true,
+        "persist": false
+      }
+    }
+  }
+}

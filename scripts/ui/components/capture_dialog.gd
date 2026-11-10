@@ -141,7 +141,7 @@ func _label(value: String, font_size: int, color: Color) -> Label:
 	label.add_theme_color_override("font_color",color)
 	return label
 
-func _set_art(kind: String, won: bool) -> void:
+func _set_art(kind: String, won: bool, direction: int=0) -> void:
 	if kind in ["silverfish","thunder_eel","wind_frog","mimic_crab","blind_scorpion","rockmane"]:
 		illustration_key=kind+("_win" if won else "_lose")
 		illustration_frames.clear()
@@ -150,7 +150,7 @@ func _set_art(kind: String, won: bool) -> void:
 		for i in 4:
 			var frame := AtlasTexture.new()
 			frame.atlas=texture
-			frame.region=Rect2(Vector2(3 if won else i,0)*cell,cell)
+			frame.region=Rect2(Vector2(3 if won else i,clampi(direction,0,3) if kind=="wind_frog" else 0)*cell,cell)
 			illustration_frames.append(frame)
 		animation_time=0
 		illustration.texture=illustration_frames[0]
@@ -179,9 +179,9 @@ func _set_art(kind: String, won: bool) -> void:
 func _process(delta: float) -> void:
 	if not visible or not illustration.visible or illustration_frames.is_empty(): return
 	animation_time += delta
-	illustration.texture = illustration_frames[int(animation_time/0.3)%4]
+	illustration.texture = illustration_frames[int(animation_time/0.3)%illustration_frames.size()]
 
-func present(won: bool, kind: String, enough_food: bool, current_power: int = 0, target_power: int = 0, remaining_food: int = 0) -> void:
+func present(won: bool, kind: String, enough_food: bool, current_power: int = 0, target_power: int = 0, remaining_food: int = 0, direction: int = 0, display_frames: Array[Texture2D] = []) -> void:
 	victory = won
 	can_capture = enough_food
 	_title_label.text = "战斗胜利" if won else "战力不足"
@@ -206,7 +206,10 @@ func present(won: bool, kind: String, enough_food: bool, current_power: int = 0,
 	_layout_satiety_icon()
 	_confirm_button.modulate = Color(0.55,0.55,0.55,1) if won and not enough_food else Color.WHITE
 	if won and entry_only: _confirm_button.modulate = Color.WHITE
-	_set_art(kind,won)
+	_set_art(kind,won,direction)
+	if not display_frames.is_empty():
+		illustration_frames.assign(display_frames)
+		illustration.texture=illustration_frames[0]
 	_layout(460,390 if won else 430)
 	show()
 	if won and not tutorial_only_yes: _cancel_button.grab_focus()

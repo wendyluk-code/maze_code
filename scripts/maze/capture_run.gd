@@ -498,7 +498,7 @@ static func refresh_due(_run: Dictionary, _point: Vector2, _visible: Rect2) -> b
 
 static func combat_attack(sm: Node, point: Vector2, aim: Vector2 = Vector2.RIGHT) -> Dictionary:
 	var run := snapshot(sm)
-	if not valid(run) or not run.get("active",false) or not run.has("combat") or not str(run.pending).is_empty() or not sm.maze_terrain(sm.maze_exploration_state().region).is_walkable(point):
+	if not valid(run) or not run.get("active",false) or not run.has("combat") or not str(run.pending).is_empty() or not _combat_point_allowed(sm,run,point):
 		return {"success":false,"reason":"invalid_combat"}
 	var previous: Dictionary=sm.get("_state").duplicate(true)
 	Combat.Skills.sync_levels(run, sm)
@@ -535,7 +535,11 @@ static func change_region(sm: Node, region: String, point: Vector2) -> Dictionar
 	c.hero = Combat.pack(point)
 	Combat.Skills.ensure(c)
 	for key in ["shots","enemy_shots"]: c[key] = []
-	for key in ["hit_remaining","flash_remaining","action_left"]: c[key] = 0.0
+	for key in ["hit_remaining","flash_remaining","action_left","hurt_recovery_left"]: c[key] = 0.0
+	if c.has("rock_launch_left"): c.rock_launch_left=0.0
+	for key in ["rock_slow_left","rock_stun_left","rock_launch_guard"]:
+		if c.has(key): c[key]=0.0
+	if c.has("rock_slow_factor"): c.rock_slow_factor=1.0
 	c["axe_pending"] = false
 	sm.get("_state")[KEY] = run
 	var result: Dictionary = sm.record_maze_location(region,point)
@@ -574,10 +578,17 @@ static func combat_command(sm: Node, command: String, value: Variant) -> Diction
 	sm.get("_state")[KEY]=run
 	return _commit(sm,previous)
 
-static func combat_tick(sm: Node, point: Vector2, dt: float, visible: Rect2 = Rect2(), sprinting: bool = false) -> Dictionary:
+static func _combat_point_allowed(sm: Node,run: Dictionary,point: Vector2) -> bool:
+	var region: String=sm.maze_exploration_state().region
+	if sm.maze_terrain(region).is_walkable(point): return true
+	if region!="salt_pool" or not preload("res://scripts/maze/rock_charge_terrain.gd").allowed(point): return false
+	var c: Dictionary=run.combat
+	return float(c.get("rock_launch_left",0.0))>0 or not sm.maze_terrain(region).is_walkable(Combat.vec(c.hero))
+
+static func combat_tick(sm: Node, point: Vector2, dt: float, visible: Rect2 = Rect2(), sprinting: bool = false, axe_hitstop: RefCounted=null, player_direction: Vector2=Vector2.ZERO) -> Dictionary:
 	var run := snapshot(sm)
 	if not is_finite(dt) or dt<=0.0 or dt>0.5: return {"success":false,"reason":"invalid_delta"}
-	if not valid(run) or not run.get("active",false) or not run.has("combat") or not str(run.pending).is_empty() or run.combat.hp<=0 or not sm.maze_terrain(sm.maze_exploration_state().region).is_walkable(point):
+	if not valid(run) or not run.get("active",false) or not run.has("combat") or not str(run.pending).is_empty() or run.combat.hp<=0 or not _combat_point_allowed(sm,run,point):
 		return {"success":false,"reason":"invalid_combat"}
 	var previous: Dictionary = sm.get("_state").duplicate(true)
 	var before: Dictionary = run.combat.duplicate(true)
@@ -588,7 +599,12 @@ static func combat_tick(sm: Node, point: Vector2, dt: float, visible: Rect2 = Re
 	Combat.Skills.sync_lesson(run, guide)
 	Combat.Skills.sync_levels(run, sm)
 	run.combat["frog_unlocked"]=sm.yufeng_salia_state()=="done"
-	Combat.advance(run,point,dt,sprinting)
+	var axe_clock: Dictionary={} if axe_hitstop==null else axe_hitstop.state.duplicate(true)
+	var hit_feedback: Array=[]
+	var player_hurt_feedback: Array=[]
+	if Combat.Skills.kind(run,int(run.combat.get("selected",0)))=="yaya" and player_direction.is_finite() and not player_direction.is_zero_approx():
+		run.combat.aim=Combat.Skills.pack(player_direction.normalized())
+	Combat.advance(run,point,dt,sprinting,axe_clock,hit_feedback,player_hurt_feedback)
 	var mining := Crystals.apply(sm.get("_state"),run,Crystals.day())
 	if not mining.success:
 		sm.set("_state",previous)
@@ -627,9 +643,14 @@ static func combat_tick(sm: Node, point: Vector2, dt: float, visible: Rect2 = Re
 	if electric_changed or mining.changed or not mining.feedback.is_empty() or rock_changed or frog_changed or healing or lesson_changed or awarded or migrated or refreshed or run.combat.hp!=before.hp or run.combat.hits!=before.hits or run.combat.throws!=before.throws or run.combat.get("blocks",0)!=before.get("blocks",0) or run.combat.checkpoint>=0.5:
 		run.combat.checkpoint=0.0
 		var committed:=_commit(sm,previous)
-		if committed.success: committed["mining_feedback"]=mining.feedback
+		if committed.success:
+			committed["mining_feedback"]=mining.feedback
+			committed["hit_feedback"]=hit_feedback
+			committed["player_hurt_feedback"]=player_hurt_feedback
+			if axe_hitstop!=null: axe_hitstop.state=axe_clock
 		return committed
-	return {"success":true}
+	if axe_hitstop!=null: axe_hitstop.state=axe_clock
+	return {"success":true,"hit_feedback":hit_feedback,"player_hurt_feedback":player_hurt_feedback}
 
 
 static func ensure_region(run: Dictionary, region: String) -> bool:

@@ -12,7 +12,7 @@ func _ready() -> void:
  for key in ["01-charge","02-water-area","03-hit-break"]:
   var frames: Array[Texture2D]=[]
   for i in 4:
-   frames.append(ImageTexture.create_from_image(Image.load_from_file("res://assets/effects/fenshui/%s-%d.png" % [key,i])))
+   frames.append(load("res://assets/effects/fenshui/%s-%d.png" % [key,i]) as Texture2D)
   sheets[key]=frames
  call_deferred("_install_ground")
 
@@ -59,7 +59,7 @@ func _draw() -> void:
  for id in c.actors:
   var a: Dictionary=c.actors[id]
   if a.hp<=0 or snapshot.monsters[id].status!="alive": continue
-  if id.begins_with("fenshui_silverfish_"):
+  if id.begins_with("fenshui_silverfish_") or preload("res://scripts/maze/wind_frog_counter.gd").enabled(c,id):
    var elapsed:=4.0-float(a.get("electric_left",0.0))
    if elapsed>=0.0 and elapsed<0.3:
     var frame:=0 if elapsed<0.1 else (1 if elapsed<0.17 else (2 if elapsed<0.24 else 3))

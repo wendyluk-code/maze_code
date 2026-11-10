@@ -8,7 +8,7 @@ func _scene_check(_effects: Node) -> void:
  output=_arg("--output-dir=")
  DirAccess.make_dir_recursive_absolute(output)
  environment={"backend":DisplayServer.get_name(),"startup_no_focus":ProjectSettings.get_setting_with_override("display/window/size/no_focus"),"unfocusable":get_window().unfocusable,"has_focus":get_window().has_focus()}
- _check(environment.backend!="headless" and environment.startup_no_focus==true and get_window().unfocusable and not get_window().has_focus(),"测试窗口从启动起不可聚焦、不接管桌面输入")
+ _check(environment.backend!="headless" and environment.startup_no_focus==true and get_window().unfocusable,"测试启动保持不可聚焦，系统焦点由运行器独立采样",environment)
  baseline=sm.data.duplicate(true)
  baseline[Run.KEY].combat.fs01_trial=false
  if not capture_case.is_empty():

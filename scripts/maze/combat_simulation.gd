@@ -6,37 +6,25 @@ const Rock = preload("res://scripts/maze/rockmane_combat.gd")
 const Crystals = preload("res://scripts/maze/salt_crystals.gd")
 const Frog = preload("res://scripts/maze/wind_frog_combat.gd")
 const WaterSpacing = preload("res://scripts/maze/water_spacing.gd")
+const Bodies = preload("res://scripts/maze/fenshui_bodies.gd")
 const FenshuiTrial = preload("res://scripts/maze/fenshui_borrow_lightning.gd")
 const Silverfish = preload("res://scripts/maze/silverfish_combat.gd")
 const ThunderEel = preload("res://scripts/maze/thunder_eel_combat.gd")
-const STATS = {
-	"rockmane":{"attack":8,"hp":120,"windup":0.7},
-	"mimic_crab":{"attack":5,"hp":28,"interval":2.0,"windup":0.65,"speed":80.0,"trigger":100.0,"leash":145.0,"home_limit":75.0,"reach":34.0},
-	"blind_scorpion":{"attack":4,"hp":22,"interval":1.8,"windup":0.6,"speed":90.0,"trigger":100.0,"leash":145.0,"home_limit":75.0,"reach":42.0},
-	"wind_frog":{"attack":6,"hp":96},
-	"silverfish":{"attack":4,"hp":20,"interval":1.8,"windup":0.55,"speed":65.0,"trigger":110.0,"leash":150.0,"home_limit":85.0,"reach":35.0},
-	"thunder_eel":{"attack":5,"hp":30,"interval":2.2,"windup":0.8,"speed":55.0,"trigger":110.0,"leash":150.0,"home_limit":85.0,"reach":70.0},
-	"slime":{"attack":3,"hp":14,"interval":1.8,"windup":0.45,"speed":85.0,"trigger":150.0,"leash":420.0,"home_limit":600.0,"reach":32.0},
-	"snail":{"attack":5,"hp":28,"interval":2.0,"windup":0.6,"speed":65.0,"trigger":140.0,"leash":380.0,"home_limit":520.0,"reach":32.0},
-	"beetle":{"attack":4,"hp":21,"interval":1.3,"windup":0.35,"speed":145.0,"trigger":190.0,"leash":500.0,"home_limit":750.0,"reach":32.0},
-	"lizard":{"attack":8,"hp":84,"interval":2.2,"windup":0.7,"speed":100.0,"trigger":200.0,"leash":550.0,"home_limit":700.0,"reach":40.0}
-}
+const Monster=preload("res://scripts/maze/monster_combat.gd")
+static var STATS: Dictionary=Monster.STATS
 const INTERVAL = 0.9
 const RANGE = 180.0
 const FLIGHT = 0.35
-const HIT_DURATION = 0.12
-const FLASH_DURATION = 0.1
+const HIT_DURATION=Monster.HIT_DURATION
+const FLASH_DURATION=Monster.FLASH_DURATION
 const Skills = preload("res://scripts/maze/team_attack.gd")
+const PlayerHurt = preload("res://scripts/maze/player_hurt_event.gd")
 
 # 受击状态随伤害事务保存；读档仅续完剩余时间，不重放整段。
 static func hit(actor: Dictionary, position: Vector2, source: Vector2, distance: float) -> void:
-	var direction := source.direction_to(position)
-	if direction.is_zero_approx(): direction = Vector2.DOWN
-	actor.hit_velocity = pack(direction * distance / HIT_DURATION)
-	actor.hit_remaining = HIT_DURATION
-	actor.flash_remaining = FLASH_DURATION
+	Monster.hit(actor,position,source,distance)
 
-static func advance_hit(actor: Dictionary, position: Vector2, dt: float, region: String = "maze_entry", home: Vector2 = Vector2.INF) -> Vector2:
+static func advance_hit(actor: Dictionary, position: Vector2, dt: float, region: String = "maze_entry", home: Vector2 = Vector2.INF, run: Dictionary = {}, id: String = "hero") -> Vector2:
 	actor.flash_remaining = maxf(0.0, float(actor.get("flash_remaining", 0.0)) - dt)
 	var remaining := float(actor.get("hit_remaining", 0.0))
 	if remaining <= 0.0: return position
@@ -50,13 +38,44 @@ static func advance_hit(actor: Dictionary, position: Vector2, dt: float, region:
 		if not terrain(region).is_walkable(next) or (home!=Vector2.INF and not (Catalog.Salt.allowed(next,home) if region=="salt_pool" else Catalog.Fenshui.allowed(next,home))):
 			actor.hit_remaining = 0.0
 			break
+		if not run.is_empty() and not Bodies.step(run,id,current,next):
+			actor.hit_remaining=0.0
+			break
 		current = next
 	return current
 
+## 岩鬃兽击飞沿实际盐池地面推进；撞物时从碰撞开始重计两秒。
+static func advance_rock_launch(run: Dictionary, position: Vector2, dt: float) -> Vector2:
+	var c: Dictionary=run.combat
+	var left:=float(c.get("rock_launch_left",0.0))
+	if left<=0.0: return position
+	if c.get("region","")!="salt_pool" or c.hp<=0:
+		c.rock_launch_left=0.0
+		return position
+	var displacement:=vec(c.rock_launch_velocity)*minf(dt,left)
+	c.rock_launch_left=maxf(0.0,left-dt)
+	var steps:=maxi(1,ceili(displacement.length()/0.5))
+	var current:=position
+	for i in range(1,steps+1):
+		var next:=position+displacement*float(i)/steps
+		var blocked: bool=not preload("res://scripts/maze/rock_charge_terrain.gd").allowed(next)
+		if blocked:
+			c.rock_launch_left=0.0
+			if PlayerHurt.enabled(c) and c.hp>0:
+				c.hurt_recovery_left=2.0
+				c.rock_stun_left=2.0
+				c.rock_launch_guard=2.3
+			break
+		if not Bodies.step(run,"hero",current,next):
+			c.rock_launch_left=0.0
+			break
+		current=next
+	if float(c.rock_launch_left)<=0.000001 and float(c.get("rock_stun_left",0.0))<=0.0:
+		c.hurt_recovery_left=0.0
+	return current
+
 static func clear_hit(actor: Dictionary) -> void:
-	actor.erase("hit_remaining")
-	actor.erase("hit_velocity")
-	actor.erase("flash_remaining")
+	Monster.clear_hit(actor)
 
 ## 物件只限制魔物站位；玩家通路和拾取范围保持原规则。
 static func move_monster(origin: Vector2, target: Vector2, distance: float) -> Vector2:
@@ -92,7 +111,7 @@ static var segments: Array = []
 static var nav_count := 0
 
 static func fresh_actor(kind: String, point: Vector2) -> Dictionary:
-	return {"position":pack(point),"hp":STATS[kind].hp,"mode":"idle","windup":0.0,"cooldown":0.0,"away":0.0,"velocity":[0.0,0.0]}
+	return Monster.fresh_actor(kind,point)
 
 static func life_ids(run: Dictionary) -> Dictionary:
 	var lives := {}
@@ -135,8 +154,7 @@ static func projectile_clear(point: Vector2, region: String = "maze_entry") -> b
 		# 水面、岸边和行走遮罩不属于空中弹道障碍；实体物件单独处理。
 		if region=="fenshui":
 			if preload("res://data/maze/fenshui_gates.gd").blocks(point,0.0): return false
-			for island in preload("res://data/maze/fenshui_roads.gd").ISLANDS:
-				if ((point-Vector2(island.x,island.y))/Vector2(island.z,island.w)).length()<=1.0: return false
+			if preload("res://data/maze/fenshui_roads.gd").island_blocks(point): return false
 		else:
 			for obstacle in preload("res://data/maze/salt_pool_roads.gd").OBSTACLES:
 				if ((point-Vector2(obstacle.x,obstacle.y))/Vector2(obstacle.z,obstacle.w)).length()<=1.0: return false
@@ -175,12 +193,16 @@ static func next_waypoint(origin: Vector2, target: Vector2) -> Vector2:
 		if origin.distance_squared_to(point)>0.0001: return point
 	return origin
 
-static func advance(run: Dictionary, point: Vector2, dt: float, sprinting: bool = false) -> void:
+static func advance(run: Dictionary, point: Vector2, dt: float, sprinting: bool = false, axe_clock: Dictionary={}, feedback: Array=[], hurt_feedback: Array=[]) -> void:
 	var c: Dictionary = run.combat
+	PlayerHurt.advance(c,dt)
+	Rock.advance_status(c,dt)
+	Skills.Hitstop.begin_step(axe_clock,dt)
 	c.hero=pack(point)
-	Rock.advance(run, point, dt)
-	Frog.advance(run, point, dt)
-	Skills.advance(run, point, dt)
+	Rock.advance(run, point, dt,dt-Skills.Hitstop.actor_delta(axe_clock,Catalog.Rock.ID,dt),hurt_feedback)
+	Frog.advance(run, point, dt,dt-Skills.Hitstop.actor_delta(axe_clock,Catalog.Frog.ID,dt),hurt_feedback)
+	var existing_projectiles: int=c.shots.size()
+	Skills.advance(run, point, dt,axe_clock,feedback,hurt_feedback)
 	# 旧档缺字段按满条初始化；只保存资源与恢复时钟，不保存按键。
 	c.sprint = clampf(float(c.get("sprint",1.0)),0.0,1.0)
 	c.sprint_rest = float(c.get("sprint_rest",0.0))
@@ -191,7 +213,8 @@ static func advance(run: Dictionary, point: Vector2, dt: float, sprinting: bool 
 		var recovery := maxf(0.0,c.sprint_rest+dt-1.0)-maxf(0.0,c.sprint_rest-1.0)
 		c.sprint_rest=minf(1.0,c.sprint_rest+dt)
 		c.sprint=minf(1.0,c.sprint+recovery/8.0)
-	point = advance_hit(c, point, dt, str(c.get("region","maze_entry")))
+	point = advance_hit(c, point, dt, str(c.get("region","maze_entry")),Vector2.INF,run)
+	point = advance_rock_launch(run,point,dt)
 	c.hero = pack(point)
 	c.elapsed += dt
 	# 近战先于投射物结算：同一推进中主角归零优先失败。
@@ -203,13 +226,18 @@ static func advance(run: Dictionary, point: Vector2, dt: float, sprinting: bool 
 	for row in Catalog.rows(c):
 		var a: Dictionary = c.actors[row.id]
 		if run.monsters[row.id].status!="alive" or a.hp<=0: continue
-		if row.kind in ["wind_frog","rockmane"]:
-			a.flash_remaining=maxf(0.0,float(a.get("flash_remaining",0.0))-dt)
+		var actor_dt:=Skills.Hitstop.actor_delta(axe_clock,row.id,dt)
+		if actor_dt<=0.000001:
+			a.cooldown=maxf(0.0,a.cooldown-dt)
 			continue
-		var s: Dictionary = STATS[row.kind]
+		if row.kind in ["wind_frog","rockmane"]:
+			a.flash_remaining=maxf(0.0,float(a.get("flash_remaining",0.0))-actor_dt)
+			continue
+		var s: Dictionary = STATS[row.kind].duplicate()
+		s.attack=preload("res://scripts/maze/monster_editor.gd").attack(row.kind,int(s.attack))
 		var pos := vec(a.position)
 		var recoiling := float(a.get("hit_remaining", 0.0)) > 0.0
-		var hit_position := advance_hit(a, pos, dt, str(c.get("region","maze_entry")),row.position if row.get("region","") in ["fenshui","salt_pool"] else Vector2.INF)
+		var hit_position := advance_hit(a, pos, actor_dt, str(c.get("region","maze_entry")),row.position if row.get("region","") in ["fenshui","salt_pool"] else Vector2.INF,run,row.id)
 		if row.get("region","")=="fenshui" and not WaterSpacing.clear(run,row.id,hit_position): hit_position=pos
 		a.position = pack(hit_position if row.get("region","") in ["fenshui","salt_pool"] or Catalog.clear_of_props(hit_position) else Catalog.nearest_clear_point(pos))
 		pos = vec(a.position)
@@ -218,20 +246,20 @@ static func advance(run: Dictionary, point: Vector2, dt: float, sprinting: bool 
 		var attack_distance := distance if row.get("region","") in ["fenshui","salt_pool"] else pos.distance_to(Catalog.nearest_clear_point(point))
 		a.cooldown = maxf(0.0,a.cooldown-dt)
 		if ThunderEel.enabled(c,row.id):
-			ThunderEel.advance(run,row,point,dt,s,Skills)
+			ThunderEel.advance(run,row,point,actor_dt,s,Skills,hurt_feedback)
 			continue
 		if recoiling:
 			a.velocity=a.get("hit_velocity",[0.0,0.0]).duplicate()
 			continue
 		if FenshuiTrial.enabled(c,row):
-			FenshuiTrial.advance(run,row,point,dt,s,Skills)
+			FenshuiTrial.advance(run,row,point,actor_dt,s,Skills)
 			continue
 		if Silverfish.enabled(c,row.id):
-			Silverfish.advance(run,row,point,dt,s,Skills)
+			Silverfish.advance(run,row,point,actor_dt,s,Skills,hurt_feedback)
 			continue
 		if a.mode=="idle" and distance<=s.trigger and not protected(row,point): a.mode="chase"
 		if a.mode in ["chase","windup"]:
-			a.away = a.away+dt if distance>s.leash else 0.0
+			a.away = a.away+actor_dt if distance>s.leash else 0.0
 			if a.away>=1.0 or (row.get("region","")!="fenshui" and pos.distance_to(row.position)>=s.home_limit) or protected(row,point):
 				a.mode="return"
 				a.windup=0.0
@@ -244,7 +272,7 @@ static func advance(run: Dictionary, point: Vector2, dt: float, sprinting: bool 
 				a.velocity=[0.0,0.0]
 				continue
 			var destination: Vector2 = row.position if row.get("region","") in ["fenshui","salt_pool"] else next_waypoint(pos,row.position)
-			var moved := move_actor(row,pos,pos.direction_to(destination)*minf(s.speed*dt,pos.distance_to(destination))) if row.get("region","") in ["fenshui","salt_pool"] else move_monster(pos,destination,s.speed*dt)
+			var moved := move_actor(row,pos,pos.direction_to(destination)*minf(s.speed*actor_dt,pos.distance_to(destination))) if row.get("region","") in ["fenshui","salt_pool"] else move_monster(pos,destination,s.speed*actor_dt)
 			a.position=pack(moved)
 			if moved.distance_to(row.position)<=2.0:
 				a.position=pack(row.position if row.get("region","") in ["fenshui","salt_pool"] else Catalog.nearest_clear_point(row.position))
@@ -253,12 +281,15 @@ static func advance(run: Dictionary, point: Vector2, dt: float, sprinting: bool 
 				a.away=0.0
 				a.cooldown=0.0
 		elif a.mode=="windup":
-			a.windup=maxf(0.0,a.windup-dt)
+			a.windup=maxf(0.0,a.windup-actor_dt)
 			if a.windup<=0.00001:
 				if c.hp>0 and attack_distance<=s.reach and attack_line(row,pos,point) and aimed_hit(a,row,pos,point):
+					var hp_before: float=c.hp
 					c.hp=maxf(0,c.hp-Skills.incoming_damage(run, int(s.attack)))
 					c.last_attacker=row.kind
 					hit(c, point, pos, 18.0)
+					PlayerHurt.record(c,hp_before,"physical",point,pos,hurt_feedback)
+					if c.hp>0: c.hurt_recovery_left=preload("res://scripts/maze/combat_tuning.gd").number("melee."+str(row.kind),"hurt",600.0)/1000.0
 				a.mode="chase"
 		elif a.mode=="chase":
 			if attack_distance<=s.reach and attack_line(row,pos,point):
@@ -271,13 +302,16 @@ static func advance(run: Dictionary, point: Vector2, dt: float, sprinting: bool 
 					a.cooldown=s.interval
 			elif float(a.get("cast",0.0)) <= 0.0 and not recoiling:
 				var destination: Vector2 = point if row.get("region","") in ["fenshui","salt_pool"] else next_waypoint(pos,point)
-				a.position=pack(move_actor(row,pos,pos.direction_to(destination)*minf(s.speed*dt,pos.distance_to(destination))) if row.get("region","") in ["fenshui","salt_pool"] else move_monster(pos,destination,s.speed*dt))
-				if row.get("region","")=="fenshui": a.position=pack(WaterSpacing.swim(run,row,pos,pos.direction_to(destination),minf(s.speed*dt,pos.distance_to(destination))))
+				a.position=pack(move_actor(row,pos,pos.direction_to(destination)*minf(s.speed*actor_dt,pos.distance_to(destination))) if row.get("region","") in ["fenshui","salt_pool"] else move_monster(pos,destination,s.speed*actor_dt))
+				if row.get("region","")=="fenshui": a.position=pack(WaterSpacing.swim(run,row,pos,pos.direction_to(destination),minf(s.speed*actor_dt,pos.distance_to(destination))))
 		elif a.mode=="idle" and row.get("region","")=="fenshui" and not recoiling:
-			WaterSpacing.patrol(run,row,dt)
-		a.velocity=pack((vec(a.position)-pos)/dt)
+			WaterSpacing.patrol(run,row,actor_dt)
+		a.position=pack(Bodies.move(run,str(row.id),pos,vec(a.position)))
+		a.velocity=pack((vec(a.position)-pos)/actor_dt)
 	if c.hp<=0:
 		clear_hit(c)
+		Rock.advance_status(c,0.0)
+		if c.has("hurt_recovery_left"): c.hurt_recovery_left=0.0
 		for actor in c.actors.values(): clear_hit(actor)
 		c.shots.clear()
 		c.enemy_shots.clear()
@@ -285,7 +319,13 @@ static func advance(run: Dictionary, point: Vector2, dt: float, sprinting: bool 
 		c.axe_pending=false
 		return
 	var flying: Array = []
+	var projectile_index:=0
 	for shot in c.shots:
+		projectile_index+=1
+		# 本步末端刚释放的连发种子从下一步开始移动。
+		if projectile_index>existing_projectiles:
+			flying.append(shot)
+			continue
 		if not shot.has("lives"): shot.lives = life_ids(run)
 		var old := vec(shot.position)
 		var flight: float = shot.get("flight", FLIGHT)
@@ -304,13 +344,15 @@ static func advance(run: Dictionary, point: Vector2, dt: float, sprinting: bool 
 				break
 			for row in Catalog.rows(c):
 				var a: Dictionary=c.actors[row.id]
-				if run.monsters[row.id].status!="alive" or a.hp<=0 or a.mode=="return" or not Catalog.targetable(c,row.id): continue
+				if not Monster.eligible(run,row.id): continue
 				if int(shot.lives.get(row.id,-1)) != int(run.monsters[row.id].get("refresh_count",0)): continue
-				if p.distance_to(vec(a.position))<=14.0:
-					Skills.damage(run, row.id, int(shot.get("damage", c.attack)))
-					if a.hp > 0: hit(a, vec(a.position), vec(shot.origin), 12.0)
-					else: clear_hit(a)
-					if a.mode=="idle": a.mode="chase"
+				var projectile_radius: float=preload("res://scripts/maze/combat_tuning.gd").effect(str(shot.get("kind","hero")),"hit_radius",14.0)
+				var contact: bool=p.distance_to(vec(a.position))<=projectile_radius
+				if shot.get("kind","")=="yaya":
+					var body_size: Vector2=Bodies.footprint(row.id)+Vector2.ONE*projectile_radius
+					contact=((p-vec(a.position))/body_size).length_squared()<=1.0
+				if contact:
+					Skills.impact(run,row.id,int(shot.get("damage",c.attack)),str(shot.get("kind","hero")),p,vec(shot.target)-vec(shot.origin),feedback,axe_clock if shot.get("kind","") in ["hero","yaya"] else {},vec(shot.origin))
 					used=true
 					break
 			if used: break
@@ -326,7 +368,7 @@ static func select_target(run: Dictionary, point: Vector2) -> String:
 	var distance := RANGE+0.001
 	for row in Catalog.rows(c):
 		var a: Dictionary=c.actors[row.id]
-		if run.monsters[row.id].status!="alive" or a.hp<=0 or a.mode=="return" or not Catalog.targetable(c,row.id): continue
+		if not Monster.eligible(run,row.id): continue
 		var d := point.distance_to(vec(a.position))
 		if d<=RANGE and d<distance:
 			nearest=row.id
@@ -337,7 +379,15 @@ static func attack(run: Dictionary, point: Vector2, aim: Vector2 = Vector2.RIGHT
 	return Skills.attack(run,point,aim)
 
 static func valid(c: Dictionary) -> bool:
+	preload("res://scripts/maze/combat_tuning.gd").apply_stats(STATS)
 	if not Skills.valid(c): return false
+	if c.has("rock_slow_left") and not Skills.number(c.rock_slow_left,5.0): return false
+	if c.has("rock_slow_factor") and c.rock_slow_factor not in [0.05,0.15,0.25,1.0]: return false
+	if c.has("rock_stun_left") and not Skills.number(c.rock_stun_left,2.0): return false
+	if c.has("rock_launch_guard") and not Skills.number(c.rock_launch_guard,2.3): return false
+	if c.has("rock_launch_left"):
+		if not Skills.number(c.rock_launch_left,0.4): return false
+		if not _point(c.get("rock_launch_velocity")) or vec(c.rock_launch_velocity).length()>300.001: return false
 	if c.has("electric_serial") and (not Skills.number(c.electric_serial,9007199254740991.0) or float(c.electric_serial)!=floor(float(c.electric_serial))): return false
 	if c.has("fs01_trial") and not c.fs01_trial is bool: return false
 	if c.has("rock_shake_left") and not Skills.number(c.rock_shake_left,0.45): return false
@@ -357,7 +407,7 @@ static func valid(c: Dictionary) -> bool:
 		var value: Variant=c.get(key)
 		if typeof(value) not in [TYPE_INT,TYPE_FLOAT] or not is_finite(float(value)) or value<0: return false
 	if c.max_hp<1 or c.hp>c.max_hp or not c.get("actors") is Dictionary or not c.get("shots") is Array or not _point(c.get("hero")): return false
-	if c.shots.size()>8 or not STATS.has(c.get("last_attacker")): return false
+	if c.shots.size()>32 or not STATS.has(c.get("last_attacker")): return false
 	for row in Catalog.rows(c,true):
 		var a: Variant=c.actors.get(row.id)
 		if not a is Dictionary or not _point(a.get("position")) or not _point(a.get("velocity")): return false
@@ -386,15 +436,7 @@ static func valid(c: Dictionary) -> bool:
 	return true
 
 static func _valid_hit(actor: Dictionary) -> bool:
-	for key in ["hit_remaining", "flash_remaining"]:
-		if actor.has(key):
-			var value: Variant = actor[key]
-			if typeof(value) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(value)) or value < 0.0 or value > HIT_DURATION: return false
-	if actor.has("hit_velocity") and not _point(actor.hit_velocity): return false
-	if actor.has("hit_velocity") and vec(actor.hit_velocity).length() > 150.001: return false
-	if float(actor.get("flash_remaining", 0.0)) > FLASH_DURATION: return false
-	if float(actor.get("hit_remaining", 0.0)) > 0.0 and not actor.has("hit_velocity"): return false
-	return true
+	return Monster.valid_hit(actor)
 
 static func _point(value: Variant) -> bool:
 	if not value is Array or value.size()!=2: return false

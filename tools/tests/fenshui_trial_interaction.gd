@@ -123,7 +123,9 @@ func _click(control: Control) -> void:
 func _image(name: String) -> void:
  var was_recording:=recording
  recording=false
- await RenderingServer.frame_post_draw
+ # 最小化窗口可能不再自动触发绘制结束信号，显式绘制当前真实视口。
+ await get_tree().process_frame
+ RenderingServer.force_draw(false)
  _check(get_viewport().get_texture().get_image().save_png(output+"/"+name+".png")==OK,"实际画面证据："+name)
  last_frame=0
  recording=was_recording

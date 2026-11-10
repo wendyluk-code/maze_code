@@ -54,4 +54,28 @@ static func landing(run: Dictionary, origin: Vector2, target: Vector2) -> Vector
 		if origin.distance_to(point)>Config.JUMP_RANGE: break
 		if Config.jump_line(origin,point) and Spacing.line_clear(run,Config.ID,origin,point): best=point
 	if Config.jump_line(origin,target) and Spacing.line_clear(run,Config.ID,origin,target): best=target
+	# 空中网格的最短线未必含有能落水的中间点；只在原路线无进展时补查邻近落点。
+	if best.distance_squared_to(origin)<0.01: best=alternative_landing(run,origin,target)
 	return best
+
+static func alternative_landing(run: Dictionary, origin: Vector2, target: Vector2) -> Vector2:
+	var candidates: Array[Vector2]=[]
+	var distance:=origin.distance_squared_to(target)
+	var center:=Vector2i((origin/16.0).round())
+	var reach:=ceili(Config.JUMP_RANGE/16.0)
+	for y in range(maxi(0,center.y-reach),mini(grid.region.end.y,center.y+reach+1)):
+		for x in range(maxi(0,center.x-reach),mini(grid.region.end.x,center.x+reach+1)):
+			var cell:=Vector2i(x,y)
+			if grid.is_point_solid(cell): continue
+			var point:=Vector2(cell)*16.0
+			if origin.distance_squared_to(point)<0.01 or origin.distance_to(point)>Config.JUMP_RANGE: continue
+			if point.distance_squared_to(target)<distance-1.0: candidates.append(point)
+	candidates.sort_custom(func(a: Vector2,b: Vector2) -> bool:
+		var da:=a.distance_squared_to(target)
+		var db:=b.distance_squared_to(target)
+		if not is_equal_approx(da,db): return da<db
+		return a.x<b.x if a.x!=b.x else a.y<b.y)
+	for point in candidates:
+		if not Config.allowed(point): continue
+		if Spacing.line_clear(run,Config.ID,origin,point) and Config.jump_line(origin,point): return point
+	return origin

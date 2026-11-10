@@ -189,4 +189,9 @@ static func active(c: Dictionary, id: String) -> bool:
 	return (id.begins_with("fenshui_") and c.get("region","maze_entry")=="fenshui") or (not id.begins_with("fenshui_") and c.get("region","maze_entry")=="maze_entry")
 
 static func targetable(c: Dictionary, id: String) -> bool:
-	return id!=Frog.ID or c.actors[id].get("frog_phase","dormant") not in ["dormant","emerging"]
+	if id!=Frog.ID: return true
+	var a: Dictionary=c.actors[id]
+	if a.get("frog_phase","dormant") not in ["dormant","emerging"]: return true
+	# 正式已解锁巨蛙从入场起可见；待机或回满血不应把它重新当作潜伏目标。
+	# 剧情未解锁时仍只保留原受伤恢复例外，旧出水和特殊试玩不放宽。
+	return a.get("frog_phase","dormant")=="dormant" and c.get("region","")=="fenshui" and not c.get("fs01_trial",false) and a.hp>0 and (c.get("frog_unlocked",false) or (a.has("frog_heal_quiet") and a.hp<96.0))

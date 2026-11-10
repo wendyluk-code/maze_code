@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "effects": {
+    "hero": {
+      "hitstop": 50
+    },
+    "yaya": {
+      "hitstop": 50
+    },
+    "tieshan": {
+      "hitstop": 70
+    }
+  },
+  "published_at": "2026-11-08T07:58:39.681Z"
+}

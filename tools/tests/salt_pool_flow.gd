@@ -1,12 +1,23 @@
 extends "res://tools/tests/fenshui_flow.gd"
 const Salt = preload("res://data/maze/salt_pool_roads.gd")
+const Moss = preload("res://data/maze/moss_pool_roads.gd")
 func _combat_scene() -> void:
  await _new_scene()
  maze.capture_flow.set_process(false)
  for actor in sm.data[Run.KEY].combat.actors.values(): actor.mode = "idle"
  for key in ["shots","enemy_shots"]: sm.data[Run.KEY].combat[key] = []
+ # 此检查直接从入口定位到分水庭西侧路标；未完成首次剧情的旧档
+ # 到达西侧会按正式规则立即触发剧情并锁住交互，与切区检查无关。
+ sm.data[sm.YUFENG_SALIA_KEY]={"version":2,"phase":"done","line":0}
+ # 路标E交互专项使用已读战斗引导档；未读引导会按约定优先消费E。
+ sm.data.fenshui_battle_guide_seen=true
+ var origin_id: int=maze.get_instance_id()
  maze.travel_region("fenshui",Salt.FENSHUI_RETURN)
- await get_tree().create_timer(1.4).timeout
+ var deadline:=Time.get_ticks_msec()+12000
+ while Time.get_ticks_msec()<deadline:
+  var current:=get_tree().current_scene
+  if is_instance_valid(current) and current.get_instance_id()!=origin_id and current.get("region_id")=="fenshui" and current._entry_ready and not current.player.input_locked: break
+  await get_tree().process_frame
  maze = get_tree().current_scene
  _check(maze.region_id == "fenshui","抵达分水庭")
  maze.capture_flow.set_process(false)
@@ -46,8 +57,15 @@ func _combat_scene() -> void:
  _check(maze.has_node("SpawnPortal") and maze.entrance_prompt.visible,"出生后方绿色路标可返回")
  _check(maze.task_tracker.visible and is_instance_valid(maze.map_ui),"任务与地图UI保留")
  _check(maze.player.water_ripples == null,"盐地不误用浅水涟漪")
- for key in ["members","satiety","bag","monsters"]:
+ for key in ["members","satiety","bag"]:
   _check(Run.snapshot(sm)[key] == prior[Run.KEY][key],"切区保留"+key)
+ var old_monsters: Dictionary=prior[Run.KEY].monsters
+ var current_monsters: Dictionary=Run.snapshot(sm).monsters
+ for id in old_monsters:
+  _check(current_monsters.has(id) and current_monsters[id]==old_monsters[id],"切区保留原有怪物记录"+str(id))
+ for row in preload("res://data/maze/salt_pool_encounters.gd").all():
+  _check(current_monsters.has(row.id),"首次进入盐池建立区域怪物"+row.id)
+ _check(current_monsters.has(preload("res://data/maze/salt_boss.gd").ID),"首次进入盐池建立岩鬃兽")
  _check(sm.stamina_snapshot().value==prior.stamina.value,"换区不重复扣体力")
  await _capture_image("03_salt_spawn")
  await _verify_new_map()
@@ -78,7 +96,8 @@ func _combat_scene() -> void:
 
  await _capture_image("05_salt_clear")
  var projected: Vector2 = maze.map_ui._projection.project(maze.player.position)
- _check(projected.distance_to(maze.player.position/Salt.SIZE*Vector2(1672,941))<0.01,"小地图同源像素对应")
+ maze.map_ui._process(0.0)
+ _check(maze.map_ui.mini_view.atlas_position.distance_to(projected)<0.01,"小地图标记消费当前区域投影")
  maze.map_ui.open_map()
  await _capture_image("06_salt_map")
  maze.map_ui.close_map()
@@ -115,8 +134,11 @@ func _verify_new_map() -> void:
   maze.player.position=point
   maze.camera.snap_to_target()
   await get_tree().process_frame
-  var uv: Vector2=maze.map_ui._projection.project(point)/Vector2(1672,941)
-  _check(uv.distance_to(point/Salt.SIZE)<0.00001,"角色脚底与地图同源坐标"+str(point))
+  var anchor: Vector2=preload("res://data/maze/fenshui_projection.gd").new().project(Salt.FENSHUI_PORTAL)
+  var base: Vector2=anchor+(point-Salt.ENTRANCE)*Vector2(0.23,0.27)
+  var old_link: Vector2=anchor+(Moss.SALT_SIDE_MARKER-Salt.ENTRANCE)*Vector2(0.23,0.27)
+  var expected: Vector2=base+(Moss.SALT_LINK_ATLAS-old_link)*clampf((300.0-point.x)/265.0,0.0,1.0)
+  _check(maze.map_ui._projection.project(point).distance_to(expected)<0.01,"角色脚底按总图锚点和双区连接投影"+str(point))
   await _capture_image("anchor_%d_%d" % [point.x,point.y])
  # 使用真实角色输入分步靠近池水，不能穿过岸线。
  maze.player.position=Vector2(850,430)

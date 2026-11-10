@@ -1,5 +1,19 @@
 extends Control
 ## 只局部适配战斗提示；餐厅键帽资源及其他实例不变。
+var tab_caption: Label
+var release_key: Control
+var release_caption: Label
+
+func set_target_lock_mode(enabled: bool) -> void:
+	tab_caption.text="锁定/切换" if enabled else "切换"
+	release_key.visible=enabled
+	release_caption.visible=enabled
+	var width:=512.0 if enabled else 348.0
+	custom_minimum_size.x=width
+	offset_left=-width*0.5
+	offset_right=width*0.5
+	tooltip_text="Tab 锁定或切换目标；Q 解除锁定；空格、1—4 切换招式" if enabled else ""
+
 func _ready() -> void:
 	mouse_filter=Control.MOUSE_FILTER_STOP
 	custom_minimum_size=Vector2(348,48)
@@ -17,7 +31,7 @@ func _ready() -> void:
 	for child in content.get_children():
 		content.remove_child(child)
 		child.queue_free()
-	for pair in [["左键","攻击"],["Tab","切换"],["Shift","加速"]]:
+	for pair in [["左键","攻击"],["Tab","切换"],["Q","解除锁定"],["Shift","加速"]]:
 		var key := preload("res://scenes/ui/key_button.tscn").instantiate()
 		content.add_child(key)
 		_style_key(key,pair[0])
@@ -25,6 +39,12 @@ func _ready() -> void:
 		caption.text=pair[1]
 		caption.custom_minimum_size.x=42
 		content.add_child(caption)
+		if pair[0]=="Tab": tab_caption=caption
+		if pair[0]=="Q":
+			release_key=key
+			release_caption=caption
+			key.hide()
+			caption.hide()
 	template.free()
 
 func _style_key(key: Control, caption: String) -> void:

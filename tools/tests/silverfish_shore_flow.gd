@@ -71,7 +71,7 @@ func _shore(size: Vector2i) -> void:
  var monster: Node=maze.capture_flow.monsters[Rules.IDS[0]]
  _check(await _wait_until(func(): return actor().get("fish_phase","")=="warning",120),"正式场景站在岸边诱导预警："+str(size))
  _check(monster.get("membrane") is Sprite2D and monster.membrane.visible,"水中预警有对应动作独立保护膜")
- _check(monster.action=="attack" and monster.membrane.texture==monster.membrane_sheets.attack and monster.membrane.region_rect==monster.body.region_rect and monster.membrane.offset==monster.body.offset and monster.membrane.scale==monster.body.scale,"攻击膜共享帧号方向锚点缩放")
+ _check(monster.action=="attack" and monster.membrane.texture.resource_path=="res://assets/effects/fenshui/protection_bubble.png" and not monster.membrane.region_enabled,"攻击时显示完整通用保护泡，不再裁身体外壳图集")
  await _map_pause("warning")
  var aim: Array=actor().fish_aim.duplicate()
  await _image("warning_%dx%d" % [size.x,size.y])

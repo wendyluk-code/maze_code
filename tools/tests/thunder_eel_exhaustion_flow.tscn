@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tools/tests/thunder_eel_exhaustion_flow.gd" id="1"]
+
+[node name="ThunderEelExhaustionFlow" type="Node"]
+script = ExtResource("1")

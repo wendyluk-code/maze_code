@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "monster": "silverfish",
+  "fish": {
+    "fx_scale": 100,
+    "fx_duration": 230,
+    "opacity": 100,
+    "offset_x": 0,
+    "offset_y": 0,
+    "angle": 0,
+    "hurt": 600,
+    "windup": 750,
+    "recover": 900
+  }
+}

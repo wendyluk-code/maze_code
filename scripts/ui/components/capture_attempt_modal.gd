@@ -53,6 +53,7 @@ var tutorial_only_yes := false:
 			if value and (no_button.has_focus() or close_button.has_focus()): yes_button.grab_focus()
 var j_down := false
 var intro_time := 0.0
+var supplied_idle := false
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -189,7 +190,7 @@ func _layout() -> void:
 	panel.scale = Vector2.ONE * factor
 	panel.position = (size-Vector2(880,640)*factor)*0.5
 
-func present(row: Dictionary, run: Dictionary, enough: bool, count: int) -> void:
+func present(row: Dictionary, run: Dictionary, enough: bool, count: int, display_frames: Array[Texture2D] = []) -> void:
 	guaranteed = bool(run.monsters[row.id].guaranteed)
 	mode = "ready"
 	age = 0
@@ -208,16 +209,20 @@ func present(row: Dictionary, run: Dictionary, enough: bool, count: int) -> void
 	skills.text = _skill_text(run,row)
 	skills.add_theme_font_size_override("normal_font_size",14 if skills.text.count("\n")>=3 else 16)
 	frames.clear()
-	var texture: Texture2D = load(row.sheet)
-	var image := texture.get_image()
-	var cell := Vector2i(image.get_width()/4,image.get_height()/4)
-	for i in 4:
-		var region := Rect2i(Vector2i(i*cell.x,int(row.get("direction",0))*cell.y),cell)
-		var bounds := image.get_region(region).get_used_rect()
-		var frame := AtlasTexture.new()
-		frame.atlas = texture
-		frame.region = Rect2(region.position+bounds.position,bounds.size)
-		frames.append(frame)
+	supplied_idle=not display_frames.is_empty()
+	if supplied_idle:
+		frames.assign(display_frames)
+	else:
+		var texture: Texture2D = load(row.sheet)
+		var image := texture.get_image()
+		var cell := Vector2i(image.get_width()/4,image.get_height()/4)
+		for i in 4:
+			var region := Rect2i(Vector2i(i*cell.x,int(row.get("direction",0))*cell.y),cell)
+			var bounds := image.get_region(region).get_used_rect()
+			var frame := AtlasTexture.new()
+			frame.atlas = texture
+			frame.region = Rect2(region.position+bounds.position,bounds.size)
+			frames.append(frame)
 	# 以裁去透明边的动画帧适配实际显示尺寸，全部魔物共用局部绳网。
 	var fitted_size := Vector2.ZERO
 	for frame_texture in frames:
@@ -331,7 +336,7 @@ func _process(delta: float) -> void:
 	if tutorial_paused: return
 	age += delta
 	intro_time += delta
-	if not frames.is_empty(): sprite.texture = frames[int(age/0.18)%frames.size()]
+	if not frames.is_empty(): sprite.texture = frames[(0 if fmod(age,1.2)<0.7 else 1) if supplied_idle else int(age/0.18)%frames.size()]
 	probability.text = "%d%%" % roundi(target_chance*(1-pow(1-minf(intro_time/1.2,1),3)))
 	pulse = maxf(0,pulse-delta*5)
 	if mode in ["throw","restrain","suppress","complete"]:

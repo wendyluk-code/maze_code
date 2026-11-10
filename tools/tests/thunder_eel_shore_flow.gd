@@ -69,7 +69,7 @@ func _shore(size: Vector2i) -> void:
  await _pause_stage("forming")
  await _image("forming_%dx%d" % [size.x,size.y])
  _check(await _wait_until(func(): return Eel.shielded(Run.snapshot(sm).combat,EEL),180),"1秒后水中保护恢复")
- _check(monster.membrane.visible and monster.membrane.region_rect==monster.body.region_rect and monster.membrane.offset==monster.body.offset and monster.membrane.scale==monster.body.scale,"主体与膜共享帧朝向锚点缩放")
+ _check(monster.membrane.visible and monster.membrane.texture.resource_path=="res://assets/effects/fenshui/protection_bubble.png" and not monster.membrane.region_enabled,"回水后恢复完整通用保护泡，不再逐种裁外壳")
  _check(monster.membrane.modulate.a==1.0,"有效水膜不重复乘已烘焙透明度")
  await _image("water_%dx%d" % [size.x,size.y])
  recording=false

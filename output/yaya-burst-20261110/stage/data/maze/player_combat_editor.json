@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "effects": {
+    "hero": { "hitstop": 50 },
+    "yaya": { "hitstop": 50 },
+    "tieshan": { "hitstop": 70 }
+  }
+}

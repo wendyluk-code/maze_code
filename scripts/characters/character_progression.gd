@@ -250,7 +250,7 @@ const BASE_CHARACTERS := {
 		"skill_icon": "res://assets/ui/combat_skills/dingdang.png"
 	},
 
-	"yaya": {"active_name": "光点", "active_description": "沿直线发射一枚光点，命中首个敌人后消散。", "interval_start": 0.42, "interval_end": 0.30, "rarity": "R", "name": "芽芽", "faction": "grass", "portrait": "res://assets/characters/yaya_portrait.png", "detail_portrait": "res://assets/ui/character_details/yaya_front.png", "attack": 1, "attack_growth": 1, "health": 12, "health_growth": 2, "satiety": 2, "recovery": 0.020, "recovery_growth": 0.001,
+	"yaya": {"active_name": "光点", "active_description": "依次发射飞叶，命中首个敌人后消散。", "interval_start": 0.42, "interval_end": 0.30, "rarity": "R", "name": "芽芽", "faction": "grass", "portrait": "res://assets/characters/yaya_portrait.png", "detail_portrait": "res://assets/ui/character_details/yaya_front.png", "attack": 1, "attack_growth": 1, "health": 12, "health_growth": 2, "satiety": 2, "recovery": 0.020, "recovery_growth": 0.001,
 		"skills": [
 			["双份惊喜", "成功捕获后，有15%概率复制本次获得的整组材料一份。"],
 			["留心收集", "基础复制概率增加5个百分点，达到20%。"],
@@ -418,6 +418,8 @@ static func portrait_path(id: String) -> String:
 	return path if ResourceLoader.exists(path) else str(CHARACTERS[id].portrait)
 
 static func skill_icon_path(id: String) -> String:
+	if id == "yaya":
+		return "res://assets/ui/ingredients/insulating_leaf.png"
 	var path: String = CHARACTERS[id].get("skill_icon", "res://assets/ui/combat_skills/" + id + ".png")
 	return path if ResourceLoader.exists(path) else str(CHARACTERS[id].portrait)
 

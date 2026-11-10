@@ -313,6 +313,15 @@ func refresh() -> void:
 	var active := Progression.active_skill(character_id, int(_record.level))
 	active_interval.text = ("%.2f" % active.interval).trim_suffix("0").trim_suffix(".") + " 秒"
 	active_damage.text = "队伍攻击力 ×%s%%" % (("%.1f" % (active.multiplier * 100.0)).trim_suffix("0").trim_suffix("."))
+	if character_id == "yaya":
+		var tuning=preload("res://scripts/maze/combat_tuning.gd")
+		var skills=preload("res://scripts/maze/team_attack.gd")
+		var count:=int(tuning.effect("yaya","burst_count",3.0))
+		active_description.text="依次发射%d枚飞叶，命中首个敌人后消散。" % count
+		var cooldown: float=skills.yaya_cooldown(float(active.interval))
+		active_interval.text=("%.2f" % cooldown).trim_suffix("0").trim_suffix(".")+" 秒"
+		var percent: float=active.multiplier*tuning.effect("yaya","damage_scale",100.0)*tuning.effect("yaya","burst_damage_scale",25.0)/100.0
+		active_damage.text="单枚倍率 ×%s%%（取整）" % (("%.1f" % percent).trim_suffix("0").trim_suffix("."))
 	if active_config.get("implementation_status", "") == "catalog_only":
 		active_title.text = "技能设计 · " + str(active_config.active_name)
 		active_damage.text = "实战效果尚未接入"

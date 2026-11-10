@@ -17,6 +17,8 @@ config/features=PackedStringArray("4.7")
 [display]
 
 window/size/no_focus.maze_automated_test=true
+window/size/mode.maze_hitstop_screenless_test=1
+window/size/no_focus.maze_hitstop_screenless_test=true
 
 [autoload]
 

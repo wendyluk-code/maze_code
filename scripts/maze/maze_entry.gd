@@ -88,13 +88,17 @@ var _backpack_physics_before := true
 func _ready() -> void:
 	add_to_group("maze_entry")
 	var background := Sprite2D.new()
-	background.texture = load("res://assets/maps/fenshui_fences.png") if region_id == "fenshui" else MAP
+	background.texture = load("res://assets/maps/fenshui_v4.png") if region_id == "fenshui" else MAP
 	if region_id == "salt_pool": background.texture = load("res://assets/maps/salt_pool.png")
 	if region_id == "moss_pool": background.texture = load("res://assets/maps/moss_pool.png")
 	if region_id == "waterkeeper_cottage": background.texture = load("res://assets/maps/waterkeeper_cottage_soil.png")
 	if region_id == "fenshui": background.scale = Fenshui.SIZE / background.texture.get_size()
 	background.centered = false
 	add_child(background)
+	if region_id == "fenshui":
+		var fences:=preload("res://scripts/maze/fenshui_fences_visual.gd").new()
+		fences.name="FenshuiFences"
+		add_child(fences)
 	player = Player.new()
 	player.name = "Player"
 	var saved := SaveManager.maze_exploration_state()
@@ -172,6 +176,19 @@ func _ready() -> void:
 		electric_effects.name="FenshuiElectricEffects"
 		add_child(electric_effects)
 		move_child(electric_effects,player.get_index())
+		if not CaptureRun.snapshot(SaveManager).combat.get("fs01_trial",false):
+			var water_visual:=preload("res://scripts/maze/fenshui_water_visual.gd").new()
+			water_visual.name="FenshuiWaterVisual"
+			add_child(water_visual)
+			var battle_guide:=preload("res://scripts/maze/fenshui_battle_guide.gd").new()
+			battle_guide.name="FenshuiBattleGuide"
+			add_child(battle_guide)
+			battle_guide.attach(self)
+	if region_id == "salt_pool":
+		var salt_guide:=preload("res://scripts/maze/salt_battle_guide.gd").new()
+		salt_guide.name="SaltBattleGuide"
+		add_child(salt_guide)
+		salt_guide.attach(self)
 	if region_id == "maze_entry":
 		exploration_guide = preload("res://scripts/ch2_exploration_guide.gd").new()
 		exploration_guide.maze = self
