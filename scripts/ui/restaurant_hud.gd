@@ -9,6 +9,9 @@ const RecipeBook := preload("res://scripts/ui/components/recipe_book_panel.gd")
 const RecipeUnlock := preload("res://scripts/ui/components/recipe_unlock.gd")
 const RecipeCatalog := preload("res://scripts/cooking/recipe_catalog.gd")
 signal recipe_unlock_closed
+signal restaurant_menu_prepared(snapshot: Dictionary)
+var day_menu: Control
+var day_settlement: Control
 var reputation_counter: ResourceCounter
 var gold_counter: ResourceCounter
 var reputation_label: Label
@@ -33,6 +36,7 @@ var discard_flow: Node
 var bento_entry: Button
 var bento_modal: Control
 var freezer: Control
+var ganlu: Node
 
 func _ready() -> void:
 	name = "RestaurantHUD"
@@ -43,8 +47,17 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.theme = SproutTheme.make_theme()
 	add_child(root)
+	# 常驻信息必须低于料理台（10）及各模态层，不能随确认框留在65层。
+	var persistent_layer := CanvasLayer.new()
+	persistent_layer.name = "PersistentHUD"
+	persistent_layer.layer = 0
+	root.add_child(persistent_layer)
+	var persistent_root := Control.new()
+	persistent_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	persistent_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	persistent_layer.add_child(persistent_root)
 	var stamina_counter := preload("res://scripts/ui/components/stamina_counter.gd").new()
-	root.add_child(stamina_counter)
+	persistent_root.add_child(stamina_counter)
 	reputation_counter = ResourceCounter.new()
 	reputation_counter.name = "ReputationCounter"
 	reputation_counter.configure(ResourceCounter.REPUTATION)
@@ -62,7 +75,19 @@ func _ready() -> void:
 		root.add_child(gold_counter)
 	_refresh_reputation()
 	_build_recipe_entry(root)
+	var day_sign := preload("res://scripts/ui/components/restaurant_day_sign.gd").new()
+	day_sign.name = "RestaurantDaySign"
+	persistent_root.add_child(day_sign)
+	day_sign.requested.connect(_open_day_menu)
+	day_menu = preload("res://scripts/ui/components/restaurant_day_menu.gd").new()
+	root.add_child(day_menu)
+	day_menu.closed.connect(_unlock_player)
+	day_menu.menu_prepared.connect(func(snapshot: Dictionary):
+		restaurant_menu_prepared.emit(snapshot)
+		var started := {"success":true} if snapshot.get("opened",false) else preload("res://scripts/restaurant/service_cycle.gd").begin_day(SaveManager)
+		show_toast("开始营业，请到前台为顾客接单" if started.success else "未能开始营业，请检查菜单或现有订单"))
 	toast_label = Toast.attach_to(root)
+	toast_label.get_parent().offset_top = 100
 	confirmation = Confirmation.new()
 	root.add_child(confirmation)
 	question = confirmation.question
@@ -77,6 +102,9 @@ func _ready() -> void:
 	root.add_child(freezer)
 	freezer.closed.connect(_unlock_player)
 	freezer.feedback.connect(show_toast)
+	ganlu = preload("res://scripts/restaurant/ganlu_controller.gd").new()
+	ganlu.hud = self
+	root.add_child(ganlu)
 	call_deferred("_connect_player")
 	customer_flow = preload("res://scripts/restaurant/customer_flow.gd").new()
 	customer_flow.hud = self
@@ -86,6 +114,10 @@ func _ready() -> void:
 	add_child(exploration_guide)
 
 func _connect_player() -> void:
+	# 章后经营需要真实仓库与交互层；不改变首章场景的可见性配置。
+	if SaveManager.is_chapter_1_done():
+		var overlay := get_tree().current_scene.get_node_or_null("UIOverlay")
+		if is_instance_valid(overlay): overlay.show()
 	_player = get_tree().get_first_node_in_group("player")
 	if is_instance_valid(_player):
 		_player.interacted.connect(_on_interacted)
@@ -101,9 +133,67 @@ func _connect_player() -> void:
 
 func _process(_delta: float) -> void:
 	_refresh_reputation()
+	_show_day_settlement()
+	if SaveManager.is_chapter_1_done() and not TutorialManager.active and is_instance_valid(_player) and not _player.input_locked and _player.is_physics_processing():
+		if not _show_return_loot():
+			var preparation := preload("res://scripts/restaurant/preparation.gd")
+			var day := preload("res://scripts/restaurant/restaurant_day.gd").snapshot(SaveManager)
+			if day.get("status") == "preparing" and day.get("preparation_lesson_pending",false):
+				var lesson := preload("res://scripts/ui/components/preparation_lesson.gd").new()
+				lesson.hud = self
+				add_child(lesson)
+			elif preparation.expired(SaveManager): _open_day_menu()
 	if is_instance_valid(bento_entry):
 		bento_entry.visible = preload("res://scripts/restaurant/bento_store.gd").unlocked(SaveManager)
 		bento_entry.disabled = not is_instance_valid(_player) or _player.input_locked
+
+func _show_day_settlement() -> void:
+	var day := preload("res://scripts/restaurant/restaurant_day.gd").snapshot(SaveManager)
+	if day.get("status") != "closing" or not day.has("settlement") or not is_instance_valid(_player): return
+	if not is_instance_valid(day_settlement):
+		day_settlement = preload("res://scripts/ui/components/restaurant_day_settlement.gd").new()
+		add_child(day_settlement)
+		day_settlement.closed.connect(func():
+			customer_flow._sync()
+			_unlock_player())
+	if not day_settlement.visible:
+		toast_label.dismiss()
+		_lock_player()
+		day_settlement.open_with_intro(day.settlement)
+
+func _open_day_menu() -> void:
+	if _show_return_loot(): return
+	if preload("res://scripts/maze/first_exploration.gd").departure(SaveManager): return
+	if not is_instance_valid(_player) or _player.input_locked or day_menu.visible: return
+	var day := preload("res://scripts/restaurant/restaurant_day.gd").snapshot(SaveManager)
+	if day.get("status") in ["open","closing"]:
+		show_toast("正在营业，请先完成当前顾客的订单")
+		return
+	if day.get("status") == "prepared":
+		var started := preload("res://scripts/restaurant/service_cycle.gd").begin_day(SaveManager)
+		if started.success:
+			show_toast("开始营业")
+			return
+	_lock_player()
+	day_menu.open()
+
+var return_loot: Control
+
+func _show_return_loot() -> bool:
+	if not preload("res://scripts/restaurant/restaurant_day.gd").repair_first_return(SaveManager):
+		show_toast("结算进度保存失败，请重试")
+		return true
+	var pending := preload("res://scripts/restaurant/restaurant_day.gd").pending_loot(SaveManager)
+	if pending.is_empty(): return false
+	if not is_instance_valid(_player): return true
+	if not is_instance_valid(return_loot):
+		return_loot = preload("res://scripts/ui/components/restaurant_day_loot.gd").new()
+		add_child(return_loot)
+		return_loot.closed.connect(func(): _unlock_player())
+	if not return_loot.visible:
+		_lock_player()
+		return_loot.show_loot(pending[0])
+	return true
 
 func _refresh_reputation() -> void:
 	if not is_instance_valid(reputation_counter):
@@ -223,12 +313,19 @@ func _open_recipe_book() -> void:
 func show_toast(message: String) -> void:
 	toast_label.show_message(message)
 
+func show_balance_change(before: Vector2i) -> void:
+	_refresh_reputation()
+	gold_counter.show_delta(SaveManager.gold_balance()-before.x)
+	reputation_counter.show_delta(SaveManager.reputation()-before.y)
+
 func _on_interacted(target: Node2D) -> void:
+	if not preload("res://scripts/restaurant/preparation.gd").allowed(SaveManager,str(target.get("display_name"))): return
 	if str(target.get("display_name")) == "冰柜" and not SaveManager.freezer_unlocked():
 		if is_instance_valid(_player) and not _player.input_locked and _player.nearest_interactable() == target:
-			show_toast("完成【初遇御风】剧情后解锁")
+			show_toast("完成首次探索教学并返回餐厅后解锁")
 		return
 	if str(target.get("display_name")) == "垃圾桶":
+		if is_instance_valid(_player) and _player.nearest_interactable() == target and ganlu.discard(): return
 		discard_flow.request(target)
 		return
 	if TutorialManager.active or not SaveManager.is_chapter_1_done() or SaveManager.chapter_1_outro_state() == "title":
@@ -236,9 +333,6 @@ func _on_interacted(target: Node2D) -> void:
 	if not is_instance_valid(_player) or _player.input_locked or _player.nearest_interactable() != target:
 		return
 	if is_instance_valid(exploration_guide) and not exploration_guide.allows_world_interaction(str(target.get("display_name"))): return
-	var tracker := get_tree().get_first_node_in_group("order_tracking")
-	if is_instance_valid(tracker):
-		tracker.collapse_details()
 	match str(target.get("display_name")):
 		"前台":
 			customer_flow.take_order()
@@ -251,10 +345,9 @@ func _on_interacted(target: Node2D) -> void:
 				_warehouse_open = true
 				warehouse.open_stock()
 		"小餐车":
-			_feature_feedback("送餐", 5000)
+			ganlu.cart()
 		"冰柜":
-			_lock_player()
-			freezer.open()
+			ganlu.freezer_action()
 		"迷宫入口":
 			if not SaveManager.can_enter_maze():
 				show_toast("请先完成第一章的出发准备")
@@ -307,6 +400,7 @@ func _on_cooking_result_confirmed(result: Dictionary) -> void:
 	# 成品随人物携带，交付只由吧台交互触发。
 
 func _open_confirmation(destination: String) -> void:
+	if preload("res://scripts/maze/first_exploration.gd").departure(SaveManager) and destination!="迷宫": return
 	_destination = destination
 	toast_label.dismiss()
 	_lock_player()

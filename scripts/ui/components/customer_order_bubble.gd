@@ -6,6 +6,17 @@ var dish: Texture2D
 var item_id := ""
 var panel := StyleBoxFlat.new()
 var _tops: Dictionary = {}
+var drink := false
+var food := true
+var ice := 0
+var cup := preload("res://scripts/ui/components/ganlu_art.gd").cup()
+
+func setup_order(order: Dictionary) -> void:
+	setup(str(order.item_id))
+	drink = order.has("drink_ice") and not order.get("drink_done", false)
+	food = not order.get("food_done", false)
+	ice = int(order.get("drink_ice", 0))
+	queue_redraw()
 
 func _init() -> void:
 	panel.bg_color = Color("fff0d5")
@@ -32,6 +43,11 @@ func follow(actor: Sprite2D) -> void:
 	position = Vector2(0, actor.offset.y - texture.get_height() * 0.5 + float(_tops[key]) - 6.0 / actor.scale.y)
 
 func _draw() -> void:
+	if drink:
+		var y := -120.0 if food else -62.0
+		panel.draw(get_canvas_item(), Rect2(-31, y, 62, 50))
+		preload("res://scripts/ui/components/ganlu_cup_visual.gd").draw_cup(self,Rect2(-13,y+4,26,36),1 if ice>0 else 0)
+	if not food: return
 	panel.draw(get_canvas_item(), Rect2(-31, -62, 62, 50))
 	# 用底色打通面板下沿，尖头只画两侧，不留下内部横线。
 	draw_rect(Rect2(-8, -15, 16, 3), panel.bg_color)

@@ -23,6 +23,7 @@ static func claim(sm: Node,id: String,point: Vector2) -> Dictionary:
 		var claims: Array=run.get("resource_claims",[]).duplicate()
 		claims.append(id)
 		run.resource_claims=claims
+		preload("res://scripts/maze/backpack_contents.gd").record(state, row.item, "capture")
 		run.bag[row.item]=int(run.bag.get(row.item,0))+row.amount
 	state[Run.KEY]=run
 	state[sm.MAZE_STATE_KEY].position=[point.x,point.y]

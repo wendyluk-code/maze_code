@@ -49,8 +49,17 @@ var _carried: Dictionary = {}
 var _result_popup: Control
 var _pending_result: Dictionary = {}
 var _result_hold_until_msec := 0
+var _stove_audio: AudioStreamPlayer
 
 func _ready() -> void:
+	_stove_audio = AudioStreamPlayer.new()
+	_stove_audio.stream = preload("res://assets/audio/sfx/cooking_user.ogg")
+	_stove_audio.stream.loop = true
+	_stove_audio.volume_db = 0.0
+	add_child(_stove_audio)
+	GameAudio.bind_volume(_stove_audio, &"cooking_loop")
+	visibility_changed.connect(func():
+		if not is_visible_in_tree(): _stove_audio.stop())
 	add_to_group("cooking_modal")
 	set_anchors_preset(Control.PRESET_TOP_LEFT)
 	size = get_viewport().get_visible_rect().size
@@ -60,6 +69,9 @@ func _ready() -> void:
 	_build()
 	get_viewport().size_changed.connect(_layout_panel)
 	call_deferred("_layout_panel")
+
+func _exit_tree() -> void:
+	if is_instance_valid(_stove_audio): _stove_audio.stop()
 
 func _build() -> void:
 	var overlay := ColorRect.new()
@@ -206,15 +218,13 @@ func _layout_countdown() -> void:
 	_countdown.position = _gauge.countdown_center() - _countdown.size * 0.5
 
 func open_for_order(requested_recipe_id: String = RECIPE_ID) -> void:
+	_stove_audio.stop()
 	_result_hold_until_msec = 0
 	_clear_cooking_guide()
 	_result_popup.cancel()
 	_pending_result.clear()
 	_panel.show()
 	_panel_fill.show()
-	var tracker := get_tree().get_first_node_in_group("order_tracking")
-	if is_instance_valid(tracker) and tracker.has_method("collapse_details"):
-		tracker.collapse_details()
 	_started = false
 	_finished = false
 	_locked_stars = 0
@@ -343,6 +353,7 @@ func _select_recipe(id: String) -> void:
 	_render_recipe_choices()
 
 func close_modal() -> void:
+	_stove_audio.stop()
 	_result_hold_until_msec = 0
 	_clear_cooking_guide()
 	_result_popup.cancel()
@@ -376,6 +387,7 @@ func _on_start_pressed() -> void:
 		return
 	_started = true
 	_elapsed = 0.0
+	_stove_audio.play()
 	_countdown.show()
 	_update_countdown()
 	_show_finish_button()
@@ -397,6 +409,7 @@ func _on_finish_pressed() -> void:
 func _finish_result(stars: int, pointer := -2.0, hold_result := false) -> void:
 	if _finished:
 		return
+	_stove_audio.stop()
 	if _locked_stars > 0:
 		stars = _locked_stars
 		pointer = _locked_pointer
@@ -426,11 +439,12 @@ func _finish_result(stars: int, pointer := -2.0, hold_result := false) -> void:
 
 func _show_pending_result() -> void:
 	_result_hold_until_msec = 0
-	if not _open or _pending_result.is_empty():
+	if not _open or _pending_result.is_empty() or _result_popup.visible:
 		return
 	_panel.hide()
 	_panel_fill.hide()
 	_result_popup.present(str(recipe.get("name", "料理")), _dish_icon(recipe_id), int(_pending_result.get("quality", _locked_stars)))
+	GameAudio.play_cue(&"cooking_complete")
 
 func _on_result_confirmed() -> void:
 	if not _open or not _result_popup.visible or _pending_result.is_empty():
@@ -478,14 +492,15 @@ func _show_cooking_guide() -> void:
 	_lesson_blocker.show()
 	_lesson_dialog.start("芽芽", [COOKING_GUIDE_LINE], preload("res://assets/characters/yaya_portrait.png"))
 	# 一次 E 即可结束教学；整句直接展示，给玩家自行阅读的时间。
-	_lesson_dialog._advance()
+	_lesson_dialog._advance(false)
 	_lesson_dialog.next_icon.show()
 	_layout_panel()
 
 func _resume_cooking_guide() -> void:
+	GameAudio.interaction()
 	if not SaveManager.acknowledge_cooking_guide():
 		_lesson_dialog.start("芽芽", ["教学进度未保存，请按 E 重试。"], preload("res://assets/characters/yaya_portrait.png"))
-		_lesson_dialog._advance()
+		_lesson_dialog._advance(false)
 		_lesson_dialog.next_icon.show()
 		return
 	_clear_cooking_guide()

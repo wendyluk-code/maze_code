@@ -53,8 +53,59 @@ var tutorial_only_yes := false:
 			if value and (no_button.has_focus() or close_button.has_focus()): yes_button.grab_focus()
 var j_down := false
 var intro_time := 0.0
+var supplied_idle := false
+const PRESS_CLIPS := [preload("res://assets/audio/sfx/capture_ding_01.wav"), preload("res://assets/audio/sfx/capture_ding_02.wav"), preload("res://assets/audio/sfx/capture_ding_03.wav")]
+var struggle_audio: AudioStreamPlayer
+var press_audio: AudioStreamPlayer
+var press_audio_second: AudioStreamPlayer
+var press_voice := 0
+var flash_audio: AudioStreamPlayer
+var press_index := 0
+var audio_focused := true
+
+func _make_audio(stream: AudioStream) -> AudioStreamPlayer:
+	var player := AudioStreamPlayer.new()
+	player.stream = stream
+	player.volume_db = -6.0
+	add_child(player)
+	return player
+
+func _stop_process_audio() -> void:
+	for player in [struggle_audio, press_audio, press_audio_second, flash_audio]:
+		if is_instance_valid(player): player.stop()
+
+func _press_sound() -> void:
+	# 两个声部交替，保留上一声短尾；极快输入最多占用两个声部，不排队。
+	var voice := press_audio if press_voice == 0 else press_audio_second
+	voice.stream = PRESS_CLIPS[press_index]
+	voice.play()
+	press_voice = (press_voice + 1) % 2
+	press_index = (press_index + 1) % PRESS_CLIPS.size()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		audio_focused = false
+		_stop_process_audio()
+	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
+		audio_focused = true
+
+func _exit_tree() -> void:
+	_stop_process_audio()
 
 func _ready() -> void:
+	var struggle := preload("res://assets/audio/sfx/capture_struggle.wav").duplicate() as AudioStreamWAV
+	struggle.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	struggle.loop_end = roundi(struggle.get_length() * struggle.mix_rate)
+	struggle_audio = _make_audio(struggle)
+	press_audio = _make_audio(PRESS_CLIPS[0])
+	press_audio_second = _make_audio(PRESS_CLIPS[1])
+	flash_audio = _make_audio(preload("res://assets/audio/sfx/capture_flash.wav"))
+	GameAudio.bind_volume(struggle_audio, &"capture_struggle")
+	GameAudio.bind_volume(press_audio, &"capture_press_continuous")
+	GameAudio.bind_volume(press_audio_second, &"capture_press_continuous")
+	GameAudio.bind_volume(flash_audio, &"capture_flash")
+	visibility_changed.connect(func():
+		if not is_visible_in_tree(): _stop_process_audio())
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = T.make_theme()
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -189,7 +240,7 @@ func _layout() -> void:
 	panel.scale = Vector2.ONE * factor
 	panel.position = (size-Vector2(880,640)*factor)*0.5
 
-func present(row: Dictionary, run: Dictionary, enough: bool, count: int) -> void:
+func present(row: Dictionary, run: Dictionary, enough: bool, count: int, display_frames: Array[Texture2D] = []) -> void:
 	guaranteed = bool(run.monsters[row.id].guaranteed)
 	mode = "ready"
 	age = 0
@@ -208,16 +259,20 @@ func present(row: Dictionary, run: Dictionary, enough: bool, count: int) -> void
 	skills.text = _skill_text(run,row)
 	skills.add_theme_font_size_override("normal_font_size",14 if skills.text.count("\n")>=3 else 16)
 	frames.clear()
-	var texture: Texture2D = load(row.sheet)
-	var image := texture.get_image()
-	var cell := Vector2i(image.get_width()/4,image.get_height()/4)
-	for i in 4:
-		var region := Rect2i(Vector2i(i*cell.x,int(row.get("direction",0))*cell.y),cell)
-		var bounds := image.get_region(region).get_used_rect()
-		var frame := AtlasTexture.new()
-		frame.atlas = texture
-		frame.region = Rect2(region.position+bounds.position,bounds.size)
-		frames.append(frame)
+	supplied_idle=not display_frames.is_empty()
+	if supplied_idle:
+		frames.assign(display_frames)
+	else:
+		var texture: Texture2D = load(row.sheet)
+		var image := texture.get_image()
+		var cell := Vector2i(image.get_width()/4,image.get_height()/4)
+		for i in 4:
+			var region := Rect2i(Vector2i(i*cell.x,int(row.get("direction",0))*cell.y),cell)
+			var bounds := image.get_region(region).get_used_rect()
+			var frame := AtlasTexture.new()
+			frame.atlas = texture
+			frame.region = Rect2(region.position+bounds.position,bounds.size)
+			frames.append(frame)
 	# 以裁去透明边的动画帧适配实际显示尺寸，全部魔物共用局部绳网。
 	var fitted_size := Vector2.ZERO
 	for frame_texture in frames:
@@ -276,7 +331,11 @@ func _skill_text(run: Dictionary, row: Dictionary) -> String:
 		return "[color=#648744]" + text.substr(0,title_end) + "[/color]" + text.substr(title_end)
 	return "特殊奖励技能  无"
 
-func start(elapsed: float = 0.0) -> void:
+func start(elapsed: float = 0.0, play_throw: bool = true) -> void:
+	_stop_process_audio()
+	press_index = 0
+	press_voice = 0
+	if play_throw and elapsed == 0.0: GameAudio.play_cue(&"capture_throw")
 	mode = "throw"
 	phase_time = 0
 	hold_time = 0
@@ -303,8 +362,10 @@ func start(elapsed: float = 0.0) -> void:
 	else:
 		phase_time = elapsed
 	get_viewport().gui_release_focus()
+	if audio_focused and not tutorial_paused and mode in ["restrain", "suppress"]: struggle_audio.play()
 
 func settlement_error() -> void:
+	_stop_process_audio()
 	mode = "retry"
 	status.text = "保存失败，请重试"
 	yes_button.show()
@@ -315,6 +376,7 @@ func settlement_error() -> void:
 	yes_button.grab_focus()
 
 func close() -> void:
+	_stop_process_audio()
 	mode = "closed"
 	hide()
 
@@ -327,11 +389,13 @@ func _confirm() -> void:
 	elif mode == "retry": retry_requested.emit()
 
 func _process(delta: float) -> void:
-	if not visible: return
-	if tutorial_paused: return
+	if not is_visible_in_tree() or tutorial_paused or not audio_focused:
+		_stop_process_audio()
+		return
+	if mode in ["restrain", "suppress"] and not struggle_audio.playing: struggle_audio.play()
 	age += delta
 	intro_time += delta
-	if not frames.is_empty(): sprite.texture = frames[int(age/0.18)%frames.size()]
+	if not frames.is_empty(): sprite.texture = frames[(0 if fmod(age,1.2)<0.7 else 1) if supplied_idle else int(age/0.18)%frames.size()]
 	probability.text = "%d%%" % roundi(target_chance*(1-pow(1-minf(intro_time/1.2,1),3)))
 	pulse = maxf(0,pulse-delta*5)
 	if mode in ["throw","restrain","suppress","complete"]:
@@ -341,6 +405,7 @@ func _process(delta: float) -> void:
 			track.progress = minf(1.0/3,phase_time/1.1/3)
 			if phase_time>=1.1:
 				mode = "restrain"
+				struggle_audio.play()
 				phase_time = 0
 		elif mode == "restrain":
 			track.progress = 1.0/3+minf(1,phase_time/1.5)/3
@@ -359,9 +424,11 @@ func _process(delta: float) -> void:
 			if phase_time>=TIMEOUT:
 				result_passed = guaranteed or hold_qualified
 				mode = "complete"
+				_stop_process_audio()
+				flash_audio.play()
 				phase_time = 0
 				track.progress = 1
-		elif phase_time>=0.55:
+		elif phase_time>=0.55 and not flash_audio.playing:
 			mode = "settling"
 			finished.emit(result_passed)
 		rope.time = age
@@ -375,13 +442,14 @@ func _process(delta: float) -> void:
 
 func _input(event: InputEvent) -> void:
 	if not visible or not event is InputEventKey: return
-	if tutorial_paused: return
+	if tutorial_paused or not audio_focused: return
 	get_viewport().set_input_as_handled()
 	if event.keycode == KEY_J or event.physical_keycode == KEY_J:
 		if not event.pressed: j_down = false
 		elif not event.echo and not j_down:
 			j_down = true
 			if mode == "suppress":
+				_press_sound()
 				pressure = minf(1,pressure+0.08)
 				if pressure < TARGET_LINE: hold_time = 0
 				pulse = 1

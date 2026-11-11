@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "attack": {
+    "slime": 3,
+    "snail": 5,
+    "beetle": 4,
+    "lizard": 8,
+    "silverfish": 4,
+    "thunder_eel": 5,
+    "wind_frog": 6,
+    "mimic_crab": 5,
+    "blind_scorpion": 4,
+    "rockmane": 8
+  }
+}

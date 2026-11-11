@@ -32,7 +32,18 @@ $psi.RedirectStandardError = $true
 $psi.Environment['APPDATA'] = $profile
 $psi.Environment['LOCALAPPDATA'] = $profile
 $psi.Environment['MAZE_QTE03_PROFILE'] = $profile
+$features = [string]$psi.Environment['GODOT_EDITOR_CUSTOM_FEATURES']
+$psi.Environment['GODOT_EDITOR_CUSTOM_FEATURES'] = if ($features) { $features + ',maze_automated_test' } else { 'maze_automated_test' }
 $arguments = @('--path', $ProjectRoot, '--audio-driver', 'Dummy', '--rendering-method', 'gl_compatibility')
+# 本机交互测试放副屏；仅查询显示器，不移动用户已有窗口。
+if ($Mode -notin @('import','smoke')) {
+    Add-Type -AssemblyName System.Windows.Forms
+    $screens = @([System.Windows.Forms.Screen]::AllScreens)
+    $secondaryIndex = -1
+    for ($i = 0; $i -lt $screens.Count; $i++) { if (!$screens[$i].Primary) { $secondaryIndex = $i; break } }
+    if ($secondaryIndex -lt 0) { throw '未检测到副屏，停止启动交互式 Godot，避免占用主屏' }
+    $arguments += @('--screen', [string]$secondaryIndex)
+}
 switch ($Mode) {
     'import' { $arguments += @('--headless','--editor','--quit') }
     'smoke' { $arguments += @('--headless','--quit-after','5') }

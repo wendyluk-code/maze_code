@@ -28,17 +28,9 @@ func _ready() -> void:
         faces.append(face)
     _sync(false)
     sound=AudioStreamPlayer.new()
-    var wav:=AudioStreamWAV.new()
-    wav.format=AudioStreamWAV.FORMAT_16_BITS
-    wav.mix_rate=22050
-    var bytes:=PackedByteArray()
-    bytes.resize(2205*2)
-    for i in 2205:
-        var value:=int(sin(i*TAU*170.0/22050)*exp(-float(i)/420)*1800)
-        bytes.encode_s16(i*2,value)
-    wav.data=bytes
-    sound.stream=wav
+    sound.stream=preload("res://scripts/audio/audio_catalog.gd").salt_stream()
     add_child(sound)
+    GameAudio.bind_volume(sound, &"salt_dull")
 
 func feedback(events: Array) -> void:
     var amount:=events.count("salt")

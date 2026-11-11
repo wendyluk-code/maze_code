@@ -16,11 +16,25 @@ var _tracker: Control
 var _tracker_alpha := 1.0
 var _tracker_disabled := false
 var _entrance_highlight: Node2D
+var _played_audio: Dictionary = {}
+
+func _play_phase_audio(cue: StringName) -> void:
+	if _played_audio.has(phase): return
+	_played_audio[phase] = true
+	GameAudio.play_cue(cue)
+
+func _stop_dialog_audio() -> void:
+	for cue in [&"yaya_home_hint", &"yaya_maze_hint"]:
+		if GameAudio._players.has(cue): GameAudio._players[cue].stop()
 
 func _exit_tree() -> void:
+	_stop_dialog_audio()
 	_clear_entrance_highlight()
 
 func _clear_entrance_highlight() -> void:
+	if is_instance_valid(_manager) and is_instance_valid(_manager.guide):
+		_manager.guide.entrance_cutout_target = null
+		_manager.guide._sync_task_cutouts()
 	if is_instance_valid(_entrance_highlight):
 		_entrance_highlight.hide()
 		_entrance_highlight.queue_free()
@@ -34,6 +48,7 @@ func _highlight_entrance(which: String) -> void:
 	_entrance_highlight.background = get_tree().current_scene.get_node("BG")
 	var guide = _manager.guide
 	guide.add_child(_entrance_highlight)
+	guide.entrance_cutout_target = _entrance_highlight
 	guide.move_child(_entrance_highlight, guide.dim.get_index() + 1)
 	_entrance_highlight._process(0.0)
 
@@ -57,10 +72,8 @@ func start(manager: Node, token: int) -> void:
 	_token = token
 	_tracker = get_tree().get_first_node_in_group("order_tracking")
 	if is_instance_valid(_tracker):
-		_tracker.collapse_details()
 		_tracker_alpha = _tracker.modulate.a
 		_tracker_disabled = _tracker._task_button.disabled
-		_tracker.modulate.a = 0
 		_tracker._task_button.disabled = true
 	_manager.guide.dialog_done.connect(_on_dialog_done)
 	_render_phase.call_deferred()
@@ -73,6 +86,7 @@ func _render_phase() -> void:
 		return
 	_busy = true
 	_clear_entrance_highlight()
+	_stop_dialog_audio()
 	phase = SaveManager.chapter_1_outro_state()
 	_party.cancel()
 	_manager.guide.hide_box()
@@ -80,6 +94,7 @@ func _render_phase() -> void:
 	match phase:
 		"party":
 			_party.present()
+			_play_phase_audio(&"party_join")
 		"home", "maze":
 			await _focus_entrance(phase)
 			if not _valid():
@@ -92,6 +107,7 @@ func _render_phase() -> void:
 			if not _valid():
 				return
 			_ending.present("第一章：第一顿饭", "你苏醒后，和芽芽一起结识了铁山，\n准备一同前往迷宫浅层探索")
+			_play_phase_audio(&"cooking_complete")
 			_busy = false
 		"done":
 			_manager._finish()
@@ -154,6 +170,7 @@ func _on_continue() -> void:
 		_manager._finish()
 
 func cancel() -> void:
+	_stop_dialog_audio()
 	_cancelled = true
 	_clear_entrance_highlight()
 	if is_instance_valid(_ending):

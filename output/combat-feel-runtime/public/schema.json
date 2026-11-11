@@ -1,0 +1,27 @@
+{
+  "version":3,"baseline":"20261106-K-eel-hurt",
+  "names":{"hero":"锅铲命中","yaya":"芽芽命中","tieshan":"旋斧命中","fish":"鱼冲撞受击","electric":"电击受击","water":"水枪受击","slam":"巨蛙落地受击"},
+  "fields":{
+    "fx_scale":{"label":"特效尺寸（原G的%）","min":25,"max":250,"step":5},
+    "fx_duration":{"label":"接触特效时长（毫秒）","min":60,"max":1200,"step":10},
+    "opacity":{"label":"特效不透明度（%）","min":0,"max":100,"step":5},
+    "offset_x":{"label":"接触点横移（世界单位）","min":-80,"max":80,"step":1},
+    "offset_y":{"label":"接触点纵移（世界单位）","min":-80,"max":80,"step":1},
+    "angle":{"label":"特效额外旋转（度）","min":-180,"max":180,"step":5},
+    "hitstop":{"label":"局部卡肉（毫秒）","min":0,"max":200,"step":5},
+    "hurt":{"label":"玩家受击硬直（毫秒）","min":190,"max":1500,"step":10},
+    "action_scale":{"label":"出招整段时长（原G的%）","min":50,"max":200,"step":5},
+    "interval_scale":{"label":"出招间隔（原G的%）","min":50,"max":200,"step":5},
+    "windup":{"label":"怪物前摇（毫秒）","min":100,"max":1200,"step":10},
+    "recover":{"label":"怪物收势（毫秒）","min":100,"max":1200,"step":10}
+  },
+  "defaults":{
+    "hero":{"fx_scale":100,"fx_duration":200,"opacity":100,"offset_x":0,"offset_y":0,"angle":0,"hitstop":50,"action_scale":100,"interval_scale":100},
+    "yaya":{"fx_scale":100,"fx_duration":230,"opacity":100,"offset_x":0,"offset_y":0,"angle":0,"hitstop":50,"action_scale":100,"interval_scale":100},
+    "tieshan":{"fx_scale":100,"fx_duration":280,"opacity":100,"offset_x":0,"offset_y":0,"angle":0,"hitstop":70,"action_scale":100,"interval_scale":100},
+    "fish":{"fx_scale":100,"fx_duration":230,"opacity":100,"offset_x":0,"offset_y":0,"angle":0,"hurt":600,"windup":750,"recover":900},
+    "electric":{"fx_scale":100,"fx_duration":230,"opacity":100,"offset_x":0,"offset_y":0,"angle":0,"hurt":600,"windup":1200,"recover":350,"interval_scale":100},
+    "water":{"fx_scale":100,"fx_duration":230,"opacity":100,"offset_x":0,"offset_y":0,"angle":0,"hurt":600,"windup":800,"interval_scale":100},
+    "slam":{"fx_scale":100,"fx_duration":230,"opacity":100,"offset_x":0,"offset_y":0,"angle":0,"hurt":900,"windup":1000,"recover":1200}
+  }
+}

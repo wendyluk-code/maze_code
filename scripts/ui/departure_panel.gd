@@ -135,10 +135,8 @@ func open_map() -> void:
 	_map_input_armed = false
 	_tracker = get_tree().get_first_node_in_group("order_tracking")
 	if is_instance_valid(_tracker):
-		_tracker.collapse_details()
 		_tracker_alpha = _tracker.modulate.a
 		_tracker_disabled = _tracker._task_button.disabled
-		_tracker.modulate.a = 0.0
 		_tracker._task_button.disabled = true
 	_modal.visible = true
 	_layout_map()
@@ -166,6 +164,7 @@ func open_map() -> void:
 func close_map() -> void:
 	if not _open:
 		return
+	GameAudio.interaction()
 	_open = false
 	if is_instance_valid(_map_tween):
 		_map_tween.kill()

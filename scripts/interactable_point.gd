@@ -47,6 +47,12 @@ func world_foreground_polygon() -> PackedVector2Array:
 	return _world_polygon_from_local(foreground_polygon)
 
 func world_occlusion_polygon() -> PackedVector2Array:
+	var outline := get_node_or_null("OcclusionOutline") as Polygon2D
+	if outline != null:
+		var result := PackedVector2Array()
+		for point in outline.polygon:
+			result.append(outline.to_global(point + outline.offset))
+		return result
 	return _world_polygon_from_local(occlusion_polygon)
 
 func _world_polygon_from_local(local_polygon: PackedVector2Array) -> PackedVector2Array:

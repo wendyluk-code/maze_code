@@ -288,7 +288,7 @@ func chapter_1_lesson() -> Array:
 		{
 			"stage": 6,
 			"type": "interact", "target": "吧台",
-			"hint": "靠近吧台，按 E 交单上菜",
+			"hint": "靠近铁山，按 E 交单上菜",
 			"toast": "顾客评价将根据料理品质结算",
 		},
 	] + departure_lesson()
@@ -751,6 +751,7 @@ func _on_player_interact(node: Node2D) -> void:
 		var sm := get_node_or_null("/root/SaveManager")
 		if sm == null:
 			return
+		var balance_before := Vector2i(sm.gold_balance(),sm.reputation())
 		var result: Dictionary = sm.deliver_first_order()
 		if not bool(result.get("success", false)):
 			var messages := {
@@ -762,12 +763,14 @@ func _on_player_interact(node: Node2D) -> void:
 			}
 			guide.show_toast(str(messages.get(result.get("reason", ""), "暂时无法交单。")))
 			return
+		GameAudio.play_served(&"food")
 		var tracker := get_tree().get_first_node_in_group("order_tracking")
 		if is_instance_valid(tracker):
 			tracker.play_completion_feedback("order")
 		if is_instance_valid(_parked_guest) and _parked_guest.has_method("on_order_served"):
 			_parked_guest.on_order_served()
-		guide.show_toast(_quality_feedback(int(result.get("quality", 1)), int(result.get("reputation_awarded", 10))))
+		var restaurant_hud := get_tree().get_first_node_in_group("restaurant_hud")
+		if is_instance_valid(restaurant_hud): restaurant_hud.show_balance_change(balance_before)
 		_complete_step(_run_token)
 		return
 	var toast := str(step.get("toast", ""))

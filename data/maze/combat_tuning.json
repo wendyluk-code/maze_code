@@ -1,0 +1,245 @@
+{
+  "version": 1,
+  "values": {
+    "base.mimic_crab": {
+      "hp": 28,
+      "interval": 2,
+      "windup": 0.65,
+      "speed": 80,
+      "trigger": 100,
+      "leash": 145,
+      "home_limit": 75,
+      "reach": 34,
+      "attack": 5
+    },
+    "base.blind_scorpion": {
+      "hp": 22,
+      "interval": 1.8,
+      "windup": 0.6,
+      "speed": 90,
+      "trigger": 100,
+      "leash": 145,
+      "home_limit": 75,
+      "reach": 42,
+      "attack": 4
+    },
+    "base.silverfish": {
+      "hp": 20,
+      "speed": 65,
+      "trigger": 110,
+      "attack": 4
+    },
+    "base.thunder_eel": {
+      "hp": 30,
+      "speed": 55,
+      "trigger": 110,
+      "leash": 150,
+      "attack": 5
+    },
+    "base.slime": {
+      "hp": 14,
+      "interval": 1.8,
+      "windup": 0.45,
+      "speed": 85,
+      "trigger": 150,
+      "leash": 420,
+      "home_limit": 600,
+      "reach": 32,
+      "attack": 3
+    },
+    "base.snail": {
+      "hp": 28,
+      "interval": 2,
+      "windup": 0.6,
+      "speed": 65,
+      "trigger": 140,
+      "leash": 380,
+      "home_limit": 520,
+      "reach": 32,
+      "attack": 5
+    },
+    "base.beetle": {
+      "hp": 21,
+      "interval": 1.3,
+      "windup": 0.35,
+      "speed": 145,
+      "trigger": 190,
+      "leash": 500,
+      "home_limit": 750,
+      "reach": 32,
+      "attack": 4
+    },
+    "base.lizard": {
+      "hp": 84,
+      "interval": 2.2,
+      "windup": 0.7,
+      "speed": 100,
+      "trigger": 200,
+      "leash": 550,
+      "home_limit": 700,
+      "reach": 40,
+      "attack": 8
+    },
+    "effect.fish": {
+      "fx_scale": 100,
+      "fx_duration": 230,
+      "opacity": 100,
+      "offset_x": 0,
+      "offset_y": 0,
+      "angle": 0,
+      "hurt": 600,
+      "windup": 750,
+      "recover": 900,
+      "speed": 220,
+      "distance": 110,
+      "hit_radius": 18,
+      "damage": 4
+    },
+    "effect.electric": {
+      "fx_scale": 100,
+      "fx_duration": 230,
+      "opacity": 100,
+      "offset_x": 0,
+      "offset_y": 0,
+      "angle": 0,
+      "hurt": 600,
+      "windup": 1200,
+      "recover": 350,
+      "interval_scale": 100,
+      "damage": 5
+    },
+    "eel.skill": {
+      "rest": 4,
+      "form": 1,
+      "range": 125
+    },
+    "slime.spit": {
+      "speed": 190,
+      "distance": 320,
+      "hit_radius": 20,
+      "damage": 3,
+      "charge": 0.65,
+      "recover": 0.28,
+      "interval": 2.4
+    },
+    "melee.slime": {
+      "hurt": 600
+    },
+    "melee.snail": {
+      "hurt": 600
+    },
+    "melee.beetle": {
+      "hurt": 600
+    },
+    "melee.lizard": {
+      "hurt": 600
+    },
+    "melee.mimic_crab": {
+      "hurt": 600
+    },
+    "melee.blind_scorpion": {
+      "hurt": 600
+    },
+    "base.rockmane": {
+      "hp": 340,
+      "attack": 12
+    },
+    "rock.lunge": {
+      "distance": 160,
+      "speed": 280,
+      "charge": 1.2,
+      "recover": 2,
+      "stun": 1.5,
+      "damage": 8
+    },
+    "rock.roar": {
+      "range": 260,
+      "angle": 70,
+      "charge": 1.1,
+      "release": 0.45,
+      "reuse": 12,
+      "rest": 5,
+      "damage": 12
+    },
+    "base.wind_frog": {
+      "hp": 320,
+      "attack": 10
+    },
+    "effect.water": {
+      "fx_scale": 100,
+      "fx_duration": 450,
+      "opacity": 100,
+      "offset_x": 50,
+      "offset_y": 50,
+      "angle": 0,
+      "hurt": 900,
+      "windup": 800,
+      "interval_scale": 50,
+      "speed": 200,
+      "distance": 320,
+      "hit_radius": 80,
+      "damage": 9,
+      "trigger": 180,
+      "recover": 280
+    },
+    "effect.slam": {
+      "fx_scale": 100,
+      "fx_duration": 230,
+      "opacity": 100,
+      "offset_x": 0,
+      "offset_y": 0,
+      "angle": 0,
+      "hurt": 900,
+      "windup": 1000,
+      "recover": 1200,
+      "damage": 13
+    },
+    "frog.skill": {
+      "range": 180
+    },
+    "effect.hero": {
+      "fx_scale": 100,
+      "fx_duration": 200,
+      "opacity": 100,
+      "offset_x": 0,
+      "offset_y": 0,
+      "angle": 0,
+      "hitstop": 50,
+      "action_scale": 100,
+      "interval_scale": 100,
+      "damage_scale": 100,
+      "hit_radius": 14,
+      "distance": 210,
+      "speed": 420
+    },
+    "effect.yaya": {
+      "fx_scale": 100,
+      "fx_duration": 230,
+      "opacity": 100,
+      "offset_x": 0,
+      "offset_y": 0,
+      "angle": 0,
+      "hitstop": 50,
+      "action_scale": 100,
+      "interval_scale": 100,
+      "damage_scale": 100,
+      "hit_radius": 14,
+      "distance": 310,
+      "speed": 310
+    },
+    "effect.tieshan": {
+      "fx_scale": 100,
+      "fx_duration": 280,
+      "opacity": 100,
+      "offset_x": 0,
+      "offset_y": 0,
+      "angle": 0,
+      "hitstop": 70,
+      "action_scale": 100,
+      "interval_scale": 100,
+      "damage_scale": 100,
+      "hit_radius": 66
+    }
+  },
+  "saved_at": "2026-11-10T08:55:24.138Z"
+}

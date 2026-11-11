@@ -1,0 +1,27 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/restaurant/layout_prop.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/restaurant_layout/store.png" id="2"]
+
+[node name="Store" type="Node2D" groups=["restaurant_layout_props"]]
+y_sort_enabled = true
+script = ExtResource("1")
+display_name = "仓库"
+interactive = true
+ui_offset = Vector2(0, -367.9618644067797)
+metadata/_edit_group_ = true
+
+[node name="Art" type="Sprite2D" parent="."]
+texture = ExtResource("2")
+scale = Vector2(0.2966101694915254, 0.2966101694915254)
+offset = Vector2(0, -586.6285714285715)
+
+[node name="Body" type="StaticBody2D" parent="."]
+
+[node name="Collision" type="CollisionPolygon2D" parent="Body"]
+polygon = PackedVector2Array(-90, -255, -35, -290, 75, -70, 105, -25, 70, 0, -10, -35, -85, -200)
+
+[node name="InteractionArea" type="Polygon2D" parent="."]
+visible = false
+polygon = PackedVector2Array(-90, -255, -35, -290, 75, -70, 105, -25, 70, 0, -10, -35, -85, -200)
+

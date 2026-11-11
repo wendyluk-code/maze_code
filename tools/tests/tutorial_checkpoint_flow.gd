@@ -42,6 +42,10 @@ func _run() -> void:
 	_check("建立隔离存档", sm.save())
 	await _open_scene()
 	_check("正式餐厅自动启动首句", tm.active and tm.idx == 0)
+	_check("首句对白在实际画面可见", tm.guide.dialog.is_visible_in_tree())
+	_check("首章不显示六座覆盖且恢复原铁山座位", not scene.get_node("SixSeatBarArt").visible and scene.get_node("TieshanSeatAnchor").position==Vector2(471,251))
+	_check("首章前台保留交互与前景", scene.get_node("InteractPoints/Register").is_in_group("interactable") and not scene.get_node("InteractPoints/Register").get_meta("foreground_disabled",false))
+	await _capture("new_game_dialog.png")
 	await _confirm_line()
 	_check("确认首句后立即写下一步", _disk_checkpoint().get("next_index") == 1)
 	await _reload()
@@ -67,6 +71,13 @@ func _run() -> void:
 	_check("多句对白重进接续未确认句", tm.idx == multi_index and str(tm.guide.dialog._lines[0]).begins_with("你不会连"))
 	await _confirm_line()
 	_check("对白结束恢复自由移动", not tm.player.input_locked)
+	var start_position: Vector2 = tm.player.position
+	Input.action_press("ui_left")
+	await create_timer(0.3).timeout
+	Input.action_release("ui_left")
+	_check("教学对白后实际移动输入产生位移", tm.player.position.distance_to(start_position)>5)
+	_check("移动教学提示在实际画面可见", tm.guide.hint_panel.is_visible_in_tree())
+	await _capture("chapter_movement_hint.png")
 	_check("找到前台合法交互站位", _stand_near(tm.resolve_target("前台")))
 	await process_frame
 	await process_frame

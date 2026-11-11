@@ -37,6 +37,8 @@ func _exit_tree() -> void:
 	_cancel_motion()
 
 func play_collapse() -> void:
+	if not collapse_started and not collapse_completed:
+		GameAudio.play_cue(&"tieshan_groan")
 	_cancel_motion()
 	satisfied_started = false
 	satisfied_completed = false
@@ -156,12 +158,33 @@ func _update_order_bubble() -> void:
 		var texture := portrait.sprite_frames.get_frame_texture(portrait.animation, portrait.frame)
 		var pixels := texture.get_image()
 		if pixels.is_compressed(): pixels.decompress()
-		_order_bubble.position = Vector2(0, portrait.position.y + pixels.get_used_rect().position.y * portrait.scale.y - 6.0)
+		var used := pixels.get_used_rect()
+		var band := Rect2i(used.position, Vector2i(used.size.x, maxi(1, roundi(used.size.y * 0.28))))
+		var head := pixels.get_region(band).get_used_rect()
+		var x := float(band.position.x + head.position.x) + head.size.x * 0.5
+		if portrait.flip_h: x = texture.get_width() - x
+		var point := Vector2(x, used.position.y) + portrait.offset
+		if portrait.centered: point -= texture.get_size() * 0.5
+		_order_bubble.position = to_local(portrait.to_global(point)) - Vector2(0, 6.0)
+		_order_bubble.anchor_position = _order_bubble.position
 
 func _process(_delta: float) -> void:
 	# 事务成功即撤下提示；读档落座走同一显示入口。
 	if is_instance_valid(_order_bubble) and _order_bubble.visible and SaveManager.has_first_order_settlement():
 		_order_bubble.hide()
+	if is_instance_valid(_order_bubble):
+		_order_bubble.selected = _can_select_order_bubble()
+		if _order_bubble.visible: _order_bubble.fit_to_viewport()
+
+func _can_select_order_bubble() -> bool:
+	if not _order_bubble.visible: return false
+	var tm := get_node_or_null("/root/TutorialManager")
+	if tm == null or not tm.active or not tm._chapter_1_run or tm.idx < 0 or tm.idx >= tm.steps.size(): return false
+	var step: Dictionary = tm.steps[tm.idx]
+	if step.get("type") != "interact" or step.get("target") != "吧台": return false
+	var player := get_tree().get_first_node_in_group("player")
+	if not is_instance_valid(player) or player.input_locked or not player.is_physics_processing(): return false
+	return player.nearest_interactable() == tm.resolve_target("吧台")
 
 func _on_animation_finished() -> void:
 	if portrait.animation == &"collapse":
@@ -207,7 +230,7 @@ func _ready() -> void:
 	add_to_group("guest")
 	portrait.animation_finished.connect(_on_animation_finished)
 	_load_gait()
-	_order_bubble = preload("res://scripts/ui/components/customer_order_bubble.gd").new()
+	_order_bubble = preload("res://scripts/ui/components/tieshan_order_bubble.gd").new()
 	_order_bubble.name = "OrderBubble"
 	add_child(_order_bubble)
 	_order_bubble.setup(SaveManager.FIRST_ORDER_ITEM_ID)
@@ -277,6 +300,7 @@ func _run_seating(token: int) -> void:
 		push_error("Cannot run seating without coherent gait atlas")
 		return
 	_set_phase("rising")
+	GameAudio.play_cue(&"customer_seated")
 	_rise_finished = false
 	# 八张起身帧的接地边界均为纹理y=448，现有偏移已将其对齐本节点。
 	# 起身只改变姿态，不移动根节点，否则人物与阴影会一起向上漂浮。

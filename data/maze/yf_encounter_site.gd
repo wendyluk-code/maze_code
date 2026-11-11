@@ -1,6 +1,6 @@
 extends RefCounted
-## 红框指定的东侧入水前窄路；角色脚底与剧情触发共用此配置。
-const CHAT_FOOT := Vector2(1450,282)
+## 双人座石底部对齐路边标线；入口触发仍沿用原通道位置。
+const CHAT_FOOT := Vector2(1358,280)
 const POSITIONS := {"yufeng":Vector2(1419,282),"salia":Vector2(1480,282)}
 const ENTRY_LINE_X := 1518.0
 

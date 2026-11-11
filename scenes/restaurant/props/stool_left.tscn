@@ -1,0 +1,20 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/restaurant/layout_prop.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/restaurant_layout/stool_left.png" id="2"]
+
+[node name="Stool" type="Node2D" groups=["restaurant_layout_props"]]
+script = ExtResource("1")
+display_name = "圆凳"
+metadata/_edit_group_ = true
+
+[node name="Art" type="Sprite2D" parent="."]
+texture = ExtResource("2")
+scale = Vector2(0.07705779334500876, 0.07705779334500876)
+offset = Vector2(0, -221.72727272727272)
+
+[node name="Body" type="StaticBody2D" parent="."]
+
+[node name="Collision" type="CollisionPolygon2D" parent="Body"]
+polygon = PackedVector2Array(-20, -10, 20, -10, 20, 8, -20, 8)
+

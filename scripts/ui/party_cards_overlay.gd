@@ -13,6 +13,8 @@ var _progress := 0.0
 var _ready_for_input := false
 var _armed := false
 var _e_held := false
+var character_ids: Array[String] = ["yaya", "tieshan"]
+var join_message := "芽芽、铁山加入队伍"
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -25,7 +27,7 @@ func _ready() -> void:
 	add_child(_veil)
 	for index in 2:
 		var card := TextureRect.new()
-		card.name = "YayaCard" if index == 0 else "TieshanCard"
+		card.name = character_ids[index].capitalize() + "Card"
 		card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cards.append(card)
@@ -33,8 +35,8 @@ func _ready() -> void:
 		var face := preload("res://scripts/ui/components/party_character_face.gd").new()
 		face.name = "CharacterFace"
 		card.add_child(face)
-		face.configure("yaya" if index == 0 else "tieshan")
-	_join_message = _label("芽芽、铁山加入队伍", 30)
+		face.configure(character_ids[index])
+	_join_message = _label(join_message, 30)
 	_join_message.add_theme_color_override("font_color", Color("fff1cd"))
 	_join_message.add_theme_color_override("font_outline_color", Color("493626"))
 	_join_message.add_theme_constant_override("outline_size", 6)
@@ -115,6 +117,7 @@ func _input(event: InputEvent) -> void:
 	if visible and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		get_viewport().set_input_as_handled()
 		if _ready_for_input and not _e_held:
+			GameAudio.interaction()
 			continue_requested.emit()
 		return
 	var is_e: bool = event is InputEventKey and (event.keycode == KEY_E or event.physical_keycode == KEY_E)
@@ -133,6 +136,7 @@ func _input(event: InputEvent) -> void:
 	_e_held = true
 	if _ready_for_input and _armed and not held:
 		_armed = false
+		GameAudio.interaction()
 		continue_requested.emit()
 
 func show_error(message: String) -> void:

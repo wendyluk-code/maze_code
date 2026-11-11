@@ -18,6 +18,7 @@ var _disabled := false
 var _icon_index := 0
 var _custom_icon: Texture2D
 var _grid_mode := false
+var source_background := Color.TRANSPARENT
 var _grid_size := GRID_SIZE
 var _grid_icon_size := Vector2(40, 40)
 var _normalize_icon := false
@@ -257,6 +258,7 @@ func _apply_icon_style() -> void:
 		for state in ["normal", "hover", "pressed", "disabled"]:
 			var grid_style := StyleBoxFlat.new()
 			grid_style.bg_color = Color("#bed29d") if _selected_quantity > 0 else Color("#e9d2a7")
+			if source_background.a > 0.0: grid_style.bg_color = source_background
 			if _quantity == 0:
 				grid_style.bg_color = Color("#d9c39e")
 			elif state == "hover":

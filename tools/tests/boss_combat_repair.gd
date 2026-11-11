@@ -12,6 +12,9 @@ func _combat_scene() -> void:
 	var a: Dictionary=run.combat.actors[RB.ID]
 	var point:=Combat.vec(a.position)
 	run.combat.hero=Combat.pack(point+Vector2(0,30))
+	# 岩鬃兽现在只在弱点开放时受击，原受击显示回归在力竭窗口检查。
+	a.rock_phase="rest"
+	a.rock_left=1.5
 	Combat.Skills.damage(run,RB.ID,1)
 	_check(float(a.get("flash_remaining",0))>0,"统一伤害入口写入白闪")
 	Combat.hit(a,point,point+Vector2(0,30),12)
@@ -29,6 +32,8 @@ func _combat_scene() -> void:
 	a=run.combat.actors[RB.ID]
 	_check(RB.allowed(RB.HOME),"红框出生点可站立")
 	var original:=run.duplicate(true)
+	a.rock_phase="rest"
+	a.rock_left=1.5
 	maze.player.position=RB.HOME+Vector2(0,30)
 	maze.camera.snap_to_target()
 	run.combat.selected=2
@@ -50,6 +55,7 @@ func _combat_scene() -> void:
 	run=original
 	sm.data[Run.KEY]=run
 	a=run.combat.actors[RB.ID]
+	a.rock_reuse=0.0
 	var hero:=RB.HOME+Vector2(130,0)
 	var hp: float=run.combat.hp
 	Combat.Rock.advance(run,hero,0.05)
@@ -67,7 +73,7 @@ func _combat_scene() -> void:
 	maze.capture_flow._process(0)
 	await get_tree().create_timer(0.1).timeout
 	_check(maze.camera.offset.length()>0,"实际摄像机震动")
-	_check(maze.capture_flow.monsters[RB.ID].config.width==120,"岩鬃兽放大25%")
+	_check(maze.capture_flow.monsters[RB.ID].config.width==168,"岩鬃兽身体按原默认放大1.4倍")
 	await _capture_image("rockmane_roar")
 	var nav=preload("res://scripts/maze/rockmane_path.gd")
 	for goal in [Vector2(1050,520),Vector2(650,690),Vector2(1190,650)]:

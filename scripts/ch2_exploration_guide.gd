@@ -4,7 +4,7 @@ const KEY := "ch2_guide_01"
 const Run := preload("res://scripts/maze/capture_run.gd")
 const PORTRAIT := preload("res://assets/characters/yaya_portrait.png")
 const FREEZER_NOTICE := "freezer_unlock"
-const FREEZER_LINE := "【冰柜】已解锁，可以存放多出来的料理。注意在保鲜期前使用掉哦。"
+var _freezer_notice_retry_after := 0
 var restaurant: Node
 var maze: Node
 var guide: Control
@@ -34,6 +34,11 @@ var operation_glows: Array[Panel] = []
 var operation_shades: Dictionary = {}
 var operation_focus_styles: Dictionary = {}
 var glow_tween: Tween
+var camera_tween: Tween
+var returning_camera := false
+var return_choice: Control
+const RETURN_LESSON := "17_finish_exploration"
+const RETURN_LINE := "这趟探索收获不少呢，返回餐厅看看能做些什么吧。"
 const LINES := {
 	"01_recipe":"接到新订单！可以点击左下角【食谱】查看各个料理所需要的食材。",
 	"05_power":"小心，靠近魔物会触发他们战斗，单击鼠标左键可以发起攻击，边拉开距离边打倒它们吧！",
@@ -88,6 +93,13 @@ func _seen(id: String) -> bool:
 	return bool(state().get("seen", {}).get(id, false))
 
 func _mark(id: String) -> bool:
+	if id == "first_defeat_retry":
+		var previous: Dictionary = SaveManager._state.duplicate(true)
+		SaveManager._state.erase(preload("res://scripts/maze/first_exploration.gd").RETRY_NOTICE)
+		if SaveManager.save(): return true
+		SaveManager._state = previous
+		guide.show_toast("教学进度未保存，请按 E 重试")
+		return false
 	if id == FREEZER_NOTICE:
 		if SaveManager.acknowledge_freezer_notice(): return true
 		guide.show_toast("解锁提示进度未保存，请按 E 重试")
@@ -132,7 +144,7 @@ func _restore_targets() -> void:
 	operation_shades.clear()
 	targets.clear()
 
-func _start_operation_glow() -> void:
+func _start_operation_glow(clear_shades := true) -> void:
 	for target in allowed:
 		if target is BaseButton:
 			operation_focus_styles[target] = target.get_theme_stylebox("focus") if target.has_theme_stylebox_override("focus") else null
@@ -149,7 +161,7 @@ func _start_operation_glow() -> void:
 		operation_glows.append(glow)
 		# 只在强制操作期间移除业务窗的底色，保留其输入拦截节点。
 		var parent := target.get_parent()
-		while parent != null and not parent is CanvasLayer:
+		while clear_shades and parent != null and not parent is CanvasLayer:
 			for child in parent.get_children():
 				if child is ColorRect and child.anchor_right == 1.0 and child.anchor_bottom == 1.0:
 					if not operation_shades.has(child): operation_shades[child] = child.color.a
@@ -182,6 +194,10 @@ func _camera_focus(point: Vector2, factor := 1.3) -> void:
 	camera.reset_smoothing()
 
 func _restore_camera() -> void:
+	if camera_tween != null:
+		camera_tween.kill()
+		camera_tween = null
+	returning_camera = false
 	if is_instance_valid(camera) and not camera_state.is_empty():
 		camera.global_position = camera_state.position
 		camera.zoom = camera_state.zoom
@@ -210,17 +226,30 @@ func explain(id: String, text: String, nodes: Array, callback: Callable = Callab
 	hold_frames = 2
 
 func _read_done() -> void:
-	if not reading: return
+	if not reading or returning_camera: return
 	var callback := after_read
 	var id := lesson_id
 	if not _mark(id):
 		pending_save = _read_done
 		return
+	if id == "13_bag" and is_instance_valid(camera) and not camera_state.is_empty():
+		returning_camera = true
+		guide.hide_box()
+		guide.set_dim(0.0)
+		camera_tween = create_tween().set_parallel(true)
+		camera_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		camera_tween.tween_property(camera, "global_position", camera_state.position, 0.7)
+		camera_tween.tween_property(camera, "zoom", camera_state.zoom, 0.7)
+		await camera_tween.finished
+		if not is_inside_tree() or not reading or lesson_id != id: return
 	_clear()
 	if callback.is_valid(): callback.call()
 	hold_frames = 2
 
 func _clear() -> void:
+	bag_lesson_busy = false
+	pending_save = Callable()
+	return_choice = null
 	if reading and is_instance_valid(locked_player):
 		locked_player.input_locked = old_locked
 		locked_player.set_physics_process(old_physics)
@@ -265,13 +294,17 @@ func _release_motion() -> void:
 	motion_player = null
 
 func _input(event: InputEvent) -> void:
+	if returning_camera or bag_lesson_busy:
+		get_viewport().set_input_as_handled()
+		return
 	if not reading and not pending_save.is_valid() and (state().is_empty() or state().get("step", "") == "done"): return
 	if hold_frames > 0:
 		get_viewport().set_input_as_handled()
 		return
 	if pending_save.is_valid():
 		get_viewport().set_input_as_handled()
-		if event.is_action_pressed("interact"):
+		if guide.dialog._is_advance_event(event):
+			GameAudio.interaction()
 			var retry := pending_save
 			pending_save = Callable()
 			retry.call()
@@ -290,9 +323,19 @@ func _input(event: InputEvent) -> void:
 func _process(_delta: float) -> void:
 	if hold_frames > 0: hold_frames -= 1
 	if not is_instance_valid(guide): return
+	if is_instance_valid(restaurant) and preload("res://scripts/maze/first_exploration.gd").departure(SaveManager) and not TutorialManager.active:
+		if reading or pending_save.is_valid(): return
+		if SaveManager._state.get(preload("res://scripts/maze/first_exploration.gd").RETRY_NOTICE,false):
+			if is_instance_valid(restaurant._player) and not restaurant._player.input_locked and restaurant._player.is_physics_processing():
+				explain("first_defeat_retry", "迷宫的魔物还是有些凶险，注意走位和战斗方式，再进迷宫试试吧。", [])
+			return
+		guide.show()
+		guide.setup({"hint":"前往迷宫探索"})
+		guide.set_dim(0.0)
+		return
 	guide.external_cutouts.clear()
 	guide.external_circles = false
-	if gate:
+	if gate or is_instance_valid(return_choice):
 		for index in range(allowed.size()):
 			var target := allowed[index]
 			if is_instance_valid(target):
@@ -300,6 +343,15 @@ func _process(_delta: float) -> void:
 				var rect := target.get_global_transform_with_canvas() * Rect2(Vector2.ZERO, target.size).grow(-2.0)
 				operation_glows[index].position = rect.position
 				operation_glows[index].size = rect.size
+	if is_instance_valid(return_choice):
+		if not return_choice.visible:
+			_clear()
+			return
+		guide.external_cutouts.append(_rect(return_choice.panel))
+		guide.set_dim(0.72 if reading else 0.0)
+		guide._sync_task_cutouts()
+		return
+	if returning_camera: return
 	if is_instance_valid(maze):
 		var active: bool = not state().is_empty() and state().get("step","") != "done"
 		maze.capture_flow.dialog.tutorial_only_yes = active and not _seen("07_capture")
@@ -309,10 +361,10 @@ func _process(_delta: float) -> void:
 	if reading or pending_save.is_valid() or hold_frames > 0: return
 	var data := state()
 	if is_instance_valid(restaurant) and SaveManager.freezer_notice_pending() and (data.is_empty() or data.get("step", "") == "done"):
-		if not TutorialManager.active and is_instance_valid(restaurant._player) and is_instance_valid(restaurant.customer_flow):
-			if not restaurant._player.input_locked and restaurant._player.is_physics_processing() and not restaurant.customer_flow.busy and not restaurant.customer_flow._arrival_tutorial_busy:
-				explain(FREEZER_NOTICE, FREEZER_LINE, [])
-		return
+		# 旧待读标记静默收束；不再弹对白，也不改变实际解锁条件。
+		if Time.get_ticks_msec()>=_freezer_notice_retry_after:
+			SaveManager.acknowledge_freezer_notice()
+			_freezer_notice_retry_after = Time.get_ticks_msec()+2000
 	if data.is_empty() or data.get("step", "") == "done": return
 	if is_instance_valid(restaurant): _restaurant_tick(str(data.get("step", "")))
 	elif is_instance_valid(maze) and maze._entry_ready: _maze_tick(str(data.get("step", "")))
@@ -321,6 +373,7 @@ func _restaurant_tick(step: String) -> void:
 	if not is_instance_valid(restaurant._player) or restaurant.customer_flow.busy: return
 	# 餐厅说明等当前弹窗/来客镜头释放移动后再开始，避免保存另一流程的锁定态。
 	if restaurant._player.input_locked or not restaurant._player.is_physics_processing() or restaurant.customer_flow._arrival_tutorial_busy: return
+	if restaurant._show_return_loot(): return
 	if step == "recipe":
 		if not _seen("01_recipe"):
 			explain("01_recipe", LINES["01_recipe"], [], func(): _save_step("entrance"))
@@ -329,6 +382,16 @@ func _restaurant_tick(step: String) -> void:
 		# 旧版食材来源检查点不再依赖已删除的悬停/关闭节点。
 		_save_step("entrance")
 	elif step == "warehouse":
+		if SaveManager._state.get("first_business_intro_pending",false):
+			explain("first_business_intro", "不错，第一次探索迷宫带回了这么多食材，我们可以准备第一天的经营了。先设置今天的菜单，准备开始营业吧。", [], func():
+				var before: Dictionary = SaveManager._state.duplicate(true)
+				SaveManager._state["first_business_intro_pending"] = false
+				SaveManager._state[KEY]["step"] = "done"
+				if not SaveManager.save():
+					SaveManager._state = before
+					return
+				restaurant._open_day_menu())
+			return
 		if not _seen("18_return"):
 			explain("18_return", LINES["18_return"], [], func(): _save_step("done"))
 		else: _save_step("done")
@@ -363,9 +426,9 @@ func _maze_tick(step: String) -> void:
 			_start_bag_lesson()
 
 func _start_bag_lesson() -> void:
-	bag_lesson_busy = true
 	# 先建立教学状态但暂不显示对白，避免镜头移动过程中对白抢先出现。
 	explain("13_bag", LINES["13_bag"], [])
+	bag_lesson_busy = true
 	guide.hide_box()
 	var target: Vector2 = maze.settlement_portal.global_position
 	camera = get_viewport().get_camera_2d()
@@ -380,6 +443,7 @@ func _start_bag_lesson() -> void:
 			end_position = Vector2(clampf(target.x, half.x, Run.Roads.SIZE.x-half.x),
 				clampf(target.y-75, half.y, Run.Roads.SIZE.y-half.y))
 		var tween := create_tween().set_parallel(true)
+		camera_tween = tween
 		tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		tween.tween_property(camera, "global_position", end_position, 0.7)
 		tween.tween_property(camera, "zoom", camera.zoom * 1.3, 0.7)
@@ -390,11 +454,30 @@ func _start_bag_lesson() -> void:
 	guide.play_dialog("芽芽", [LINES["13_bag"]], PORTRAIT)
 	bag_lesson_busy = false
 
+func show_return_choice(choice: Control) -> void:
+	if not preload("res://scripts/maze/first_exploration.gd").pending(SaveManager): return
+	if not _seen(RETURN_LESSON):
+		explain(RETURN_LESSON, RETURN_LINE, [], func(): _highlight_return_choice(choice))
+	else:
+		_clear()
+	_highlight_return_choice(choice)
+
+func _highlight_return_choice(choice: Control) -> void:
+	if not is_instance_valid(choice) or not choice.visible: return
+	return_choice = choice
+	allowed = [choice.cancel_button]
+	guide.show()
+	_start_operation_glow(false)
+
+func close_return_choice() -> void:
+	if is_instance_valid(return_choice): _clear()
+
 func _exit_tree() -> void:
 	_clear()
 
 ## 非阅读阶段保持原业务入口可用，食谱不再是强制操作关卡。
 func allows_world_interaction(_label: String) -> bool:
+	if preload("res://scripts/maze/first_exploration.gd").departure(SaveManager): return _label=="迷宫入口"
 	return not reading and not pending_save.is_valid()
 
 func allows_recipe() -> bool:

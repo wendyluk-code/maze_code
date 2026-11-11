@@ -1,0 +1,286 @@
+{
+  "source_root": "D:/workspace/代号：料理迷宫",
+  "base_commit": "1f426fbb12829fac854fe612694609d9a4b80f15",
+  "started_at": "2026-10-29T22:09:54.8044210+08:00",
+  "sources": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "DD2104EA593E4FA17DE67601EBD1EBF2B4AAD05FE24044F6F2B54EDADB9FBFB6"
+    },
+    {
+      "path": "assets/maps/moss_pool.png",
+      "sha256": "C9A317212982089BA3FA4340F7C6D4D1286C5CA1BEA100AA63905C95CC73EDF1"
+    },
+    {
+      "path": "data/maze/fenshui_roads.gd",
+      "sha256": "2DF2078404FC49F3F4CF5D854A2FA9F56E667E71CEB8C1EB825C4A307AF09C6E"
+    },
+    {
+      "path": "data/maze/moss_pool_projection.gd",
+      "sha256": "B04495ABADDD8EC8F5CD3CF89F59C3F73905FCFF105EF1DB789190A5D69BE5DB"
+    },
+    {
+      "path": "data/maze/moss_pool_roads.gd",
+      "sha256": "48EBAF9B1ED15010C52D74B0D1BBAC877260D2DDB2B2F03D0BA8D0AE56538F02"
+    },
+    {
+      "path": "data/maze/region_routes.gd",
+      "sha256": "227D083B3E8D0C40C37D9868377C6B1776D8C97F0B100957F65891380F4E8B0B"
+    },
+    {
+      "path": "docs/moss_pool_integration.md",
+      "sha256": "7B0B1542C868775A197BCAD2DBCCB92C00E95B0A0DD0C2AC82DB6F5D03A4171B"
+    },
+    {
+      "path": "docs/ui_component_library.md",
+      "sha256": "5B5A9F86633162DDC608181DB18D639368F96E5619E7D375D9621D30FBB7234C"
+    },
+    {
+      "path": "project.godot",
+      "sha256": "16DB32D03B7B1A244014CDB6D7692A125476FDC7CC64AC323FF08B3BCFA82487"
+    },
+    {
+      "path": "scripts/maze/capture_run.gd",
+      "sha256": "5F1C5DEB77BCF119F50B54F980C80076CC826DCC1C65038253D0F668EAF1D98B"
+    },
+    {
+      "path": "scripts/maze/combat_simulation.gd",
+      "sha256": "22E861735ADD3ECF8C01C71B152B9474B6F60DF3D96CA16A7E5256E4163A3A54"
+    },
+    {
+      "path": "scripts/maze/maze_entry.gd",
+      "sha256": "926DC75FA215D57A6DAC69F6D6E2E79A87ABCA2B3D2DA27C4F9C418969055695"
+    },
+    {
+      "path": "scripts/save_manager.gd",
+      "sha256": "2099C1AC236EA3CB513466518AFE0FCB869BB37E435DF38697BC48E2899D5203"
+    },
+    {
+      "path": "scripts/ui/components/maze_map.gd",
+      "sha256": "657D7AA871F29AC1F21502F031BD9FC55AECCA4179EF5E7847D4C3861D127037"
+    },
+    {
+      "path": "scripts/ui/components/maze_map_view.gd",
+      "sha256": "92EBEB91EF1D077ACD2DE4362A5CC2132DBF797AA4F086A96F20141F6B1A4A1C"
+    },
+    {
+      "path": "scripts/ui/shallow_map_fog.gdshader",
+      "sha256": "B3B513B1319725A274101F676C44A7027FFB66F765DD12B1511EEA6C9A27B56A"
+    },
+    {
+      "path": "tools/tests/ch1_qte_03_input.gd",
+      "sha256": "BB7C69D80B93DE5566C5B6014E7864AF075CCDFBCD4BA06133DE787704E9A9DD"
+    },
+    {
+      "path": "tools/tests/combat_02_run.ps1",
+      "sha256": "E3E31CC1017B16ED37F3F78F42841A4EE513F34D8CAE319BD8949B179B979302"
+    },
+    {
+      "path": "tools/tests/moss_pool_flow.gd",
+      "sha256": "A8991B0AFF821AB2C64C37F5DC4BFB0EF8D337672BFFF5B565B4E58034423D80"
+    },
+    {
+      "path": "scripts/maze/fenshui_borrow_lightning.gd",
+      "sha256": "550022ED95A27ADA00C9C1508480D6A9A0C6A8EF91B1BA3ED8B78BB8A1DFD07D"
+    },
+    {
+      "path": "scripts/maze/fenshui_borrow_lightning.gd.uid",
+      "sha256": "9501053F0F7D7C024976C4C8BE7B1C117F1D775F0215A481672A65A89901D19F"
+    },
+    {
+      "path": "scripts/maze/fenshui_trial_effects.gd",
+      "sha256": "F6E82AD73EC92627D5CFE37C13C2E4D429E44A7704583D13E400EE660A46F26E"
+    },
+    {
+      "path": "scripts/maze/fenshui_trial_effects.gd.uid",
+      "sha256": "52D7C1E47CE452A2869F6464F34667D2D0E91D5A2EAC16870FC040EA4A519EA9"
+    },
+    {
+      "path": "tools/previews/fenshui_borrow_lightning.gd",
+      "sha256": "87AEB66125AA82A1D2D83E221EC1FD43D9261B7F533D790AD968359F1D63BE65"
+    },
+    {
+      "path": "tools/previews/fenshui_borrow_lightning.gd.uid",
+      "sha256": "CF0609E760DC2887559ED43039BAF90B730C95157E4F82637A78333AE108BB4A"
+    },
+    {
+      "path": "tools/previews/fenshui_borrow_lightning.ps1",
+      "sha256": "74EC93BC22BADBA5D7ACF7D9F4B3ACC622F97F2FA78CB32B0025383D0E9E09D3"
+    },
+    {
+      "path": "tools/previews/fenshui_borrow_lightning.tscn",
+      "sha256": "F9AB0D0A095D9FADBAA684BFDE14E2D73637AC21916FCB160C3001F42711427F"
+    },
+    {
+      "path": "tools/tests/fenshui_borrow_lightning.gd",
+      "sha256": "D8169FA6FBB7CFFB96F827E79BF024D913C6D61925CFE9AD4C8CEBEE3E70471D"
+    },
+    {
+      "path": "tools/tests/fenshui_borrow_lightning.gd.uid",
+      "sha256": "6ED995553D77028C4480CBFF130D84237A46C4C58DAF2C2A6A69D93227DBACED"
+    },
+    {
+      "path": "tools/tests/fenshui_trial_interaction.gd",
+      "sha256": "49F2ED835DF98923C7D7029CF768E23D19EF7E823D47DB6B4D4A38C0204CB815"
+    },
+    {
+      "path": "tools/tests/fenshui_trial_interaction.gd.uid",
+      "sha256": "63AAA0A299900DCDD80B9803BCBAEE61C51612D30C9D40F07FFD80F0EE24FF77"
+    },
+    {
+      "path": "tools/tests/fenshui_trial_interaction.ps1",
+      "sha256": "A460A373953527DD5CF3E84E3D27F5A3D0049C1682C220992D70AEA99D17551B"
+    },
+    {
+      "path": "tools/tests/fenshui_trial_interaction.tscn",
+      "sha256": "71B725B89F763FDFB42EEC7D05A1F9775498FC2C7CDB0D1FD5EFF279165CCCB4"
+    },
+    {
+      "path": "tools/tests/fenshui_trial_legacy_restart.gd",
+      "sha256": "76BCCB8875A46C6260EF72CA528E684D407D475D7286083AF44D359E734988A1"
+    },
+    {
+      "path": "tools/tests/fenshui_trial_legacy_restart.gd.uid",
+      "sha256": "9745E8F0DB5AAFF34C0DBCEFA282AA835FA1B3CAC39C29811B11191F26109923"
+    },
+    {
+      "path": "tools/tests/fenshui_trial_legacy_restart.tscn",
+      "sha256": "4E6FECF8D6EF1F6A4592CEC9F9CFD7B5EE56FB208E4C050AEED7A4602BDF45B0"
+    },
+    {
+      "path": "tools/tests/desktop_independent_input.gd",
+      "sha256": "1405BD5CFB7B39A69B4EB75B8DF44815D65DA738E676798D0F3C5FFDC5A45D25"
+    },
+    {
+      "path": "tools/tests/desktop_independent_input.gd.uid",
+      "sha256": "E46DD72E1A3FE65F9AD75D1F34DF1F786050265EA22682801FEF175CB4910044"
+    },
+    {
+      "path": "tools/tests/desktop_independent_input.tscn",
+      "sha256": "A9CEE63DF9F448B345B2517ED81E6D4EB17EBA573070D1B94505F159DBAB8066"
+    },
+    {
+      "path": "docs/fs01_borrow_lightning.md",
+      "sha256": "3E12301A8A66997D5277BFC64DDF0A668BD2F54CE8B99D196F4A05879D2715EF"
+    },
+    {
+      "path": "docs/testing_without_desktop_input.md",
+      "sha256": "62249A42CC92AE22360C0D89F55A3CDA7DB04ACC73843A004EAD523C8FBB3F5E"
+    },
+    {
+      "path": "docs/fenshui_scene_spec.md",
+      "sha256": "C10F6E894215F55D54CB25E9B2F8F017FB05E1AC5C7D2440758CB6AACEDC796D"
+    },
+    {
+      "path": "docs/fenshui_design_alignment.md",
+      "sha256": "9800BA055CD549B08EC95EDB97940FD8FD289C81F91CDD0D1C4BDAD102B312BF"
+    },
+    {
+      "path": "docs/fenshui_layout_assets_review.md",
+      "sha256": "0B21D821FFF918FAFD1F5ACF6CB223FD334B27E1583D65FFC7A80D24305AF5BD"
+    },
+    {
+      "path": "CONTEXT.md",
+      "sha256": "D3221494E8EE475063C79299F80741C92AF8EDF63B2B0DFD95256D268AE57A2E"
+    },
+    {
+      "path": "docs/agents/domain.md",
+      "sha256": "9D4B78D6A270C3CE36ADA9F3D98870BD896E286C76A0044585E74B300583B7EC"
+    },
+    {
+      "path": "docs/agents/issue-tracker.md",
+      "sha256": "E4C0B9FBD0947B472248DAAE1FBA2AF0428911B8CD85F8E2EAF3085247BD9F8A"
+    },
+    {
+      "path": "docs/agents/triage-labels.md",
+      "sha256": "BCD9F45FB43D462316F1FCDF6A6D871981147529E19030599601EEEB50E6DC0F"
+    },
+    {
+      "path": "docs/fenshui_layout_review.html",
+      "sha256": "B4ABC264A652945C29832ADD42EDF49B6A6FBF100DFF246C3B9B90C1422C5E3E"
+    }
+  ],
+  "protection_check": {
+    "checked": 49,
+    "changed": [],
+    "checked_at": "2026-10-29T22:22:33.2645199+08:00"
+  },
+  "source_save": {
+    "Path": "D:\\workspace\\代号：料理迷宫\\output\\fs01\\play-final\\profile\\Godot\\app_userdata\\maze_code\\chapter-ending-test.json",
+    "Hash": "A3CC5EBCF08AE7740849513CDB57BC3BBC19AAE84EF08807296047170CF0D1B5"
+  },
+  "new_files": [
+    "scripts/maze/fenshui_borrow_lightning.gd",
+    "scripts/maze/fenshui_borrow_lightning.gd.uid",
+    "scripts/maze/fenshui_trial_effects.gd",
+    "scripts/maze/fenshui_trial_effects.gd.uid",
+    "tools/previews/fenshui_borrow_lightning.gd",
+    "tools/previews/fenshui_borrow_lightning.gd.uid",
+    "tools/previews/fenshui_borrow_lightning.ps1",
+    "tools/previews/fenshui_borrow_lightning.tscn",
+    "tools/tests/fenshui_borrow_lightning.gd",
+    "tools/tests/fenshui_borrow_lightning.gd.uid",
+    "tools/tests/fenshui_trial_interaction.gd",
+    "tools/tests/fenshui_trial_interaction.gd.uid",
+    "tools/tests/fenshui_trial_interaction.ps1",
+    "tools/tests/fenshui_trial_interaction.tscn",
+    "tools/tests/fenshui_trial_legacy_restart.gd",
+    "tools/tests/fenshui_trial_legacy_restart.gd.uid",
+    "tools/tests/fenshui_trial_legacy_restart.tscn",
+    "tools/tests/desktop_independent_input.gd",
+    "tools/tests/desktop_independent_input.gd.uid",
+    "tools/tests/desktop_independent_input.tscn",
+    "docs/fs01_borrow_lightning.md",
+    "docs/testing_without_desktop_input.md",
+    "docs/fenshui_scene_spec.md",
+    "docs/fenshui_design_alignment.md",
+    "docs/fenshui_layout_assets_review.md",
+    "CONTEXT.md",
+    "docs/agents/domain.md",
+    "docs/agents/issue-tracker.md",
+    "docs/agents/triage-labels.md",
+    "docs/fenshui_layout_review.html"
+  ],
+  "incremental_files": [
+    "scripts/maze/combat_simulation.gd",
+    "scripts/maze/capture_run.gd",
+    "data/maze/fenshui_roads.gd",
+    "project.godot",
+    "tools/tests/ch1_qte_03_input.gd",
+    "tools/tests/combat_02_run.ps1",
+    "docs/ui_component_library.md"
+  ],
+  "direct_source_references": [
+    "res://data/maze/fenshui_encounters.gd",
+    "res://data/maze/fenshui_roads.gd",
+    "res://scripts/maze/water_spacing.gd",
+    "res://scripts/maze/fenshui_borrow_lightning.gd",
+    "res://scripts/maze/capture_run.gd",
+    "res://tools/tests/ch2_entry_state.gd",
+    "res://scenes/maze_fenshui.tscn",
+    "res://scripts/maze/fenshui_trial_effects.gd",
+    "res://scripts/ui/components/feedback_toast.gd",
+    "res://tools/previews/fenshui_borrow_lightning.gd",
+    "res://scripts/maze/combat_simulation.gd",
+    "res://data/maze/capture_catalog.gd",
+    "res://tools/tests/fenshui_trial_interaction.gd",
+    "res://tools/tests/fenshui_trial_legacy_restart.gd",
+    "res://tools/tests/ch1_qte_03_input.gd",
+    "res://tools/tests/desktop_independent_input.gd"
+  ],
+  "byte_difference_notes": [
+    {
+      "path": "docs/agents/domain.md",
+      "note": "由CRLF规范为LF；正文保持不变"
+    },
+    {
+      "path": "docs/agents/issue-tracker.md",
+      "note": "由CRLF规范为LF；正文保持不变"
+    },
+    {
+      "path": "docs/agents/triage-labels.md",
+      "note": "由CRLF规范为LF；正文保持不变"
+    }
+  ]
+}
+

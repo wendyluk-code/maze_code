@@ -1,0 +1,2272 @@
+extends Node
+## 存档管理器（Autoload: SaveManager）
+## 全量 JSON 存档；旧 save.json 与独立档共用迁移和原子保存。
+
+const SAVE_PATH := "user://save.json"
+const MAX_WAREHOUSE_KINDS := 3
+const STAMINA_MAX := 100
+const STAMINA_COST := 20
+const STAMINA_INTERVAL := 300
+var _maze_entry_pending := false
+var _maze_entry_party: Array = []
+const TEAM_MEMORY_KEY := "maze_team_memory_v1"
+const SLOTS_DIR := "user://saves"
+const SLOT_META_KEY := "_save_slot"
+const MazeRoads := preload("res://data/maze/entry_roads.gd")
+const MAZE_STATE_KEY := "maze_exploration"
+const MAZE_SCENE := "res://scenes/maze_entry.tscn"
+const RESTAURANT_SCENE := "res://scenes/restaurant_map_2d.tscn"
+const ChestCatalog := preload("res://data/maze/entry_chests.gd")
+const GOLD_KEY := "gold"
+const CLAIMED_CHESTS_KEY := "claimed_chests"
+const DigCatalog := preload("res://data/maze/entry_dig_sites.gd")
+const CLAIMED_DIG_SITES_KEY := "claimed_dig_sites"
+const YUFENG_SALIA_KEY := "yufeng_salia_encounter"
+var _active_save_path := SAVE_PATH
+var last_load_error := ""
+const PROLOGUE_DONE_KEY := "prologue_done"
+const CHAPTER_1_DONE_KEY := "chapter_1_done"
+const CURRENT_ORDER_KEY := "current_order"
+const ORDER_STATUS_NONE := "none"
+const ORDER_STATUS_IN_PROGRESS := "in_progress"
+const ORDER_STATUS_COMPLETED := "completed"
+const FIRST_ORDER_SETTLEMENT_KEY := "first_order_settlement"
+const REPUTATION_KEY := "reputation"
+const FIRST_ORDER_REPUTATION := 10
+const COOKING_STATE_KEY := "first_order_cooking"
+const COOKING_GUIDE_KEY := "cooking_guide_seen"
+const TUTORIAL_CHECKPOINT_KEY := "tutorial_checkpoint"
+const PREPARED_DISHES_KEY := "prepared_dishes"
+const UNLOCKED_RECIPES_KEY := "unlocked_recipe_ids"
+const CustomerCatalog := preload("res://scripts/restaurant/customer_catalog.gd")
+const RecipeCatalog := preload("res://scripts/cooking/recipe_catalog.gd")
+const QuestRegistry := preload("res://scripts/quests/quest_registry.gd")
+const QUEST_JOURNAL_KEY := "quest_journal"
+const ElderConfig := preload("res://data/maze/elder_firewood.gd")
+const ELDER_QUEST_ID := "elder_firewood"
+const ELDER_BACKPACK_KEY := "elder_magic_backpack_unlocked"
+const SALT_POOL_QUEST_ID := "chapter_1_salt_pool"
+const QUALITY_REPUTATION := {1: 60, 2: 80, 3: 100}
+const LEGACY_QUALITY_REPUTATION := {1: 10, 2: 12, 3: 15}
+const FIRST_ORDER_ID := "chapter_1_first_order"
+const FIRST_ORDER_ITEM_ID := "salt_grilled_rockmane"
+const FIRST_ORDER_ITEM_NAME := "盐烤岩鬃肉"
+const FIRST_ORDER_QUANTITY := 1
+const INVENTORY_KEY := "inventory"
+const FIRST_ORDER_PROGRESS_KEY := "first_order_progress"
+const ROCKMAN_MEAT_ID := "rockmane_meat"
+const ROCK_SALT_ID := "rock_salt"
+const WRAPUP_KEY := "chapter_1_departure"
+const DEPARTURE_OBJECTIVE := "与芽芽、铁山一同进入迷宫浅层"
+const CH1_CARD_IDS := ["yaya_01", "yaya_02", "yaya_03", "yaya_04", "yaya_05", "yaya_06", "yaya_07", "yaya_08", "tieshan_01", "tieshan_02", "tieshan_03", "tieshan_04", "tieshan_05", "tieshan_06", "tieshan_07", "tieshan_08"]
+const HomeCardArt := preload("res://scripts/ui/components/home_card_art.gd")
+## 顺序是存档契约；已确认的对白逐句提交，重进从尚未确认的一句继续。
+const WRAPUP_STEPS := ["relief", "meat", "yaya_past", "hero_past", "yaya_yes",
+	"second_serving", "check_store", "warehouse_move", "warehouse_inspect", "yaya_empty",
+	"hero_where", "salt_pool",
+	"map_review", "introduction", "offer", "no", "memory", "cooking", "ingredients",
+	"yaya_join", "stay_shallow", "agreement", "yaya_ready", "ready_to_depart"]
+## 保留历史检查点用于校验旧档；删合对白后直接接续下一句，无额外按键。
+const RETIRED_WRAPUP_STEPS := {"offer": "no", "memory": "cooking",
+	"ingredients": "yaya_join", "stay_shallow": "agreement"}
+
+var data: Dictionary = _defaults()
+## 重播使用独立工作副本；公开 data 和正式文件在整个重播期间保持原样。
+var _replay_data: Dictionary = {}
+var _replaying := false
+## 序章预览覆盖整个进程，避免进入餐厅或取消教程后意外恢复正式写入。
+var _prologue_preview := false
+var _state: Dictionary:
+	get:
+		return _replay_data if _replaying else data
+	set(value):
+		if _replaying:
+			_replay_data = value
+		else:
+			data = value
+## 只记录读取时补齐的字段，不在迁移时推断或补发奖励。
+var migration_diagnostics: Array[String] = []
+
+func _ready() -> void:
+	_prologue_preview = "--replay-prologue" in OS.get_cmdline_user_args() or "--replay-prologue" in OS.get_cmdline_args()
+	load_data()
+	if _prologue_preview:
+		begin_replay()
+
+func _defaults() -> Dictionary:
+	return {
+		"stamina": {"value": STAMINA_MAX, "at": int(Time.get_unix_time_from_system())},
+		PROLOGUE_DONE_KEY: false,
+		"tutorial_done": false,
+		CHAPTER_1_DONE_KEY: false,
+		CURRENT_ORDER_KEY: _empty_order(),
+		INVENTORY_KEY: {ROCKMAN_MEAT_ID: 0, ROCK_SALT_ID: 0, FIRST_ORDER_ITEM_ID: 0, "wood": 0},
+		"warehouse_stock": {ROCKMAN_MEAT_ID: 1, ROCK_SALT_ID: 1},
+		PREPARED_DISHES_KEY: {FIRST_ORDER_ITEM_ID: {"1": 0, "2": 0, "3": 0}},
+		UNLOCKED_RECIPES_KEY: [],
+		COOKING_STATE_KEY: {"status": "idle", "recipe_id": "", "quality": 0, "pointer": 0.0},
+		COOKING_GUIDE_KEY: false,
+		TUTORIAL_CHECKPOINT_KEY: _empty_tutorial_checkpoint(),
+		FIRST_ORDER_PROGRESS_KEY: {"ingredients_claimed": false, "next_step": "accept_order"},
+		FIRST_ORDER_SETTLEMENT_KEY: {},
+		REPUTATION_KEY: 0,
+		WRAPUP_KEY: _empty_departure(),
+		QUEST_JOURNAL_KEY: QuestRegistry.empty_journal(),
+		ELDER_BACKPACK_KEY: false,
+		"chapter_1_intro": "not_started",
+		MAZE_STATE_KEY: _empty_maze_state(),
+		GOLD_KEY: 0,
+		CLAIMED_CHESTS_KEY: [],
+		CLAIMED_DIG_SITES_KEY: [],
+		YUFENG_SALIA_KEY: "unseen",
+		"restaurant_customers": {"serial": 0, "front": {}, "seated": [], "queue": [], "daily_key": "", "daily_orders": 0, "arrival_notice": false},
+	}
+
+## 时间戳保留未满五分钟的余数；满值时丢弃累计时间。查询不写盘。
+func stamina_snapshot(now := -1) -> Dictionary:
+	if now < 0:
+		now = int(Time.get_unix_time_from_system())
+	var raw = _state.get("stamina", {"value": STAMINA_MAX, "at": now})
+	if not raw is Dictionary or not _valid_count(raw.get("value")) or int(raw.get("value", 0)) > STAMINA_MAX or not _valid_count(raw.get("at")):
+		_diagnose("体力记录无效，回退满体力")
+		return {"value": STAMINA_MAX, "at": now}
+	var amount := int(raw.value)
+	var stamp := int(raw.at)
+	if amount == STAMINA_MAX:
+		return {"value": amount, "at": now}
+	# 时钟回拨不发放体力，也不把未来时间改早以重复领取。
+	var ticks := maxi(0, now - stamp) / STAMINA_INTERVAL
+	amount = mini(STAMINA_MAX, amount + ticks)
+	return {"value": amount, "at": now if amount == STAMINA_MAX else stamp + ticks * STAMINA_INTERVAL}
+
+func stamina() -> int:
+	return int(stamina_snapshot().value)
+
+func valid_exploration_party(party: Variant) -> bool:
+	if not party is Array or party.is_empty() or party.size() > 4: return false
+	var owned: Array = owned_characters()
+	var seen := {}
+	for id in party:
+		if not id is String or not owned.has(id) or seen.has(id): return false
+		seen[id] = true
+	return true
+
+func remembered_maze_party() -> Array:
+	var party: Variant = _state.get(TEAM_MEMORY_KEY, [])
+	return party.duplicate() if valid_exploration_party(party) else []
+
+func exploration_entry_party() -> Array:
+	return _maze_entry_party.duplicate() if _maze_entry_pending else departure_state().get("party", []).duplicate()
+
+func request_maze_entry(party: Variant = null) -> Dictionary:
+	if _maze_entry_pending:
+		return {"success": false, "reason": "busy"}
+	var selected: Variant = departure_state().get("party", []) if party == null else party
+	if not valid_exploration_party(selected):
+		return {"success": false, "reason": "invalid_party"}
+	var run: Variant = _state.get("capture_run_v1", {})
+	if run is Dictionary and run.get("active", false):
+		return {"success": false, "reason": "active_run"}
+	if not can_enter_maze():
+		return {"success": false, "reason": "locked"}
+	if stamina() < STAMINA_COST:
+		return {"success": false, "reason": "insufficient_stamina"}
+	_maze_entry_pending = true
+	_maze_entry_party = selected.duplicate()
+	return {"success": true}
+
+func cancel_maze_entry() -> void:
+	_maze_entry_pending = false
+	_maze_entry_party.clear()
+
+## 木材数量不静默归零；坏数据保留并阻止发奖，旧档缺字段等价于未领取。
+func dig_reward_state_valid() -> bool:
+	var inventory = _state.get(INVENTORY_KEY)
+	if not inventory is Dictionary:
+		return false
+	var quantity = inventory.get(DigCatalog.ITEM_ID, 0)
+	if typeof(quantity) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(quantity)) \
+			or quantity < 0 or quantity > 9007199254740991 or quantity != floor(float(quantity)):
+		return false
+	var claims = _state.get(CLAIMED_DIG_SITES_KEY, [])
+	if not claims is Array:
+		return false
+	for id in claims:
+		if not id is String or id.is_empty():
+			return false
+	return true
+
+func is_dig_site_claimed(id: String) -> bool:
+	var site:=DigCatalog.find(id)
+	if not site.is_empty() and not site.get("permanent",true):
+		var run: Dictionary=preload("res://scripts/maze/capture_run.gd").snapshot(self)
+		return id in run.get("resource_claims",[])
+	var claims = _state.get(CLAIMED_DIG_SITES_KEY, [])
+	return claims is Array and id in claims
+
+## 木材、一次性领取标记、站位同一事务落盘；失败完整回滚。
+func claim_exploration_dig_site(id: String, point: Vector2) -> Dictionary:
+	if not preload("res://data/maze/region_resources.gd").find(id).is_empty():
+		return preload("res://scripts/maze/region_harvest.gd").claim(self,id,point)
+	var site := DigCatalog.find(id)
+	if site.is_empty() or not can_enter_maze() or maze_exploration_state().region != "maze_entry" \
+			or not MazeRoads.is_walkable(point) or point.distance_to(site.position) > DigCatalog.INTERACT_RADIUS:
+		return {"success": false, "reason": "invalid_site_or_location"}
+	if not dig_reward_state_valid():
+		return {"success": false, "reason": "invalid_reward_state"}
+	var quantity := int(_state[INVENTORY_KEY].get(DigCatalog.ITEM_ID, 0))
+	if quantity > 9007199254740991 - DigCatalog.REWARD:
+		return {"success": false, "reason": "invalid_reward_state"}
+	if is_dig_site_claimed(id):
+		return {"success": false, "reason": "already_claimed"}
+	var previous := _state.duplicate(true)
+	var claims: Array = _state.get(CLAIMED_DIG_SITES_KEY, []).duplicate()
+	claims.append(id)
+	_state[INVENTORY_KEY][DigCatalog.ITEM_ID] = quantity + DigCatalog.REWARD
+	_state[CLAIMED_DIG_SITES_KEY] = claims
+	var location := maze_exploration_state()
+	location.position = [point.x, point.y]
+	_state[MAZE_STATE_KEY] = location
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed"}
+	return {"success": true, "amount": DigCatalog.REWARD, "total": quantity + DigCatalog.REWARD}
+
+## 金币使用 JSON 可精确往返的非负整数。异常字段保留原值，禁止继续发奖。
+func chest_reward_state_valid() -> bool:
+	var amount = _state.get(GOLD_KEY, 0)
+	if typeof(amount) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(amount)) \
+			or amount < 0 or amount > 9007199254740991 or amount != floor(float(amount)):
+		_diagnose("金币字段无效，保留原值并暂停宝箱领取")
+		return false
+	var claims = _state.get(CLAIMED_CHESTS_KEY, [])
+	if not claims is Array:
+		_diagnose("宝箱领取记录无效，保留原值并暂停领取")
+		return false
+	for id in claims:
+		if not id is String or id.is_empty():
+			_diagnose("宝箱领取 ID 无效，保留原记录并暂停领取")
+			return false
+	return true
+
+func gold_balance() -> int:
+	return int(_state.get(GOLD_KEY, 0)) if chest_reward_state_valid() else 0
+
+## 首单或宝箱凭证保留显示资格，余额归零不收起；旧档只读兼容，不补发或修复坏数据。
+func is_gold_display_unlocked() -> bool:
+	if not chest_reward_state_valid():
+		return false
+	return has_first_order_settlement() or int(_state.get(GOLD_KEY, 0)) > 0 or not _state.get(CLAIMED_CHESTS_KEY, []).is_empty()
+
+func is_chest_claimed(id: String) -> bool:
+	var claims = _state.get(CLAIMED_CHESTS_KEY, [])
+	return claims is Array and id in claims
+
+## 探索物件事务；不是游戏任务，不产生声望、任务或其他奖励。
+func claim_exploration_chest(id: String, point: Vector2) -> Dictionary:
+	var chest := ChestCatalog.find(id)
+	if chest.is_empty() or not can_enter_maze() or maze_exploration_state().region != chest.get("region","maze_entry") \
+			or not maze_terrain(maze_exploration_state().region).is_walkable(point) or point.distance_to(chest.position) > ChestCatalog.INTERACT_RADIUS:
+		return {"success": false, "reason": "invalid_chest_or_location"}
+	if chest.get("region","maze_entry")!="maze_entry":
+		var run_api=preload("res://scripts/maze/capture_run.gd")
+		var run: Dictionary=run_api.snapshot(self)
+		if not run_api.valid(run) or not run.get("active",false) or run.combat.hp<=0 or not run.pending.is_empty() or run_api.portal_combat_locked(self): return {"success":false,"reason":"in_combat"}
+	if not chest_reward_state_valid() or gold_balance() > 9007199254740991 - ChestCatalog.REWARD:
+		return {"success": false, "reason": "invalid_reward_state"}
+	if is_chest_claimed(id):
+		return {"success": false, "reason": "already_claimed"}
+	var previous := _state.duplicate(true)
+	var claims: Array = _state.get(CLAIMED_CHESTS_KEY, []).duplicate()
+	claims.append(id)
+	_state[GOLD_KEY] = gold_balance() + ChestCatalog.REWARD
+	_state[CLAIMED_CHESTS_KEY] = claims
+	var location := maze_exploration_state()
+	location.position = [point.x, point.y]
+	_state[MAZE_STATE_KEY] = location
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed"}
+	return {"success": true, "amount": ChestCatalog.REWARD, "total": gold_balance()}
+
+func yufeng_salia_record() -> Dictionary:
+	var raw: Variant = _state.get(YUFENG_SALIA_KEY, "unseen")
+	if raw is String:
+		return {"version":2,"phase":"intro" if raw in ["intro_pending","awaiting_battle"] else "unseen","line":0}
+	if _valid_yufeng_salia_record(raw):
+		return raw.duplicate(true)
+	_diagnose("御风与萨莉亚记录无效，回退未触发")
+	return {"version":2,"phase":"unseen","line":0}
+
+func yufeng_salia_state() -> String:
+	return yufeng_salia_record().phase
+
+func _valid_yufeng_salia_record(record: Variant) -> bool:
+	if not record is Dictionary or record.get("version")!=2: return false
+	var limits := {"unseen":0,"intro":7,"eat":0,"question":0,"battle":0,"post":2,"gift_pending":0,"gift_reward":0,"bento_unlock":0,"bento_fly":0,"farewell":1,"fade":0,"done":0}
+	if not limits.has(record.get("phase")): return false
+	var line: Variant=record.get("line")
+	if typeof(line) not in [TYPE_INT,TYPE_FLOAT] or not is_finite(float(line)) or line<0 or line>limits[record.phase] or floor(line)!=line: return false
+	if record.phase=="battle":
+		var run: Variant=record.get("start_run")
+		if not run is Dictionary or not load("res://scripts/maze/capture_run.gd").valid(run): return false
+		var point: Variant=record.get("start_position")
+		if not point is Array or point.size()!=2: return false
+		for value in point:
+			if typeof(value) not in [TYPE_INT,TYPE_FLOAT] or not is_finite(float(value)): return false
+		if not maze_terrain("fenshui").is_walkable(Vector2(point[0],point[1])): return false
+	return true
+
+func set_yufeng_salia_record(record: Dictionary) -> Dictionary:
+	if not _valid_yufeng_salia_record(record): return {"success":false,"reason":"invalid_state"}
+	var previous := _state.duplicate(true)
+	_state[YUFENG_SALIA_KEY]=record.duplicate(true)
+	if save(): return {"success":true}
+	_state=previous
+	return {"success":false,"reason":"save_failed"}
+
+func set_yufeng_salia_state(next: String) -> Dictionary:
+	var mapped: String={"intro_pending":"intro","awaiting_battle":"intro"}.get(next,next)
+	return set_yufeng_salia_record({"version":2,"phase":mapped,"line":0})
+
+func _empty_maze_state() -> Dictionary:
+	return {"version": 1, "region": "restaurant", "position": [MazeRoads.SPAWN.x, MazeRoads.SPAWN.y], "chapter_2_started": false}
+
+func can_enter_maze() -> bool:
+	return is_chapter_1_complete() and chapter_1_outro_state() == "done" and not _replaying
+
+## 纯读迁移；老档不假定到过迷宫，坏坐标只恢复石门安全站位。
+func maze_exploration_state() -> Dictionary:
+	var saved = _state.get(MAZE_STATE_KEY, _empty_maze_state())
+	if not saved is Dictionary or saved.get("version") != 1 \
+			or saved.get("region") not in ["restaurant", "maze_entry", "fenshui", "salt_pool", "moss_pool", "waterkeeper_cottage"] \
+			or not saved.get("chapter_2_started") is bool:
+		_diagnose("迷宫探索记录无效，回退餐厅")
+		return _empty_maze_state()
+	if not can_enter_maze():
+		return _empty_maze_state()
+	var result: Dictionary = saved.duplicate(true)
+	if result.region != "restaurant" and not result.chapter_2_started:
+		_diagnose("迷宫区域缺少第二章开始记录，回退餐厅")
+		return _empty_maze_state()
+	var coordinates = result.get("position")
+	var valid: bool = coordinates is Array and coordinates.size() == 2
+	if valid:
+		valid = typeof(coordinates[0]) in [TYPE_INT, TYPE_FLOAT] and typeof(coordinates[1]) in [TYPE_INT, TYPE_FLOAT]
+	if valid:
+		valid = maze_terrain(result.region).is_walkable(Vector2(coordinates[0], coordinates[1]))
+		if not valid and result.region=="salt_pool":
+			var launch_run: Dictionary=_state.get("capture_run_v1",{})
+			var launch_combat: Dictionary=launch_run.get("combat",{})
+			valid=launch_combat.get("region","")=="salt_pool" and launch_combat.get("hero",[])==coordinates and preload("res://scripts/maze/rock_charge_terrain.gd").allowed(Vector2(coordinates[0],coordinates[1]))
+	if not valid:
+		_diagnose("迷宫站位无效，恢复当前区域入口安全点")
+		var spawn: Vector2 = maze_terrain(result.region).SPAWN
+		result.position = [spawn.x, spawn.y]
+	return result
+
+func resume_scene_path() -> String:
+	if maze_exploration_state().region == "waterkeeper_cottage": return "res://scenes/maze_waterkeeper_cottage.tscn"
+	if maze_exploration_state().region == "moss_pool": return "res://scenes/maze_moss_pool.tscn"
+	if maze_exploration_state().region == "salt_pool": return "res://scenes/maze_salt_pool.tscn"
+	if maze_exploration_state().region == "fenshui": return "res://scenes/maze_fenshui.tscn"
+	return MAZE_SCENE if maze_exploration_state().region == "maze_entry" else RESTAURANT_SCENE
+
+func maze_terrain(region: String):
+	if region == "waterkeeper_cottage": return preload("res://data/maze/waterkeeper_cottage_roads.gd")
+	if region == "moss_pool": return preload("res://data/maze/moss_pool_roads.gd")
+	if region == "salt_pool": return preload("res://data/maze/salt_pool_roads.gd")
+	return preload("res://data/maze/fenshui_roads.gd") if region == "fenshui" else MazeRoads
+
+## 由成功就绪的迷宫场景提交；保存失败同时回滚区域与开始标记。
+func record_maze_location(region: String, point: Vector2) -> Dictionary:
+	var allowed: bool=maze_terrain(region).is_walkable(point)
+	if not allowed and region=="salt_pool":
+		var launch_run: Dictionary=_state.get("capture_run_v1",{})
+		var launch_combat: Dictionary=launch_run.get("combat",{})
+		var hero: Array=launch_combat.get("hero",[])
+		allowed=launch_run.get("active",false) and launch_combat.get("region","")==region and hero.size()==2 and preload("res://scripts/maze/rock_charge_terrain.gd").allowed(point) and (float(launch_combat.get("rock_launch_left",0.0))>0.0 or not maze_terrain(region).is_walkable(Vector2(hero[0],hero[1])))
+	if not can_enter_maze() or region not in ["restaurant", "maze_entry", "fenshui", "salt_pool", "moss_pool", "waterkeeper_cottage"] or not allowed:
+		return {"success": false, "reason": "invalid_location", "created": false}
+	var state := maze_exploration_state()
+	var created: bool = region == "maze_entry" and not state.chapter_2_started
+	var next := {"version": 1, "region": region, "position": [point.x, point.y], "chapter_2_started": state.chapter_2_started or region != "restaurant"}
+	var charge := region == "maze_entry" and _maze_entry_pending
+	if _state.get(MAZE_STATE_KEY) == next and not charge:
+		return {"success": true, "reason": "unchanged", "created": false}
+	var previous := _state.duplicate(true)
+	if charge:
+		var energy := stamina_snapshot()
+		if int(energy.value) < STAMINA_COST:
+			return {"success": false, "reason": "insufficient_stamina", "created": false}
+		energy.value -= STAMINA_COST
+		_state["stamina"] = energy
+		_state[TEAM_MEMORY_KEY] = _maze_entry_party.duplicate()
+	_state[MAZE_STATE_KEY] = next
+	if region == "maze_entry" and state.region == "restaurant" and (not restaurant_customer_order("restaurant_1").is_empty() or _state.get("restaurant_order_receipts", {}).has("restaurant_1")):
+		_state["customer_05_trip_started"] = true
+	if region == "restaurant" and state.region == "maze_entry" and _state.get("customer_05_trip_started", false):
+		_state["customer_05_returned"] = true
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed", "created": false}
+	if charge:
+		cancel_maze_entry()
+	return {"success": true, "reason": "saved", "created": created}
+
+func _empty_order() -> Dictionary:
+	return {
+		"id": "",
+		"item_id": "",
+		"item_name": "",
+		"quantity": 0,
+		"status": ORDER_STATUS_NONE,
+	}
+
+func _empty_tutorial_checkpoint() -> Dictionary:
+	return {"chapter": 1, "next_index": 0, "step_key": "", "line_index": 0}
+
+func _normalize_tutorial_checkpoint(value) -> Dictionary:
+	var checkpoint := _empty_tutorial_checkpoint()
+	if not value is Dictionary:
+		_diagnose("tutorial_checkpoint 类型错误，回退教程起点")
+		return checkpoint
+	var chapter = value.get("chapter", 1)
+	var next_index = value.get("next_index", 0)
+	var step_key = value.get("step_key", "")
+	var line_index = value.get("line_index", 0)
+	if typeof(chapter) not in [TYPE_INT, TYPE_FLOAT] or chapter != 1:
+		_diagnose("tutorial_checkpoint.chapter 无效，回退教程起点")
+		return checkpoint
+	if typeof(next_index) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(next_index)) or next_index < 0 or next_index > 2147483647 or next_index != floor(float(next_index)):
+		_diagnose("tutorial_checkpoint.next_index 无效，回退教程起点")
+		return checkpoint
+	if not step_key is String:
+		_diagnose("tutorial_checkpoint.step_key 类型错误，回退教程起点")
+		return checkpoint
+	if typeof(line_index) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(line_index)) or line_index < 0 or line_index > 2147483647 or line_index != floor(float(line_index)):
+		_diagnose("tutorial_checkpoint.line_index 无效，回退教程起点")
+		return checkpoint
+	checkpoint.next_index = int(next_index)
+	checkpoint.step_key = step_key
+	checkpoint.line_index = int(line_index)
+	return checkpoint
+
+func tutorial_checkpoint() -> Dictionary:
+	return _normalize_tutorial_checkpoint(_state.get(TUTORIAL_CHECKPOINT_KEY)).duplicate(true)
+
+## 对白或教程操作确认后提交下一步；重播只更新副本，不碰正式存档。
+func save_tutorial_checkpoint(next_index: int, step_key: String, line_index := 0) -> bool:
+	if _replaying:
+		return true
+	if next_index < 0 or line_index < 0 or (step_key.is_empty() and next_index > 0):
+		return false
+	var previous := _state.duplicate(true)
+	_state[TUTORIAL_CHECKPOINT_KEY] = {"chapter": 1, "next_index": next_index, "step_key": step_key, "line_index": line_index}
+	if save():
+		return true
+	_state = previous
+	return false
+
+func _empty_departure() -> Dictionary:
+	return {"step": "relief", "empty_warehouse_checked": false, "tieshan_name_revealed": false,
+		"map": {"unlocked_floors": [], "visible_regions": [], "other_regions": "fog"},
+		"party": [], "objective": "", "entrance_lit": false,
+		"cards": _pending_cards()}
+
+func _pending_cards() -> Dictionary:
+	# 保留 CH1-09 的精确 pending schema；正式解锁后才扩展为完整卡组 schema。
+	return {"status": "pending_content", "unlocked": false, "card_ids": []}
+
+func _unlocked_cards() -> Dictionary:
+	return {"status": "unlocked", "unlocked": true, "card_ids": CH1_CARD_IDS.duplicate(),
+		"deck_ids": CH1_CARD_IDS.duplicate(),
+		"characters": {"yaya": {"attack": 2, "max_hp": 4}, "tieshan": {"attack": 1, "max_hp": 5}}}
+
+func departure_state() -> Dictionary:
+	var saved = _state.get(WRAPUP_KEY)
+	var problem := _departure_problem(saved)
+	if not problem.is_empty():
+		_diagnose("准备状态回退 relief：" + problem)
+		return _empty_departure()
+	var state: Dictionary = saved.duplicate(true)
+	state.step = RETIRED_WRAPUP_STEPS.get(state.step, state.step)
+	if not state.map.unlocked_floors.is_empty():
+		state.map.unlocked_floors = [1]
+	return state
+
+func _diagnose(message: String) -> void:
+	if not migration_diagnostics.has(message):
+		migration_diagnostics.append(message)
+		print("SaveManager: ", message)
+
+## 检查点只接受与已执行步骤一致的结构，缺字段不能由默认值拼成完成态。
+func _departure_problem(value) -> String:
+	if not value is Dictionary:
+		return "departure 必须是字典"
+	for key in _empty_departure():
+		if not value.has(key):
+			return "departure 缺少 " + key
+	if not value.step is String or not value.step in WRAPUP_STEPS:
+		return "departure.step 无效"
+	var index: int = WRAPUP_STEPS.find(value.step)
+	for key in ["empty_warehouse_checked", "tieshan_name_revealed", "entrance_lit"]:
+		if not value[key] is bool:
+			return key + " 必须是布尔值"
+	if not value.map is Dictionary:
+		return "map 必须是字典"
+	var map: Dictionary = value.map
+	if not map.get("unlocked_floors") is Array or not map.get("visible_regions") is Array or not map.get("other_regions") is String or map.other_regions != "fog":
+		return "map 楼层、区域或迷雾无效"
+	var unlocked := index > WRAPUP_STEPS.find("salt_pool")
+	if unlocked:
+		if map.unlocked_floors.size() != 1 or typeof(map.unlocked_floors[0]) not in [TYPE_INT, TYPE_FLOAT] or map.unlocked_floors[0] != 1 or map.visible_regions != ["old_salt_pool"]:
+			return "map 旧盐池解锁与步骤矛盾"
+	elif not map.unlocked_floors.is_empty() or not map.visible_regions.is_empty():
+		return "map 提前解锁"
+	if not value.party is Array or not value.objective is String or not value.cards is Dictionary:
+		return "party、objective 或 cards 类型错误"
+	if not _cards_problem(value.cards).is_empty():
+		return _cards_problem(value.cards)
+	var ready: bool = value.step in ["yaya_ready", "ready_to_depart"]
+	if value.party != (["yaya", "tieshan"] if ready else []) or value.objective != (DEPARTURE_OBJECTIVE if ready else "") or value.entrance_lit != ready:
+		return "队伍、目标、入口与步骤矛盾"
+	if value.empty_warehouse_checked != (index > WRAPUP_STEPS.find("warehouse_inspect")) or value.tieshan_name_revealed != (index > WRAPUP_STEPS.find("introduction")):
+		return "仓库或姓名检查点与步骤矛盾"
+	var finished: bool = _state.get(CHAPTER_1_DONE_KEY) is bool and _state.get(CHAPTER_1_DONE_KEY) == true and _state.get("tutorial_done") is bool and _state.get("tutorial_done") == true and value.step == "ready_to_depart" and has_first_order_settlement()
+	if index > 0 and not finished and not can_start_departure():
+		return "准备步骤缺少真实首单结算或库存未清空"
+	return ""
+
+func _cards_problem(cards) -> String:
+	if not cards is Dictionary:
+		return "cards 必须是字典"
+	if str(cards.get("status", "")) == "pending_content" and cards.get("unlocked", null) is bool and cards.unlocked == false \
+			and cards.get("card_ids", []) is Array and cards.card_ids.is_empty() and cards.size() == 3:
+		return ""
+	if str(cards.get("status", "")) == "unlocked" and cards.get("unlocked", null) is bool and cards.unlocked == true \
+			and cards.get("card_ids", []) is Array and cards.get("deck_ids", []) is Array \
+			and Array(cards.card_ids) == CH1_CARD_IDS and Array(cards.deck_ids) == CH1_CARD_IDS:
+		var chars = cards.get("characters", {})
+		var yaya = chars.get("yaya", {}) if chars is Dictionary else {}
+		var tieshan = chars.get("tieshan", {}) if chars is Dictionary else {}
+		if chars is Dictionary and chars.size() == 2 \
+				and yaya is Dictionary and tieshan is Dictionary \
+				and typeof(yaya.get("attack")) in [TYPE_INT, TYPE_FLOAT] and yaya.attack == 2 \
+				and typeof(yaya.get("max_hp")) in [TYPE_INT, TYPE_FLOAT] and yaya.max_hp == 4 \
+				and typeof(tieshan.get("attack")) in [TYPE_INT, TYPE_FLOAT] and tieshan.attack == 1 \
+				and typeof(tieshan.get("max_hp")) in [TYPE_INT, TYPE_FLOAT] and tieshan.max_hp == 5 \
+				and cards.size() == 5:
+			return ""
+	return "cards schema 无效或卡牌列表不完整"
+
+func cards_state() -> Dictionary:
+	var cards = departure_state().get("cards", _pending_cards())
+	return cards.duplicate(true)
+
+## 原图收藏的数量快照。缺字段的旧档仅兼容已收录角色的已确认首批卡牌；
+## 明确空表/零数量不会重新填满。只读，不因浏览自动解锁或写盘。
+func owned_character_card_counts() -> Dictionary:
+	if _state.has(HomeCardArt.COLLECTION_KEY):
+		var stored = _state[HomeCardArt.COLLECTION_KEY]
+		if HomeCardArt.valid_counts(stored):
+			var counts := {}
+			for id in stored: counts[id] = int(stored[id])
+			return counts
+		_diagnose("原图卡牌拥有数量无效，保留原始记录并显示空列表。")
+		return {}
+	return HomeCardArt.initial_counts(departure_state().get("party", []))
+
+func cards_unlocked() -> bool:
+	return bool(cards_state().get("unlocked", false))
+
+## 在准备同行态查看卡组时幂等解锁；不会推进 ready_to_depart 或章节完成标记。
+func unlock_ch1_cards() -> Dictionary:
+	var state := departure_state()
+	if state.step != "ready_to_depart":
+		return {"success": false, "reason": "not_ready_to_depart", "cards": state.cards}
+	if cards_unlocked():
+		return {"success": true, "created": false, "cards": cards_state()}
+	var previous := _state.duplicate(true)
+	state.cards = _unlocked_cards()
+	_state[WRAPUP_KEY] = state
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed", "cards": cards_state()}
+	return {"success": true, "created": true, "cards": cards_state()}
+
+func is_ready_to_depart() -> bool:
+	return departure_state().step == "ready_to_depart" and can_start_departure()
+
+## 收尾表现检查点与既有出发契约分离。旧已完成档不强制重播。
+func chapter_1_outro_state() -> String:
+	var saved = _state.get("chapter_1_outro", "")
+	if is_chapter_1_complete():
+		return "title" if saved == "title" else "done"
+	if not is_ready_to_depart():
+		return ""
+	return str(saved) if saved in ["party", "home", "maze"] else "party"
+
+func has_pending_chapter_1_outro() -> bool:
+	return chapter_1_outro_state() in ["party", "home", "maze", "title"]
+
+func advance_chapter_1_outro(expected: String) -> Dictionary:
+	var sequence := ["party", "home", "maze", "title", "done"]
+	var index := sequence.find(expected)
+	if index < 0 or index >= sequence.size() - 1 or chapter_1_outro_state() != expected:
+		return {"success": false, "created": false, "reason": "wrong_step"}
+	var previous := _state.duplicate(true)
+	var created := expected == "maze" and not is_chapter_1_complete()
+	_state["chapter_1_outro"] = sequence[index + 1]
+	if expected == "maze":
+		# 最后一句对白结束即完成章节；蒙层留待玩家另按E关闭。
+		_state[CHAPTER_1_DONE_KEY] = true
+		_state["tutorial_done"] = true
+	if not save():
+		_state = previous
+		return {"success": false, "created": false, "reason": "save_failed"}
+	return {"success": true, "created": created, "reason": "advanced"}
+
+## 第一章最终确认的原子提交。
+## 只接受完整的 ready_to_depart 准备态；章节标记、兼容标记和其它经营/出发字段
+## 在同一份存档中提交。重复完成返回幂等成功，不重复写盘或发放奖励。
+func complete_chapter_1() -> Dictionary:
+	if is_chapter_1_complete():
+		return {"success": true, "created": false, "reason": "already_done", "state": completion_state()}
+	if not is_ready_to_depart():
+		return {"success": false, "created": false, "reason": "not_ready_to_depart", "state": completion_state()}
+	var previous := _state.duplicate(true)
+	_state[CHAPTER_1_DONE_KEY] = true
+	_state["tutorial_done"] = true
+	if not save():
+		_state = previous
+		_diagnose("第一章完成标记保存失败，保留 ready_to_depart 准备态")
+		return {"success": false, "created": false, "reason": "save_failed", "state": completion_state()}
+	return {"success": true, "created": true, "reason": "completed", "state": completion_state()}
+
+## done 是最终生命周期阶段；出发状态本身仍保留地图、队伍、入口和卡组快照。
+func is_chapter_1_complete() -> bool:
+	# 完章后的补货与后续订单不能使章节状态倒退。
+	return is_chapter_1_done() and is_tutorial_done() and departure_state().step == "ready_to_depart"
+
+func completion_state() -> Dictionary:
+	return {"stage": lifecycle_stage(), "chapter_1_done": is_chapter_1_done(),
+		"tutorial_done": is_tutorial_done(), "departure": departure_state()}
+
+func can_start_departure() -> bool:
+	var order := current_order()
+	var progress = _state.get(FIRST_ORDER_PROGRESS_KEY)
+	var inventory = _state.get(INVENTORY_KEY)
+	if not progress is Dictionary or not inventory is Dictionary:
+		return false
+	if not progress.get("next_step") is String or progress.next_step != "chapter_wrap_up" or not progress.get("ingredients_claimed") is bool or not progress.ingredients_claimed:
+		return false
+	for key in [ROCKMAN_MEAT_ID, ROCK_SALT_ID, FIRST_ORDER_ITEM_ID]:
+		if typeof(inventory.get(key)) not in [TYPE_INT, TYPE_FLOAT] or inventory[key] != 0:
+			return false
+	if order.get("status") != ORDER_STATUS_COMPLETED:
+		return false
+	order.status = ORDER_STATUS_IN_PROGRESS
+	return is_canonical_first_order(order) and has_first_order_settlement() \
+		and typeof(_state.get(REPUTATION_KEY)) in [TYPE_INT, TYPE_FLOAT] \
+		and _state[REPUTATION_KEY] >= FIRST_ORDER_REPUTATION
+
+## 完成一个阶段7步骤时原子提交下一检查点及对应解锁；失败时完整回滚。
+func advance_departure(expected_step: String) -> Dictionary:
+	if not can_start_departure():
+		return {"success": false, "reason": "not_settled_or_not_empty"}
+	var state := departure_state()
+	var index := WRAPUP_STEPS.find(expected_step)
+	if index < 0 or index >= WRAPUP_STEPS.size() - 1 or state.step != expected_step:
+		return {"success": false, "reason": "wrong_step"}
+	var previous := _state.duplicate(true)
+	state.step = WRAPUP_STEPS[index + 1]
+	state.step = RETIRED_WRAPUP_STEPS.get(state.step, state.step)
+	match expected_step:
+		"warehouse_inspect":
+			state.empty_warehouse_checked = true
+		"salt_pool":
+			state.map = {"unlocked_floors": [1], "visible_regions": ["old_salt_pool"], "other_regions": "fog"}
+		"introduction":
+			state.tieshan_name_revealed = true
+		"agreement":
+			if _state.has(Recruitment.OWNED_KEY):
+				var collection := Recruitment.owned(self)
+				if not collection.valid: return {"success": false, "reason": "invalid_collection"}
+				for id in ["yaya", "tieshan"]:
+					if not collection.ids.has(id): collection.ids.append(id)
+				_state[Recruitment.OWNED_KEY] = collection.ids
+			state.party = ["yaya", "tieshan"]
+			state.objective = DEPARTURE_OBJECTIVE
+			state.entrance_lit = true
+			# 只在首次收录事务中记录首批卡牌；后续浏览不按素材目录补齐。
+			if not _state.has(HomeCardArt.COLLECTION_KEY):
+				_state[HomeCardArt.COLLECTION_KEY] = HomeCardArt.initial_counts(state.party)
+	_state[WRAPUP_KEY] = state
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed"}
+	return {"success": true, "state": departure_state()}
+
+func _normalize_order(value) -> Dictionary:
+	if not value is Dictionary:
+		return _empty_order()
+	# 保留所有进行中订单字段，以便拒绝冲突订单；只有 canonical 首单
+	# 才能在 accept_first_order() 中走幂等成功分支。
+	if str(value.get("status", ORDER_STATUS_NONE)) not in [ORDER_STATUS_IN_PROGRESS, ORDER_STATUS_COMPLETED]:
+		return _empty_order()
+	return value.duplicate(true)
+
+func load_data() -> void:
+	cancel_maze_entry()
+	if _replaying:
+		return
+	last_load_error = ""
+	migration_diagnostics.clear()
+	data = _defaults()
+	if FileAccess.file_exists(_active_save_path):
+		var f := FileAccess.open(_active_save_path, FileAccess.READ)
+		if f:
+			var parser := JSON.new()
+			var error := parser.parse(f.get_as_text())
+			f.close()
+			if error != OK:
+				last_load_error = "存档内容损坏：" + parser.get_error_message()
+				_diagnose("存档 JSON 损坏，回退默认状态：" + parser.get_error_message())
+				return
+			var parsed = parser.data
+			if parsed is Dictionary:
+				for key in _defaults():
+					if not parsed.has(key):
+						_diagnose("旧存档补齐默认字段：" + key + "；未补发声望。")
+				# 旧存档可能只有 tutorial_done；合并默认值而不是丢弃未知字段，
+				# 这样旧存档能继续使用，同时缺少第一章标记时会进入第一章。
+				_state = _defaults()
+				for key in parsed:
+					_state[key] = parsed[key]
+				_state[WRAPUP_KEY] = _normalize_departure_cards(_state.get(WRAPUP_KEY))
+				# 先核对原始事务结构，不能把错误库存归零后误认作已就绪。
+				_state[WRAPUP_KEY] = departure_state()
+				if not parsed.has(HomeCardArt.COLLECTION_KEY) and not departure_state().party.is_empty():
+					_state[HomeCardArt.COLLECTION_KEY] = owned_character_card_counts()
+					_diagnose("旧档原图卡牌记录补齐已确认首批数量，未写盘。")
+				_state[CURRENT_ORDER_KEY] = _normalize_order(_state.get(CURRENT_ORDER_KEY))
+				var original_inventory = _state.get(INVENTORY_KEY)
+				_state[INVENTORY_KEY] = _normalize_inventory(original_inventory)
+				# 木材异常原值不可被读取迁移吞掉，否则会重新获得采集/交付资格。
+				if original_inventory is Dictionary and original_inventory.has("wood"):
+					_state[INVENTORY_KEY]["wood"] = original_inventory.wood
+				elif not original_inventory is Dictionary:
+					_state[INVENTORY_KEY] = original_inventory
+				_state[FIRST_ORDER_PROGRESS_KEY] = _normalize_progress(_state.get(FIRST_ORDER_PROGRESS_KEY))
+				if not parsed.has("warehouse_stock"):
+					# 必须移除合并时的默认库存，才能依据原有领取记录迁移。
+					_state.erase("warehouse_stock")
+					_state["warehouse_stock"] = warehouse_snapshot()
+				_state[PREPARED_DISHES_KEY] = prepared_dishes_snapshot()
+				_state[COOKING_STATE_KEY] = _normalize_cooking_state(_state.get(COOKING_STATE_KEY))
+				# 仅旧档缺字段时从有效首单历史补解锁；不改变库存或奖励。
+				if not parsed.has(UNLOCKED_RECIPES_KEY) and _has_first_recipe_history():
+					_state[UNLOCKED_RECIPES_KEY] = [FIRST_ORDER_ITEM_ID]
+				_state[UNLOCKED_RECIPES_KEY] = unlocked_recipe_ids()
+				if _state[COOKING_STATE_KEY].status == "active":
+					# 读取迁移不写盘；重复读取同一 active 档只恢复这一份料理。
+					if _can_recover_cooking():
+						_state[COOKING_STATE_KEY].status = "idle" if is_chapter_1_done() else "locked"
+						_state[COOKING_STATE_KEY].quality = 1
+						_state[COOKING_STATE_KEY].pointer = 0.0
+						var recovered_id := str(_state[COOKING_STATE_KEY].recipe_id)
+						_state[INVENTORY_KEY][recovered_id] = int(_state[INVENTORY_KEY].get(recovered_id, 0)) + 1
+						_state[PREPARED_DISHES_KEY][recovered_id]["1"] += 1
+						if not is_chapter_1_done() and not _has_followup_order():
+							_state[FIRST_ORDER_PROGRESS_KEY]["next_step"] = "deliver"
+						_diagnose("烹饪中断，按 1 星结果恢复")
+					else:
+						_diagnose("active 烹饪与订单、配方或库存矛盾，未增加成品")
+				for key in ["tutorial_done", CHAPTER_1_DONE_KEY]:
+					if not _state[key] is bool:
+						_diagnose(key + " 类型错误，回退 false")
+						_state[key] = false
+				if not _state.chapter_1_intro is String or _state.chapter_1_intro not in ["not_started", "awakened", "guest_arrived"]:
+					_diagnose("chapter_1_intro 无效，回退 not_started")
+					_state.chapter_1_intro = "not_started"
+				if not _prologue_preview:
+					_migrate_prologue(parsed)
+				_state[TUTORIAL_CHECKPOINT_KEY] = _normalize_tutorial_checkpoint(_state.get(TUTORIAL_CHECKPOINT_KEY))
+				if _elder_record_problem().is_empty():
+					_state[QUEST_JOURNAL_KEY] = _quest_journal()
+				else:
+					_diagnose("白虎爷爷记录异常，保留原始值并停止交付：" + _elder_record_problem())
+				_state[MAZE_STATE_KEY] = maze_exploration_state()
+				_migrate_elder_ingredients()
+				return
+			last_load_error = "存档内容无效，顶层必须是字典"
+			_diagnose("存档顶层必须是字典，回退默认状态")
+		else:
+			last_load_error = "存档读取失败：" + str(FileAccess.get_open_error())
+			_diagnose("存档读取失败，回退默认状态：" + str(FileAccess.get_open_error()))
+	else:
+		last_load_error = "存档不存在或无法访问"
+	_state = _defaults()
+
+## 列表只读；坏档保留为可选条目，载入时报告错误，不当成新游戏。
+func list_save_slots() -> Dictionary:
+	var paths: Array[String] = []
+	if FileAccess.file_exists(SAVE_PATH):
+		paths.append(SAVE_PATH)
+	if FileAccess.file_exists(SLOTS_DIR):
+		return {"success": false, "message": "存档目录被同名文件占用，无法读取存档列表。", "slots": []}
+	if DirAccess.dir_exists_absolute(SLOTS_DIR):
+		var directory := DirAccess.open(SLOTS_DIR)
+		if directory == null:
+			return {"success": false, "message": "无法读取存档目录，请检查访问权限。", "slots": []}
+		for filename in directory.get_files():
+			if filename.ends_with(".json"):
+				paths.append(SLOTS_DIR.path_join(filename))
+	var slots: Array[Dictionary] = []
+	paths.sort()
+	for path in paths:
+		var label := ""
+		var modified := FileAccess.get_modified_time(path)
+		var problem := ""
+		var file := FileAccess.open(path, FileAccess.READ)
+		if file == null:
+			problem = "读取失败"
+		else:
+			var parser := JSON.new()
+			var error := parser.parse(file.get_as_text())
+			file.close()
+			if error != OK or not parser.data is Dictionary:
+				problem = "内容损坏"
+			else:
+				var metadata = parser.data.get(SLOT_META_KEY, {})
+				if metadata is Dictionary and metadata.get("name") is String:
+					label = metadata.name
+					if not metadata.get("custom_name", false) and _is_legacy_slot_name(label, str(metadata.get("id", ""))):
+						label = ""
+		slots.append({"id": path, "name": label, "saved_at": modified,
+			"time_text": save_date_text(modified), "problem": problem})
+	# 先按固定路径分配旧档显示名，再按保存时间排序；读取不修改任何旧档。
+	var used_names: Array[String] = []
+	for slot in slots:
+		if not slot.name.is_empty():
+			used_names.append(slot.name)
+	var number := 1
+	for slot in slots:
+		if slot.name.is_empty():
+			while used_names.has("冒险%d" % number):
+				number += 1
+			slot.name = "冒险%d" % number
+			used_names.append(slot.name)
+	slots.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.saved_at > b.saved_at)
+	return {"success": true, "message": "", "slots": slots}
+
+func save_date_text(timestamp: int) -> String:
+	# 存档时间固定北京时间，显示到秒，不跟随运行机器的时区。
+	return Time.get_datetime_string_from_unix_time(timestamp + 8 * 3600).replace("T", " ")
+
+func _is_legacy_slot_name(label: String, id: String) -> bool:
+	if id.is_empty() or not label.ends_with(" · " + id.right(4).to_upper()):
+		return false
+	var pattern := RegEx.new()
+	pattern.compile("^新冒险 [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} · [0-9A-F]{4}$")
+	return pattern.search(label) != null
+
+func active_save_path() -> String:
+	return _active_save_path
+
+func _valid_slot_path(path: String) -> bool:
+	return path == SAVE_PATH or (path.get_base_dir() == SLOTS_DIR and path.ends_with(".json") and not path.contains("..") and not path.contains("\\"))
+
+## 名称仅写入元数据，不改文件路径，不迁移或重写经营进度。
+func rename_save_slot(path: String, requested_name: String) -> Dictionary:
+	if _replaying or _prologue_preview or not _valid_slot_path(path):
+		return {"success": false, "message": "当前不能管理此存档。"}
+	var label := requested_name.strip_edges()
+	if label.is_empty() or label.length() > 40 or label.contains("\n") or label.contains("\r") or label.contains("\t"):
+		return {"success": false, "message": "名称须为 1–40 个字符，不能包含换行或制表符。"}
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return {"success": false, "message": "存档读取失败，未更改名称。"}
+	var parser := JSON.new()
+	var error := parser.parse(file.get_as_text())
+	file.close()
+	if error != OK or not parser.data is Dictionary:
+		return {"success": false, "message": "存档内容损坏，无法重命名；原文件已保留。"}
+	var snapshot: Dictionary = parser.data
+	var metadata = snapshot.get(SLOT_META_KEY, {})
+	metadata = metadata.duplicate(true) if metadata is Dictionary else {}
+	if metadata.get("name") == label:
+		return {"success": true, "changed": false}
+	metadata["name"] = label
+	metadata["custom_name"] = true
+	snapshot[SLOT_META_KEY] = metadata
+	if not _write_atomic(path, snapshot):
+		return {"success": false, "message": "重命名保存失败，原存档和进度已保留。"}
+	if path == _active_save_path:
+		data[SLOT_META_KEY] = metadata.duplicate(true)
+	return {"success": true, "changed": true}
+
+## 删除成功才解除活动档绑定，避免后续自动保存复活已删除的文件。
+## 不选择其他档案；重复删除返回失败但保持状态不变。
+func delete_save_slot(path: String) -> Dictionary:
+	if _replaying or _prologue_preview or not _valid_slot_path(path):
+		return {"success": false, "message": "当前不能管理此存档。"}
+	if not FileAccess.file_exists(path):
+		return {"success": false, "message": "存档不存在或无法访问，请刷新列表。"}
+	if DirAccess.remove_absolute(path) != OK:
+		return {"success": false, "message": "删除失败，原存档和进度已保留，请检查访问权限。"}
+	if path == _active_save_path:
+		_active_save_path = ""
+		data = _defaults()
+		migration_diagnostics.clear()
+		last_load_error = ""
+	return {"success": true}
+
+## 首次落盘成功才切换活动档；一份文件即一份档案，不依赖可失配的索引。
+func create_new_game() -> Dictionary:
+	if _replaying or _prologue_preview:
+		return {"success": false, "message": "重播期间不能创建正式存档。"}
+	if DirAccess.make_dir_recursive_absolute(SLOTS_DIR) != OK:
+		return {"success": false, "message": "无法创建存档目录，请检查磁盘和访问权限。"}
+	var id := str(Time.get_unix_time_from_system()).replace(".", "-") + "-" + Crypto.new().generate_random_bytes(8).hex_encode()
+	var path := SLOTS_DIR.path_join(id + ".json")
+	if FileAccess.file_exists(path):
+		return {"success": false, "message": "存档名称冲突，请重试。"}
+	var fresh := _defaults()
+	var existing := list_save_slots()
+	if not existing.success:
+		return {"success": false, "message": existing.message}
+	var names: Array[String] = []
+	for slot in existing.slots:
+		names.append(slot.name)
+	var number := 1
+	while names.has("冒险%d" % number):
+		number += 1
+	fresh[SLOT_META_KEY] = {"name": "冒险%d" % number, "id": id}
+	if not _write_atomic(path, fresh):
+		return {"success": false, "message": "新存档保存失败，原有进度已保留，请检查磁盘和访问权限。"}
+	data = fresh
+	_active_save_path = path
+	migration_diagnostics.clear()
+	last_load_error = ""
+	return {"success": true, "id": path}
+
+## 载入失败恢复内存、活动路径及迁移诊断；不会覆盖坏档或静默开新局。
+func load_save_slot(path: String) -> Dictionary:
+	if _replaying or _prologue_preview:
+		return {"success": false, "message": "重播期间不能切换正式存档。"}
+	if not _valid_slot_path(path):
+		return {"success": false, "message": "存档路径无效。"}
+	var previous := data.duplicate(true)
+	var previous_path := _active_save_path
+	var previous_diagnostics := migration_diagnostics.duplicate()
+	_active_save_path = path
+	load_data()
+	if not last_load_error.is_empty():
+		data = previous
+		_active_save_path = previous_path
+		migration_diagnostics = previous_diagnostics
+		return {"success": false, "message": last_load_error + "。原有进度已保留，请选择其他存档。"}
+	return {"success": true, "id": path}
+
+func _normalize_departure_cards(value):
+	## 旧档只在 departure 是字典且缺少 cards 字段时补齐 pending；
+	## 非法 cards 原样保留，交由 departure_state 诊断并回退，避免静默吞错。
+	if not value is Dictionary:
+		return value
+	var result: Dictionary = value.duplicate(true)
+	if not result.has("cards"):
+		result["cards"] = _pending_cards()
+		return result
+	var cards = result.get("cards")
+	if cards is Dictionary and cards == _pending_cards():
+		result["cards"] = _pending_cards()
+	elif cards is Dictionary and cards == _unlocked_cards():
+		result["cards"] = _unlocked_cards()
+	# 其他类型/字段组合保持原值，让 _departure_problem 给出诊断。
+	return result
+
+func begin_replay() -> void:
+	_replay_data = _defaults()
+	_replaying = true
+
+func end_replay() -> void:
+	if _prologue_preview:
+		return
+	_replaying = false
+	_replay_data = {}
+
+## 只在旧档缺字段或字段损坏时从稳定第一章状态推断；保留全部经营状态。
+## 与既有迁移一致：读取不落盘，下一次正常原子保存时持久化补齐字段。
+func _migrate_prologue(parsed: Dictionary) -> void:
+	if parsed.get(PROLOGUE_DONE_KEY) is bool:
+		return
+	_state[PROLOGUE_DONE_KEY] = is_chapter_1_done() or lifecycle_stage() != "not_started"
+	_diagnose("序章标记迁移：" + str(_state[PROLOGUE_DONE_KEY]) + "；第一章与经营进度保持不变")
+
+func is_prologue_done() -> bool:
+	return _state.get(PROLOGUE_DONE_KEY, false) == true
+
+func is_prologue_preview() -> bool:
+	return _prologue_preview
+
+## 仅在餐厅成功入树后调用。原子保存失败时回滚，不伪造观看/章节完成。
+func complete_prologue() -> bool:
+	if is_prologue_done():
+		return true
+	var previous := _state.duplicate(true)
+	_state[PROLOGUE_DONE_KEY] = true
+	if save():
+		return true
+	_state = previous
+	_diagnose("序章完成标记保存失败，保留上次存档；本次仍可进入第一章")
+	return false
+
+func record_intro(stage: String) -> bool:
+	if stage not in ["awakened", "guest_arrived"]:
+		return false
+	var previous: String = _state.get("chapter_1_intro", "not_started")
+	if previous == "guest_arrived" or previous == stage:
+		return true
+	_state.chapter_1_intro = stage
+	if save():
+		return true
+	_state.chapter_1_intro = previous
+	return false
+
+## 经营阶段从事务结果派生，不另存一个可能与库存矛盾的阶段标记。
+func lifecycle_stage() -> String:
+	if is_chapter_1_complete():
+		return "done"
+	if is_ready_to_depart():
+		return "ready_to_depart"
+	if can_start_departure():
+		return "order_served"
+	var progress := first_order_progress()
+	if is_canonical_first_order(current_order()):
+		if progress.next_step == "deliver" and progress.ingredients_claimed and inventory_quantity(FIRST_ORDER_ITEM_ID) >= 1:
+			return "dish_ready"
+		if progress.next_step == "cook" and progress.ingredients_claimed and inventory_quantity(ROCKMAN_MEAT_ID) >= 1 and inventory_quantity(ROCK_SALT_ID) >= 1:
+			return "ingredients_collected"
+		if _can_recover_cooking():
+			# 中断恢复写盘失败时仍可回到料理台重试，不能再次扣料或刷星。
+			return "ingredients_collected"
+		if progress.next_step == "prepare_ingredients" and not progress.ingredients_claimed:
+			return "order_accepted"
+		_diagnose("首单进度与库存矛盾，保留经营数据并回退接单引导")
+		return "guest_arrived"
+	return str(_state.get("chapter_1_intro", "not_started"))
+
+func _normalize_inventory(value) -> Dictionary:
+	var inventory := {ROCKMAN_MEAT_ID: 0, ROCK_SALT_ID: 0, FIRST_ORDER_ITEM_ID: 0, "wood": 0}
+	if not value is Dictionary:
+		_diagnose("inventory 类型错误，使用空库存视图")
+		return inventory
+	inventory = value.duplicate(true)
+	var wood = value.get("wood", 0)
+	inventory["wood"] = int(wood) if _elder_wood_valid(wood) else 0
+	for key in [ROCKMAN_MEAT_ID, ROCK_SALT_ID, FIRST_ORDER_ITEM_ID]:
+		if typeof(value.get(key, 0)) not in [TYPE_INT, TYPE_FLOAT]:
+			_diagnose("inventory." + key + " 数量类型错误，使用 0")
+			inventory[key] = 0
+			continue
+		var quantity := int(value.get(key, 0))
+		inventory[key] = maxi(0, quantity)
+	return inventory
+
+func _normalize_prepared_dishes(value) -> Dictionary:
+	var dishes := {FIRST_ORDER_ITEM_ID: {"1": 0, "2": 0, "3": 0}}
+	if not value is Dictionary:
+		_diagnose("prepared_dishes 类型错误，按无星库存回退")
+		return dishes
+	dishes = value.duplicate(true)
+	var raw = value.get(FIRST_ORDER_ITEM_ID, {})
+	dishes[FIRST_ORDER_ITEM_ID] = raw.duplicate(true) if raw is Dictionary else {}
+	if raw is Dictionary:
+		for quality in ["1", "2", "3"]:
+			var quantity = raw.get(quality, 0)
+			if _valid_count(quantity):
+				dishes[FIRST_ORDER_ITEM_ID][quality] = int(quantity)
+			else:
+				dishes[FIRST_ORDER_ITEM_ID][quality] = 0
+				_diagnose("prepared_dishes 星级数量无效，回退 0：" + quality)
+	else:
+		dishes[FIRST_ORDER_ITEM_ID] = {"1": 0, "2": 0, "3": 0}
+		_diagnose("prepared_dishes 成品缺少有效星级，按无星库存迁移")
+	# 旧档只有无星成品数量时，按兼容契约迁移为 1 星。
+	var legacy := int(dishes[FIRST_ORDER_ITEM_ID].get("1", 0))
+	if _valid_count(value.get(FIRST_ORDER_ITEM_ID, null)):
+		legacy += maxi(0, int(value.get(FIRST_ORDER_ITEM_ID, 0)))
+		dishes[FIRST_ORDER_ITEM_ID]["1"] = legacy
+	return dishes
+
+func prepared_dishes_snapshot() -> Dictionary:
+	var prepared := _normalize_prepared_dishes(_state.get(PREPARED_DISHES_KEY))
+	var counts: Dictionary = prepared[FIRST_ORDER_ITEM_ID]
+	var total := inventory_quantity(FIRST_ORDER_ITEM_ID)
+	var graded := int(counts["1"]) + int(counts["2"]) + int(counts["3"])
+	if total != graded:
+		_diagnose("成品总数与星级数不一致，缺失星级按 1 星恢复；超额星级回退")
+		if graded < total:
+			counts["1"] += total - graded
+		else:
+			counts["1"] = total
+			counts["2"] = 0
+			counts["3"] = 0
+	for recipe_id in RecipeCatalog.recipe_ids():
+		if recipe_id == FIRST_ORDER_ITEM_ID: continue
+		var raw = prepared.get(recipe_id, {})
+		var normalized := {"1": 0, "2": 0, "3": 0}
+		if raw is Dictionary:
+			for star in normalized:
+				if _valid_count(raw.get(star, 0)): normalized[star] = int(raw.get(star, 0))
+		var count := inventory_quantity(recipe_id)
+		if normalized["1"] + normalized["2"] + normalized["3"] != count:
+			normalized = {"1": count, "2": 0, "3": 0}
+		prepared[recipe_id] = normalized
+	return prepared
+
+func _valid_count(value) -> bool:
+	return typeof(value) in [TYPE_INT, TYPE_FLOAT] and is_finite(float(value)) and value >= 0 and value == floor(float(value))
+
+func _normalize_cooking_state(value) -> Dictionary:
+	var state := {"status": "idle", "recipe_id": "", "quality": 0, "pointer": 0.0}
+	if not value is Dictionary:
+		_diagnose("first_order_cooking 类型错误，回退 idle")
+		return state
+	state = value.duplicate(true)
+	var status = value.get("status", "idle")
+	state.status = status if status is String and status in ["idle", "active", "locked"] else "idle"
+	if not status is String or status not in ["idle", "active", "locked"]:
+		_diagnose("first_order_cooking.status 无效，回退 idle")
+	var recipe = value.get("recipe_id", "")
+	state.recipe_id = recipe if recipe is String and (recipe == "" or RecipeCatalog.RECIPES.has(recipe)) else ""
+	if not recipe is String or (recipe != "" and not RecipeCatalog.RECIPES.has(recipe)):
+		_diagnose("first_order_cooking.recipe_id 无效，回退空配方")
+	var quality = value.get("quality", 0)
+	state.quality = int(quality) if _valid_count(quality) and quality <= 3 else 0
+	if not _valid_count(quality) or quality > 3:
+		_diagnose("first_order_cooking.quality 无效，回退 0")
+	var pointer = value.get("pointer", 0.0)
+	if typeof(pointer) in [TYPE_INT, TYPE_FLOAT] and is_finite(float(pointer)) and absf(float(pointer)) <= 1.0:
+		state.pointer = float(pointer)
+	else:
+		state.pointer = 0.0
+		_diagnose("first_order_cooking.pointer 无效，回退 0")
+	return state
+
+func cooking_state() -> Dictionary:
+	return _normalize_cooking_state(_state.get(COOKING_STATE_KEY)).duplicate(true)
+
+func needs_cooking_guide() -> bool:
+	return not is_chapter_1_done() and is_canonical_first_order(current_order()) \
+		and _state.get(COOKING_GUIDE_KEY, false) != true
+
+func acknowledge_cooking_guide() -> bool:
+	var previous := _state.duplicate(true)
+	_state[COOKING_GUIDE_KEY] = true
+	if save():
+		return true
+	_state = previous
+	return false
+
+## 只有已扣料且尚未产出这一份首单，才允许中断恢复。
+func _can_recover_cooking() -> bool:
+	var cooking := cooking_state()
+	var progress := first_order_progress()
+	var valid_context: bool = cooking.status == "active" and cooking.recipe_id == FIRST_ORDER_ITEM_ID \
+		and ((_has_followup_order()) or (is_canonical_first_order(current_order()) and not has_first_order_settlement() \
+		and progress.ingredients_claimed and progress.next_step == "cook")) \
+		and inventory_quantity(FIRST_ORDER_ITEM_ID) == 0
+	if is_chapter_1_done() and cooking.status == "active" and RecipeCatalog.RECIPES.has(cooking.recipe_id):
+		valid_context = true
+	if not valid_context:
+		return false
+	# 旧版本只允许首单一份原料，因此无事务明细的旧 active 档仍严格核对零余额。
+	if not cooking.has("ingredients_consumed") and not cooking.has("ingredient_balances"):
+		return inventory_quantity(ROCKMAN_MEAT_ID) == 0 and inventory_quantity(ROCK_SALT_ID) == 0
+	var required: Dictionary = RecipeCatalog.get_recipe(cooking.recipe_id).get("ingredients", {})
+	var consumed = cooking.get("ingredients_consumed")
+	var balances = cooking.get("ingredient_balances")
+	# 仅兼容改配方前已扣料的糖块烹饪；新开锅仍使用史莱姆核。
+	if cooking.recipe_id == "slime_candy" and consumed is Dictionary and consumed.size() == 2 and consumed.get("slime_gel") == 1 and consumed.get("moondew_honey") == 1:
+		required = {"slime_gel": 1, "moondew_honey": 1}
+	if not consumed is Dictionary or consumed.size() != required.size() or not balances is Dictionary or balances.size() != required.size():
+		return false
+	for item_id in required:
+		# JSON 读取会把整数恢复为浮点数，按合法整数数量比较而非字典类型相等。
+		if not _valid_count(consumed.get(item_id)) or int(consumed[item_id]) != int(required[item_id]):
+			return false
+		if not _valid_count(balances.get(item_id)) or inventory_quantity(item_id) != int(balances[item_id]):
+			return false
+	return true
+
+## 同进程跳过/离开场景使用同一原子起锅事务；写盘失败保留 active 可重试。
+func recover_interrupted_cooking() -> Dictionary:
+	if cooking_state().status != "active":
+		return {"success": true, "created": false}
+	if not _can_recover_cooking():
+		_diagnose("中断烹饪状态矛盾，未增加成品")
+		return {"success": false, "reason": "invalid_cooking_state"}
+	return finish_first_order_cooking(1, 0.0)
+
+func _normalize_progress(value) -> Dictionary:
+	var progress := {"ingredients_claimed": false, "next_step": "accept_order"}
+	if not value is Dictionary:
+		_diagnose("first_order_progress 类型错误，回退接单引导")
+		return progress
+	progress = value.duplicate(true)
+	var claimed = value.get("ingredients_claimed", false)
+	if claimed is bool:
+		progress["ingredients_claimed"] = claimed
+	else:
+		_diagnose("ingredients_claimed 类型错误，回退 false")
+		progress["ingredients_claimed"] = false
+	var next_step := str(value.get("next_step", "accept_order"))
+	if next_step not in ["accept_order", "prepare_ingredients", "cook", "deliver", "chapter_wrap_up"]:
+		_diagnose("first_order_progress.next_step 无效，回退接单引导")
+		next_step = "accept_order"
+	progress["next_step"] = next_step
+	return progress
+
+func save() -> bool:
+	# 任务变化与原业务事务共用一次原子提交；失败不留下半份任务状态。
+	var snapshot := _state.duplicate(true)
+	# 坏老者记录不因其他业务保存被洗成可重新接取的状态。
+	if _elder_record_problem().is_empty():
+		snapshot[QUEST_JOURNAL_KEY] = _quest_journal()
+	if _replaying:
+		_state = snapshot
+		return true
+	if _active_save_path.is_empty():
+		return false
+	if not _write_atomic(_active_save_path, snapshot):
+		return false
+	_state = snapshot
+	return true
+
+## 纯读兼容旧档；根据真实订单/准备检查点派生，不会因为界面每帧刷新写盘。
+func _quest_journal() -> Dictionary:
+	var journal := QuestRegistry.normalize_journal(_state.get(QUEST_JOURNAL_KEY))
+	var order := current_order()
+	var completed := has_first_order_settlement()
+	if order.get("status") == ORDER_STATUS_COMPLETED:
+		var old_order := order.duplicate(true)
+		old_order.status = ORDER_STATUS_IN_PROGRESS
+		completed = completed or is_canonical_first_order(old_order)
+	if completed or is_canonical_first_order(order):
+		QuestRegistry.ensure_instance(journal, FIRST_ORDER_ID, completed)
+	if str(order.get("id", "")) != FIRST_ORDER_ID and not str(order.get("id", "")).is_empty() and order.get("item_id") == FIRST_ORDER_ITEM_ID:
+		QuestRegistry.ensure_instance(journal, "customer_order:" + str(order.id), order.status == ORDER_STATUS_COMPLETED)
+	if is_ready_to_depart():
+		QuestRegistry.ensure_instance(journal, SALT_POOL_QUEST_ID, false)
+	var elder = journal.instances.get(ELDER_QUEST_ID, {})
+	if elder is Dictionary and elder.get("status", "") in ["active", "archived"]:
+		journal.instances[ELDER_QUEST_ID] = {"status": elder.status, "unread": elder.get("unread", true) if elder.status == "active" else false}
+	for customer_order in restaurant_customers().get("seated", []):
+		QuestRegistry.ensure_instance(journal, "customer_order:" + str(customer_order.id), customer_order.phase in ["eating", "farewell", "leaving"])
+	return journal
+
+func quest_snapshot() -> Dictionary:
+	var result := QuestRegistry.snapshot(_quest_journal())
+	for entry in result.active:
+		if str(entry.id).begins_with("customer_order:"):
+			var order := restaurant_customer_order(str(entry.id).trim_prefix("customer_order:"))
+			if not order.is_empty():
+				entry.title = "交出" + str(order.item_name)
+				entry["order_id"] = order.id
+	return result
+
+func has_unread_quests() -> bool:
+	for quest in quest_snapshot().active:
+		if quest.unread:
+			return true
+	return false
+
+## 只供玩家主动打开“当前任务”调用。教学自动展开不能标记已读。
+func mark_active_quests_read() -> Dictionary:
+	if not _elder_record_problem().is_empty(): return {"success": false, "changed": false, "reason": "invalid_state"}
+	var journal := _quest_journal()
+	var changed := false
+	for id in journal.instances:
+		var instance: Dictionary = journal.instances[id]
+		if instance.status == "active" and instance.unread:
+			instance.unread = false
+			changed = true
+	if not changed:
+		return {"success": true, "changed": false}
+	var previous := _state.duplicate(true)
+	_state[QUEST_JOURNAL_KEY] = journal
+	if not save():
+		_state = previous
+		return {"success": false, "changed": false, "reason": "save_failed"}
+	return {"success": true, "changed": true}
+
+func _write_atomic(path: String, snapshot: Dictionary) -> bool:
+	# 先完整写入同目录临时文件，再替换正式存档；失败时保留上次提交。
+	var temporary_path := path + ".tmp"
+	var f := FileAccess.open(temporary_path, FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(snapshot, "\t"))
+		f.flush()
+		var write_error := f.get_error()
+		f.close()
+		if write_error == OK:
+			return DirAccess.rename_absolute(temporary_path, path) == OK
+	return false
+
+func is_tutorial_done() -> bool:
+	return bool(_state.get("tutorial_done", false))
+
+func mark_tutorial_done() -> void:
+	_state["tutorial_done"] = true
+
+func is_chapter_1_done() -> bool:
+	return bool(_state.get(CHAPTER_1_DONE_KEY, false))
+
+func mark_chapter_1_done() -> void:
+	_state[CHAPTER_1_DONE_KEY] = true
+
+func current_order() -> Dictionary:
+	return _normalize_order(_state.get(CURRENT_ORDER_KEY))
+
+func has_active_order() -> bool:
+	return str(current_order().get("status", ORDER_STATUS_NONE)) == ORDER_STATUS_IN_PROGRESS
+
+func is_canonical_first_order(order) -> bool:
+	if not order is Dictionary or order.size() != 5:
+		return false
+	return str(order.get("id", "")) == FIRST_ORDER_ID \
+		and str(order.get("item_id", "")) == FIRST_ORDER_ITEM_ID \
+		and str(order.get("item_name", "")) == FIRST_ORDER_ITEM_NAME \
+		and typeof(order.get("quantity")) in [TYPE_INT, TYPE_FLOAT] \
+		and order.quantity == FIRST_ORDER_QUANTITY \
+		and str(order.get("status", "")) == ORDER_STATUS_IN_PROGRESS
+
+## 原子接受第一笔订单：相同有效订单重复调用保持幂等，不创建第二单。
+## 返回 success=true 表示调用方可以继续教程；created 表示本次是否真的写入新订单。
+func accept_first_order() -> Dictionary:
+	if has_first_order_settlement() or str(current_order().get("status", "")) == ORDER_STATUS_COMPLETED:
+		return {"success": false, "created": false, "reason": "already_completed", "order": current_order()}
+	var raw_existing = _state.get(CURRENT_ORDER_KEY)
+	if raw_existing is Dictionary \
+			and str(raw_existing.get("status", ORDER_STATUS_NONE)) == ORDER_STATUS_IN_PROGRESS:
+		var existing := current_order()
+		if is_canonical_first_order(raw_existing):
+			if FIRST_ORDER_ITEM_ID not in unlocked_recipe_ids():
+				var before_unlock := _state.duplicate(true)
+				_unlock_first_recipe()
+				if not save():
+					_state = before_unlock
+					return {"success": false, "created": false, "reason": "save_failed", "order": existing}
+			return {"success": true, "created": false, "reason": "already_active", "order": existing}
+		return {"success": false, "created": false, "reason": "conflicting_order", "order": existing}
+
+	var next_order := {
+		"id": FIRST_ORDER_ID,
+		"item_id": FIRST_ORDER_ITEM_ID,
+		"item_name": FIRST_ORDER_ITEM_NAME,
+		"quantity": FIRST_ORDER_QUANTITY,
+		"status": ORDER_STATUS_IN_PROGRESS,
+	}
+	var previous := _state.duplicate(true)
+	_state[CURRENT_ORDER_KEY] = next_order
+	_state[FIRST_ORDER_PROGRESS_KEY] = {"ingredients_claimed": false, "next_step": "prepare_ingredients"}
+	_unlock_first_recipe()
+	if not save():
+		_state = previous
+		return {"success": false, "created": false, "reason": "save_failed", "order": current_order()}
+	return {"success": true, "created": true, "reason": "created", "order": current_order()}
+
+func inventory_snapshot() -> Dictionary:
+	return _normalize_inventory(_state.get(INVENTORY_KEY)).duplicate(true)
+
+func inventory_quantity(item_id: String) -> int:
+	return int(inventory_snapshot().get(item_id, 0))
+
+## 纯读合法整数判断；不截断小数、不转换布尔值、不处理 NaN 为零。
+func _elder_wood_valid(value) -> bool:
+	return typeof(value) in [TYPE_INT, TYPE_FLOAT] and is_finite(float(value)) \
+		and value >= 0 and value <= 9007199254740991 and value == floor(float(value))
+
+func _elder_record_problem() -> String:
+	var reward = _state.get(ELDER_BACKPACK_KEY, false)
+	if not reward is bool: return "背包解锁必须为布尔值"
+	var journal = _state.get(QUEST_JOURNAL_KEY, QuestRegistry.empty_journal())
+	if not journal is Dictionary or not journal.get("instances") is Dictionary:
+		return "任务日志结构异常"
+	if typeof(journal.get("version")) not in [TYPE_INT, TYPE_FLOAT] or journal.version != 1:
+		return "任务日志版本异常"
+	var instance = journal.instances.get(ELDER_QUEST_ID, {})
+	if not instance is Dictionary: return "老者实例结构异常"
+	if not journal.instances.has(ELDER_QUEST_ID):
+		return "无交付凭证但背包已解锁" if reward else ""
+	if instance.get("status") not in ["active", "archived"] or not instance.get("unread") is bool:
+		return "老者任务状态或未读异常"
+	if (instance.status == "archived") != reward or (instance.status == "archived" and instance.unread):
+		return "归档与一次性奖励凭证矛盾"
+	return ""
+
+func elder_firewood_state() -> Dictionary:
+	var journal := _quest_journal()
+	var instance = journal.instances.get(ELDER_QUEST_ID, {})
+	var inventory = _state.get(INVENTORY_KEY)
+	var valid_wood: bool = inventory is Dictionary and _elder_wood_valid(inventory.get("wood", 0))
+	return {"status": str(instance.get("status", "inactive")), "unread": instance.get("unread", false) == true,
+		"wood": int(inventory.get("wood", 0)) if valid_wood else 0, "required": ElderConfig.REQUIRED,
+		"backpack_unlocked": elder_backpack_unlocked(), "valid": valid_wood and _elder_record_problem().is_empty()}
+
+## ELDER-02 的明确纯读接口；必须同时拥有严格布尔凭证及合法归档实例。
+func elder_backpack_unlocked() -> bool:
+	return _elder_record_problem().is_empty() and _state.get(ELDER_BACKPACK_KEY, false) == true
+
+func _elder_location_valid(point: Vector2) -> bool:
+	return can_enter_maze() and maze_exploration_state().region == "maze_entry" \
+		and MazeRoads.is_walkable(point) and point.distance_to(ElderConfig.POSITION) <= ElderConfig.INTERACT_RADIUS
+
+func accept_elder_firewood(point: Vector2) -> Dictionary:
+	if not _elder_location_valid(point): return {"success": false, "reason": "invalid_location"}
+	if not elder_firewood_state().valid: return {"success": false, "reason": "invalid_state"}
+	var journal := _quest_journal()
+	var current: Dictionary = journal.instances.get(ELDER_QUEST_ID, {})
+	if current.get("status", "") == "archived": return {"success": false, "reason": "archived"}
+	if current.get("status", "") == "active": return {"success": true, "created": false, "reason": "already_active"}
+	var previous := _state.duplicate(true)
+	journal.instances[ELDER_QUEST_ID] = {"status": "active", "unread": true}
+	_state[QUEST_JOURNAL_KEY] = journal
+	var location := maze_exploration_state()
+	location.position = [point.x, point.y]
+	_state[MAZE_STATE_KEY] = location
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed"}
+	return {"success": true, "created": true, "state": elder_firewood_state()}
+
+## 仅替换已交付旧奖励的剩余数量；不补发已消耗物品，不触碰捕获暂存。
+func _migrate_elder_ingredients() -> void:
+	if not elder_backpack_unlocked() or _state.get("elder_ingredients_version", 0) == 2:
+		return
+	var stock := warehouse_snapshot()
+	var carried := inventory_snapshot()
+	for pair in [["lantern_berry", "moondew_honey"], ["insulating_leaf", "cooking_sake"], ["sour_vine_juice", "sour_vine_juice"]]:
+		var remaining := 3
+		if pair[0] != pair[1]:
+			var stored := mini(remaining, int(stock.get(pair[0], 0)))
+			stock[pair[0]] = int(stock.get(pair[0], 0)) - stored
+			stock[pair[1]] = int(stock.get(pair[1], 0)) + stored
+			remaining -= stored
+		var held := mini(remaining, int(carried.get(pair[0], 0)))
+		carried[pair[0]] = int(carried.get(pair[0], 0)) - held
+		stock[pair[1]] = int(stock.get(pair[1], 0)) + held
+	_state["warehouse_stock"] = stock
+	_state[INVENTORY_KEY] = carried
+	_state["elder_ingredients_version"] = 2
+
+func deliver_elder_firewood(point: Vector2) -> Dictionary:
+	if not _elder_location_valid(point): return {"success": false, "reason": "invalid_location"}
+	var state := elder_firewood_state()
+	if not state.valid: return {"success": false, "reason": "invalid_state"}
+	if state.status != "active": return {"success": false, "reason": "not_active"}
+	if state.wood < ElderConfig.REQUIRED: return {"success": false, "reason": "insufficient_wood"}
+	# 奖励食材直接进入仓库，不经过迷宫临时背包；先核验仓库存量，拒绝坏值与整数溢出。
+	var warehouse := warehouse_snapshot()
+	var raw_warehouse = _state.get("warehouse_stock", {})
+	for item in ElderConfig.REWARD_ITEMS:
+		if raw_warehouse is Dictionary and raw_warehouse.has(item.id):
+			var raw_amount = raw_warehouse[item.id]
+			if not _elder_wood_valid(raw_amount) or raw_amount > 9007199254740991 - item.quantity:
+				return {"success": false, "reason": "invalid_reward_inventory"}
+		var amount = warehouse.get(item.id, 0)
+		if not _elder_wood_valid(amount) or amount > 9007199254740991 - item.quantity:
+			return {"success": false, "reason": "invalid_reward_inventory"}
+	var previous := _state.duplicate(true)
+	var journal := _quest_journal()
+	_state[INVENTORY_KEY]["wood"] = state.wood - ElderConfig.REQUIRED
+	for item in ElderConfig.REWARD_ITEMS:
+		warehouse[item.id] = int(warehouse.get(item.id, 0)) + item.quantity
+	_state["warehouse_stock"] = warehouse
+	_state["elder_ingredients_version"] = 2
+	journal.instances[ELDER_QUEST_ID] = {"status": "archived", "unread": false}
+	_state[QUEST_JOURNAL_KEY] = journal
+	_state[ELDER_BACKPACK_KEY] = true
+	var location := maze_exploration_state()
+	location.position = [point.x, point.y]
+	_state[MAZE_STATE_KEY] = location
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed"}
+	return {"success": true, "created": true, "state": elder_firewood_state(), "reward": "神奇背包"}
+
+## 仓库存量与携带物品分离；旧档按首单领取记录恢复剩余库存，不补发。
+func warehouse_snapshot() -> Dictionary:
+	var raw = _state.get("warehouse_stock")
+	if not raw is Dictionary:
+		return {ROCKMAN_MEAT_ID: 0 if first_order_progress().ingredients_claimed else 1,
+			ROCK_SALT_ID: 0 if first_order_progress().ingredients_claimed else 1}
+	var stock := {}
+	var ids: Array = raw.keys()
+	for required_id in [ROCKMAN_MEAT_ID, ROCK_SALT_ID]:
+		if required_id not in ids: ids.append(required_id)
+	for item_id in ids:
+		stock[item_id] = clampi(int(raw.get(item_id, 0)), 0, 999) if _valid_count(raw.get(item_id, 0)) else 0
+	return stock
+
+## 根据已选种类和数量匹配玩家已收录的食谱；空选择返回全部已收录食谱。
+func warehouse_recipe_candidates(selection: Dictionary) -> Array[String]:
+	var result: Array[String] = []
+	for recipe_id in unlocked_recipe_ids():
+		var ingredients: Dictionary = RecipeCatalog.get_recipe(recipe_id).get("ingredients", {})
+		if ingredients.is_empty() or ingredients.size() > MAX_WAREHOUSE_KINDS:
+			continue
+		var matches := true
+		for item_id in selection:
+			var quantity = selection[item_id]
+			if not _valid_count(quantity) or quantity <= 0 or quantity > int(ingredients.get(item_id, 0)):
+				matches = false
+				break
+		if matches: result.append(recipe_id)
+	return result
+
+func warehouse_selection_complete(selection: Dictionary) -> bool:
+	for recipe_id in warehouse_recipe_candidates(selection):
+		if selection == RecipeCatalog.get_recipe(recipe_id).ingredients:
+			return true
+	return false
+
+func take_warehouse_items(selection: Dictionary) -> Dictionary:
+	if selection.is_empty():
+		return {"success": false, "reason": "empty_selection"}
+	if selection.size() > MAX_WAREHOUSE_KINDS:
+		return {"success": false, "reason": "too_many_kinds"}
+	if not carried_ingredients().is_empty():
+		return {"success": false, "reason": "hands_full"}
+	if not warehouse_selection_complete(selection):
+		return {"success": false, "reason": "recipe_mismatch"}
+	var stock := warehouse_snapshot()
+	var carried := inventory_snapshot()
+	for item_id in selection:
+		var quantity = selection[item_id]
+		if not _valid_count(quantity) or quantity <= 0 or not stock.has(item_id) or quantity > stock[item_id] or int(carried.get(item_id, 0)) + quantity > 999:
+			return {"success": false, "reason": "invalid_quantity"}
+	var previous := _state.duplicate(true)
+	for item_id in selection:
+		stock[item_id] -= int(selection[item_id])
+		carried[item_id] = int(carried.get(item_id, 0)) + int(selection[item_id])
+	_state["warehouse_stock"] = stock
+	_state[INVENTORY_KEY] = carried
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed"}
+	return {"success": true, "reason": "claimed", "inventory": carried, "stock": stock}
+
+func unlocked_recipe_ids() -> Array[String]:
+	var result: Array[String] = []
+	var saved = _state.get(UNLOCKED_RECIPES_KEY, [])
+	if saved is Array:
+		for recipe_id in saved:
+			if recipe_id is String and RecipeCatalog.RECIPES.has(recipe_id) and recipe_id not in result:
+				result.append(recipe_id)
+	for recipe_id in preload("res://scripts/maze/capture_recipes.gd").historical(_state):
+		if recipe_id not in result: result.append(recipe_id)
+	return result
+
+func _unlock_first_recipe() -> void:
+	var recipes := unlocked_recipe_ids()
+	if FIRST_ORDER_ITEM_ID not in recipes:
+		recipes.append(FIRST_ORDER_ITEM_ID)
+	_state[UNLOCKED_RECIPES_KEY] = recipes
+
+func unlock_first_recipe() -> Dictionary:
+	var previous := _state.duplicate(true)
+	var before := unlocked_recipe_ids()
+	_unlock_first_recipe()
+	if before == unlocked_recipe_ids():
+		return {"success": true, "created": false, "recipe_id": FIRST_ORDER_ITEM_ID}
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed"}
+	return {"success": true, "created": true, "recipe_id": FIRST_ORDER_ITEM_ID}
+
+func _has_first_recipe_history() -> bool:
+	var order := current_order()
+	if is_canonical_first_order(order):
+		return true
+	if order.status == ORDER_STATUS_COMPLETED:
+		order.status = ORDER_STATUS_IN_PROGRESS
+		return is_canonical_first_order(order) and has_first_order_settlement()
+	return false
+
+func carried_ingredients() -> Dictionary:
+	var result := {}
+	var inventory := inventory_snapshot()
+	for item_id in RecipeCatalog.INGREDIENTS:
+		var quantity = inventory.get(item_id, 0)
+		if _valid_count(quantity) and quantity > 0:
+			result[item_id] = int(quantity)
+	return result
+
+## 丢弃白名单与携物显示一致；仓库、木材及未登记物品不进入确认清单。
+func discardable_carried_items() -> Dictionary:
+	var result := carried_ingredients()
+	for item_id in RecipeCatalog.RECIPES:
+		var quantity = _state.get(INVENTORY_KEY, {}).get(item_id, 0)
+		if _valid_count(quantity) and quantity > 0:
+			result[item_id] = int(quantity)
+	return result
+
+func can_discard_carried_food() -> bool:
+	return is_chapter_1_complete() and chapter_1_outro_state() == "done" and not _replaying
+
+## expected 是玩家实际确认的清单；清单改变时拒绝，避免丢弃未展示的新物品。
+func discard_carried_food(expected: Dictionary) -> Dictionary:
+	if not can_discard_carried_food():
+		return {"success": false, "reason": "chapter_locked"}
+	if cooking_state().status == "active":
+		return {"success": false, "reason": "busy"}
+	if not freezer_valid(): return {"success": false, "reason": "invalid_state"}
+	var items := discardable_carried_items()
+	if items.is_empty():
+		return {"success": false, "reason": "empty"}
+	if items != expected:
+		return {"success": false, "reason": "changed"}
+	var ledger := freezer_snapshot()
+	var previous := _state.duplicate(true)
+	for item_id in items:
+		_state[INVENTORY_KEY][item_id] = 0
+		if RecipeCatalog.RECIPES.has(item_id):
+			_state[PREPARED_DISHES_KEY].erase(item_id)
+	ledger.carried.clear()
+	_state[Freezer.KEY] = ledger
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed"}
+	return {"success": true, "reason": "discarded", "items": items}
+
+func available_cooking_recipes() -> Array[String]:
+	var result: Array[String] = []
+	var ingredients := carried_ingredients()
+	for recipe_id in unlocked_recipe_ids():
+		if RecipeCatalog.can_cook(recipe_id, ingredients):
+			result.append(recipe_id)
+	return result
+
+func first_order_progress() -> Dictionary:
+	return _normalize_progress(_state.get(FIRST_ORDER_PROGRESS_KEY)).duplicate(true)
+
+## 原子领取首单材料。只接受 canonical 首单；重复领取成功但不叠加。
+func claim_first_order_ingredients() -> Dictionary:
+	var order := current_order()
+	if not is_canonical_first_order(order):
+		return {"success": false, "created": false, "reason": "no_canonical_order", "inventory": inventory_snapshot()}
+	var before_inventory := inventory_snapshot()
+	var before_progress := first_order_progress()
+	var before_stock_raw = _state.get("warehouse_stock", null)
+	if bool(before_progress.get("ingredients_claimed", false)):
+		return {"success": true, "created": false, "reason": "already_claimed", "inventory": before_inventory}
+	if not carried_ingredients().is_empty():
+		return {"success": false, "created": false, "reason": "hands_full", "inventory": before_inventory}
+	var next_inventory := before_inventory.duplicate(true)
+	var before_stock := warehouse_snapshot()
+	if int(before_stock.get(ROCKMAN_MEAT_ID, 0)) < 1 or int(before_stock.get(ROCK_SALT_ID, 0)) < 1:
+		return {"success": false, "created": false, "reason": "warehouse_empty", "inventory": before_inventory}
+	next_inventory[ROCKMAN_MEAT_ID] = int(next_inventory.get(ROCKMAN_MEAT_ID, 0)) + 1
+	next_inventory[ROCK_SALT_ID] = int(next_inventory.get(ROCK_SALT_ID, 0)) + 1
+	before_stock[ROCKMAN_MEAT_ID] -= 1
+	before_stock[ROCK_SALT_ID] -= 1
+	_state[INVENTORY_KEY] = next_inventory
+	_state["warehouse_stock"] = before_stock
+	_state[FIRST_ORDER_PROGRESS_KEY] = {"ingredients_claimed": true, "next_step": "cook"}
+	if not save():
+		_state[INVENTORY_KEY] = before_inventory
+		if before_stock_raw is Dictionary:
+			_state["warehouse_stock"] = before_stock_raw.duplicate(true)
+		else:
+			_state.erase("warehouse_stock")
+		_state[FIRST_ORDER_PROGRESS_KEY] = before_progress
+		return {"success": false, "created": false, "reason": "save_failed", "inventory": before_inventory}
+	return {"success": true, "created": true, "reason": "claimed", "inventory": inventory_snapshot(), "delta": {ROCKMAN_MEAT_ID: 1, ROCK_SALT_ID: 1}}
+
+## 首单制作是一次提交：扣除两种材料、增加成品、保存交付进度。
+## 只有成功写盘才能推进教程；重复制作失败且不改变库存或进度。
+func cook_first_order() -> Dictionary:
+	# 旧调用方兼容：直接制作等价于一次普通（1 星）起锅。
+	var started := start_first_order_cooking()
+	if not bool(started.get("success", false)) and str(started.get("reason", "")) != "already_started":
+		return started
+	return finish_first_order_cooking(1)
+
+## 开始烹饪只扣材料一次，结果在 finish_first_order_cooking 中提交。
+func start_first_order_cooking() -> Dictionary:
+	return start_cooking(FIRST_ORDER_ITEM_ID)
+
+func start_cooking(recipe_id: String) -> Dictionary:
+	if not freezer_valid(): return {"success": false, "reason": "invalid_state"}
+	if is_chapter_1_done() and carried_dish_count() > 0:
+		return {"success": false, "reason": "hands_full"}
+	if not is_chapter_1_done() and not is_canonical_first_order(current_order()) and not _has_followup_order() and customer_orders_active().is_empty():
+		return {"success": false, "reason": "no_canonical_order"}
+	var progress := first_order_progress()
+	var cooking := cooking_state()
+	if cooking.status == "active" or (cooking.status == "locked" and not is_chapter_1_done()):
+		return {"success": false, "reason": "already_started", "cooking": cooking}
+	# 首章和章后料理共用扣料事务，章后按实际配方制作。
+	if RecipeCatalog.get_recipe(recipe_id).is_empty():
+		return {"success": false, "reason": "unsupported_recipe"}
+	if recipe_id not in unlocked_recipe_ids():
+		return {"success": false, "reason": "recipe_locked"}
+	if not is_chapter_1_done() and ((not _has_followup_order() and str(progress.get("next_step", "")) == "deliver") or inventory_quantity(FIRST_ORDER_ITEM_ID) > 0):
+		return {"success": false, "reason": "already_cooked"}
+	if not is_chapter_1_done() and not _has_followup_order() and (not bool(progress.get("ingredients_claimed", false)) or str(progress.get("next_step", "")) != "cook"):
+		return {"success": false, "reason": "ingredients_not_claimed"}
+	var inventory := inventory_snapshot()
+	if not RecipeCatalog.can_cook(recipe_id, carried_ingredients()):
+		return {"success": false, "reason": "insufficient_ingredients"}
+	var previous := _state.duplicate(true)
+	var ingredients: Dictionary = RecipeCatalog.get_recipe(recipe_id).ingredients
+	var balances := {}
+	for item_id in ingredients:
+		inventory[item_id] -= int(ingredients[item_id])
+		balances[item_id] = inventory[item_id]
+	_state[INVENTORY_KEY] = inventory
+	cooking.merge({"status": "active", "recipe_id": recipe_id, "quality": 0, "pointer": 0.0,
+		"ingredients_consumed": ingredients.duplicate(true), "ingredient_balances": balances}, true)
+	_state[COOKING_STATE_KEY] = cooking
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed"}
+	return {"success": true, "reason": "started", "inventory": inventory_snapshot(), "cooking": cooking_state()}
+
+## 锁定品质并保存成品；同名料理按星级分别计数。
+func finish_first_order_cooking(quality: int, pointer := 0.0) -> Dictionary:
+	if not is_chapter_1_done() and not is_canonical_first_order(current_order()) and not _has_followup_order() and customer_orders_active().is_empty():
+		return {"success": false, "reason": "no_canonical_order"}
+	var cooking := cooking_state()
+	if cooking.status == "locked":
+		return {"success": false, "reason": "already_cooked", "quality": cooking.quality}
+	if cooking.status != "active":
+		return {"success": false, "reason": "not_started"}
+	if not _can_recover_cooking():
+		return {"success": false, "reason": "invalid_cooking_state"}
+	var cooked_id := str(cooking.recipe_id)
+	var stars := clampi(quality, 1, 3)
+	var prepared := prepared_dishes_snapshot()
+	prepared[cooked_id][str(stars)] = int(prepared[cooked_id].get(str(stars), 0)) + 1
+	var inventory := inventory_snapshot()
+	inventory[cooked_id] = int(inventory.get(cooked_id, 0)) + 1
+	var progress := first_order_progress()
+	if not is_chapter_1_done() and not _has_followup_order():
+		progress["next_step"] = "deliver"
+	var previous := _state.duplicate(true)
+	_state[INVENTORY_KEY] = inventory
+	_state[PREPARED_DISHES_KEY] = prepared
+	_state[FIRST_ORDER_PROGRESS_KEY] = progress
+	cooking.merge({"status": "idle" if is_chapter_1_done() else "locked", "recipe_id": cooked_id, "quality": stars, "pointer": clampf(float(pointer), -1.0, 1.0)}, true)
+	_state[COOKING_STATE_KEY] = cooking
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed"}
+	return {"success": true, "reason": "cooked", "quality": stars, "inventory": inventory_snapshot(), "cooking": cooking_state()}
+
+func reputation() -> int:
+	return int(_state.get(REPUTATION_KEY, 0))
+
+func has_first_order_settlement() -> bool:
+	var receipt = _state.get(FIRST_ORDER_SETTLEMENT_KEY, {})
+	var canonical: bool = receipt is Dictionary and str(receipt.get("order_id", "")) == FIRST_ORDER_ID \
+		and str(receipt.get("item_id", "")) == FIRST_ORDER_ITEM_ID \
+		and typeof(receipt.get("quantity")) in [TYPE_INT, TYPE_FLOAT] \
+		and receipt.quantity == FIRST_ORDER_QUANTITY \
+		and _valid_count(receipt.get("reputation_awarded"))
+	if not canonical:
+		return false
+	if not receipt.has("quality"):
+		return receipt.reputation_awarded == 20 # 历史无星凭证保持原奖励。
+	var quality = receipt.quality
+	return _valid_count(quality) and int(quality) in [1, 2, 3] \
+		and int(receipt.reputation_awarded) in [QUALITY_REPUTATION[int(quality)], LEGACY_QUALITY_REPUTATION[int(quality)]]
+
+## 顾客系统以唯一订单 ID 登记需求；登记不等于接单或发放奖励。
+func waiting_customer_orders() -> Array:
+	var result: Array = []
+	var pending = _state.get("waiting_customer_orders", [])
+	if pending is Array:
+		for entry in pending:
+			if entry is Dictionary and entry.get("id") is String and not entry.id.strip_edges().is_empty() and entry.id != FIRST_ORDER_ID and entry.get("item_id") == FIRST_ORDER_ITEM_ID and _valid_count(entry.get("quantity")) and entry.quantity == 1:
+				result.append({"id": entry.id, "item_id": FIRST_ORDER_ITEM_ID, "item_name": FIRST_ORDER_ITEM_NAME, "quantity": 1})
+	return result
+
+func register_customer_order(order_id: String, item_id: String) -> Dictionary:
+	if not is_chapter_1_complete():
+		return {"success": false, "reason": "chapter_locked"}
+	if order_id.strip_edges().is_empty() or order_id == FIRST_ORDER_ID or item_id != FIRST_ORDER_ITEM_ID:
+		return {"success": false, "reason": "invalid_order"}
+	var pending := waiting_customer_orders()
+	var receipts = _state.get("restaurant_order_receipts", {})
+	if current_order().get("id") == order_id or (receipts is Dictionary and receipts.has(order_id)):
+		return {"success": false, "reason": "already_registered"}
+	for entry in pending:
+		if entry.id == order_id:
+			return {"success": false, "reason": "already_registered"}
+	var previous := _state.duplicate(true)
+	pending.append({"id": order_id, "item_id": item_id, "item_name": FIRST_ORDER_ITEM_NAME, "quantity": 1})
+	_state["waiting_customer_orders"] = pending
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed"}
+	return {"success": true}
+
+func accept_waiting_customer_order() -> Dictionary:
+	if not is_chapter_1_complete():
+		return {"success": false, "reason": "chapter_locked"}
+	if has_active_order():
+		return {"success": false, "reason": "active_order"}
+	var pending := waiting_customer_orders()
+	if pending.is_empty():
+		return {"success": false, "reason": "no_customer"}
+	var previous := _state.duplicate(true)
+	var order: Dictionary = pending.pop_front()
+	order.status = ORDER_STATUS_IN_PROGRESS
+	_state[CURRENT_ORDER_KEY] = order
+	_state["waiting_customer_orders"] = pending
+	_state[COOKING_STATE_KEY] = {"status": "idle", "recipe_id": "", "quality": 0, "pointer": 0.0}
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed"}
+	return {"success": true, "order": order}
+
+func has_waiting_diner() -> bool:
+	if not customer_orders_active().is_empty(): return true
+	var order := current_order()
+	return has_active_order() and order.get("item_id") == FIRST_ORDER_ITEM_ID and order.get("quantity") == 1
+
+func _has_followup_order() -> bool:
+	return is_chapter_1_done() and has_waiting_diner() and str(current_order().get("id", "")) != FIRST_ORDER_ID
+
+func deliver_customer_order() -> Dictionary:
+	var transaction_time := int(Time.get_unix_time_from_system())
+	if is_canonical_first_order(current_order()):
+		return deliver_first_order()
+	if not has_waiting_diner():
+		return {"success": false, "reason": "no_customer"}
+	var order := current_order()
+	var raw_receipts = _state.get("restaurant_order_receipts", {})
+	var receipts: Dictionary = raw_receipts.duplicate(true) if raw_receipts is Dictionary else {}
+	if receipts.has(str(order.id)):
+		return {"success": false, "reason": "already_completed"}
+	var quality := cooked_quality(transaction_time)
+	if quality == 0:
+		return {"success": false, "reason": "missing_dish"}
+	var gold_reward := RecipeCatalog.order_gold(str(order.item_id))
+	if gold_reward == 0 or not chest_reward_state_valid() or gold_balance() > 9007199254740991 - gold_reward:
+		return {"success": false, "reason": "invalid_reward_state"}
+	var previous := _state.duplicate(true)
+	var inventory := inventory_snapshot()
+	var prepared := prepared_dishes_snapshot()
+	inventory[FIRST_ORDER_ITEM_ID] -= 1
+	prepared[FIRST_ORDER_ITEM_ID][str(quality)] -= 1
+	_consume_chilled_dish(FIRST_ORDER_ITEM_ID, quality, transaction_time)
+	var reward := int(QUALITY_REPUTATION[quality])
+	order.status = ORDER_STATUS_COMPLETED
+	receipts[str(order.id)] = {"quality": quality, "reputation_awarded": reward, "gold_awarded": gold_reward, "item_id": FIRST_ORDER_ITEM_ID}
+	_state[CURRENT_ORDER_KEY] = order
+	_state["restaurant_order_receipts"] = receipts
+	_state[INVENTORY_KEY] = inventory
+	_state[PREPARED_DISHES_KEY] = prepared
+	_state[REPUTATION_KEY] = reputation() + reward
+	_state[GOLD_KEY] = gold_balance() + gold_reward
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed"}
+	return {"success": true, "quality": quality, "reputation_awarded": reward, "gold_awarded": gold_reward}
+
+func cooked_quality(at_time := -1) -> int:
+	return dish_quality(FIRST_ORDER_ITEM_ID, at_time)
+
+## 交付、订单完成、声望、金币与凭证在同一存档提交；失败恢复完整内存快照。
+## 地点与距离由 TutorialManager/Player 的同一交互选择器校验。
+func deliver_first_order() -> Dictionary:
+	var transaction_time := int(Time.get_unix_time_from_system())
+	if has_first_order_settlement() or str(current_order().get("status", "")) == ORDER_STATUS_COMPLETED:
+		return {"success": false, "reason": "already_completed"}
+	if not is_canonical_first_order(current_order()):
+		return {"success": false, "reason": "no_canonical_order"}
+	var progress := first_order_progress()
+	if not bool(progress.get("ingredients_claimed", false)) or str(progress.get("next_step", "")) != "deliver":
+		return {"success": false, "reason": "not_ready_to_deliver"}
+	var inventory := inventory_snapshot()
+	if int(inventory[FIRST_ORDER_ITEM_ID]) < FIRST_ORDER_QUANTITY:
+		return {"success": false, "reason": "missing_dish"}
+	var gold_reward := RecipeCatalog.order_gold(FIRST_ORDER_ITEM_ID)
+	if gold_reward == 0 or not chest_reward_state_valid() or gold_balance() > 9007199254740991 - gold_reward:
+		return {"success": false, "reason": "invalid_reward_state"}
+	var previous := _state.duplicate(true)
+	var order := current_order()
+	var quality := cooked_quality(transaction_time)
+	if quality <= 0:
+		return {"success": false, "reason": "missing_dish"}
+	var prepared := prepared_dishes_snapshot()
+	inventory[FIRST_ORDER_ITEM_ID] -= FIRST_ORDER_QUANTITY
+	prepared[FIRST_ORDER_ITEM_ID][str(quality)] = maxi(0, int(prepared[FIRST_ORDER_ITEM_ID].get(str(quality), 0)) - 1)
+	_consume_chilled_dish(FIRST_ORDER_ITEM_ID, quality, transaction_time)
+	order["status"] = ORDER_STATUS_COMPLETED
+	progress["next_step"] = "chapter_wrap_up"
+	_state[INVENTORY_KEY] = inventory
+	_state[CURRENT_ORDER_KEY] = order
+	_state[FIRST_ORDER_PROGRESS_KEY] = progress
+	var reward := int(QUALITY_REPUTATION.get(quality, FIRST_ORDER_REPUTATION))
+	_state[PREPARED_DISHES_KEY] = prepared
+	_state[REPUTATION_KEY] = reputation() + reward
+	_state[GOLD_KEY] = gold_balance() + gold_reward
+	_state[FIRST_ORDER_SETTLEMENT_KEY] = {
+		"order_id": FIRST_ORDER_ID, "item_id": FIRST_ORDER_ITEM_ID,
+		"quantity": FIRST_ORDER_QUANTITY, "quality": quality, "reputation_awarded": reward, "gold_awarded": gold_reward,
+	}
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed"}
+	return {"success": true, "reason": "delivered", "quality": quality, "reputation_awarded": reward, "gold_awarded": gold_reward, "order": current_order(), "reputation": reputation()}
+
+
+## DAY1-01：顾客、座位、订单同一份持久状态；离场完成才释放座位。
+func restaurant_customers() -> Dictionary:
+	var raw = _state.get("restaurant_customers", {"serial": 0, "front": {}, "seated": [], "queue": []})
+	if raw is Dictionary and _customers_valid(raw):
+		var result: Dictionary = raw.duplicate(true)
+		if not result.has("queue"): result.queue = [] # 旧档只补字段，不改已有订单。
+		if not result.has("daily_key"): result.daily_key = ""
+		if not result.has("daily_orders"): result.daily_orders = 0
+		if not result.has("arrival_notice"): result.arrival_notice = false
+		return result
+	_diagnose("顾客订单结构无效，停止来客及结算，保留原始记录")
+	return {"serial": 0, "front": {}, "seated": [], "invalid": true}
+
+func restaurant_customer_order(id: String) -> Dictionary:
+	for order in restaurant_customers().get("seated", []):
+		if str(order.get("id", "")) == id: return order.duplicate(true)
+	return {}
+
+func customer_orders_active() -> Array:
+	var result: Array = []
+	for order in restaurant_customers().get("seated", []):
+		if order.get("phase") in ["seating", "waiting"]: result.append(order.duplicate(true))
+	return result
+
+func record_customer_walk(seconds: float) -> void:
+	if not is_chapter_1_done() or chapter_1_outro_state() != "done" or maze_exploration_state().region != "restaurant" or int(restaurant_customers().serial) > 0:
+		return
+	var before := float(_state.get("customer_01_walk_seconds", 0.0))
+	if before >= 2.0 or seconds <= 0.0: return
+	_state["customer_01_walk_seconds"] = minf(2.0, before + seconds)
+	if not save(): _state["customer_01_walk_seconds"] = before
+
+func customer_review(id: String) -> String:
+	var quality := int(_state.get("restaurant_order_receipts", {}).get(id, {}).get("quality", 1))
+	return {3: "真美味啊，下次还来！", 2: "吃着还凑合，至少填饱肚子了。", 1: "……怎么有股糊糊的味道，勉强能吃吧。"}.get(quality, "……怎么有股糊糊的味道，勉强能吃吧。")
+
+func ensure_restaurant_customer() -> Dictionary:
+	if not is_chapter_1_done() or chapter_1_outro_state() != "done" or maze_exploration_state().region != "restaurant":
+		return {"success": false, "reason": "arrival_locked"}
+	var state := restaurant_customers()
+	if not _customers_valid(state): return {"success": false, "reason": "invalid_state"}
+	# 旧版本通过取模生成重复客人；只撤下尚未接单的重复实例。
+	if not state.front.is_empty() and int(str(state.front.id).trim_prefix("restaurant_")) > CustomerCatalog.CUSTOMERS.size():
+		var before_cleanup := _state.duplicate(true)
+		state.front = {}
+		state.queue = []
+		state.arrival_notice = false
+		_state["restaurant_customers"] = state
+		if not save():
+			_state = before_cleanup
+			return {"success": false, "reason": "save_failed"}
+	var today := Time.get_date_string_from_system()
+	if str(state.daily_key) != today:
+		state.daily_key = today
+		state.daily_orders = 0
+		state.arrival_notice = false
+		_state["restaurant_customers"] = state
+	# 单客模式：未接单的前台顾客存在时不再预生成队列。
+	# 旧存档可能残留上一版队列，清除未接单候客后按新规则重新生成。
+	if not state.queue.is_empty():
+		state.queue = []
+		_state["restaurant_customers"] = state
+		if not save(): return {"success": false, "created": false, "reason": "save_failed"}
+	var waiting_count: int = 0 if state.front.is_empty() else 1
+	if not state.front.is_empty():
+		return {"success": true, "created": false, "reason": "waiting"}
+	if int(state.serial) >= CustomerCatalog.CUSTOMERS.size():
+		return {"success": false, "created": false, "reason": "orders_exhausted"}
+	if int(state.serial) == 0 and float(_state.get("customer_01_walk_seconds", 0.0)) < 2.0:
+		return {"success": false, "created": false, "reason": "waiting_for_walk"}
+	if int(state.serial) == 1 and not _state.get("customer_05_returned", false):
+		return {"success": false, "created": false, "reason": "waiting_for_maze_return"}
+	if int(state.serial) == 2 and (not _state.get("restaurant_order_receipts", {}).has("restaurant_2") or not restaurant_customer_order("restaurant_2").is_empty()):
+		return {"success": false, "created": false, "reason": "waiting_for_departure"}
+	if int(state.daily_orders) >= 10:
+		return {"success": not state.front.is_empty(), "created": false, "reason": "daily_limit"}
+	if state.seated.size() + waiting_count >= 3:
+		return {"success": not state.front.is_empty(), "created": false, "reason": "full"}
+	var previous := _state.duplicate(true)
+	var serial := int(state.serial) + 1
+	var config: Dictionary = CustomerCatalog.CUSTOMERS[serial - 1]
+	state.serial = serial
+	var order := {"id": "restaurant_%d" % serial, "customer_id": config.id, "item_id": config.recipe,
+		"item_name": RecipeCatalog.get_recipe(config.recipe).name, "quantity": 1, "phase": "queued", "seat": -1}
+	if state.front.is_empty():
+		order.phase = "front"
+		state.front = order
+	else: state.queue.append(order)
+	state.arrival_notice = true
+	_state["restaurant_customers"] = state
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed"}
+	return {"success": true, "created": true, "order": state.front.duplicate(true)}
+
+func _customers_valid(state: Dictionary) -> bool:
+	if state.get("invalid", false): return false
+	if not _valid_count(state.get("serial")) or not state.get("front") is Dictionary or not state.get("seated") is Array or state.seated.size() > 3: return false
+	var ids: Array = []
+	var seats: Array = []
+	var queue = state.get("queue", [])
+	if not queue is Array or queue.size() > 2 or state.seated.size() + queue.size() + (0 if state.front.is_empty() else 1) > 3: return false
+	if not queue.is_empty() and state.front.is_empty(): return false
+	if not state.front.is_empty() and state.front.get("phase") != "front": return false
+	for waiting in queue:
+		if not waiting is Dictionary or waiting.get("phase") != "queued": return false
+	var entries: Array = state.seated.duplicate()
+	entries.append_array(queue)
+	if not state.front.is_empty(): entries.append(state.front)
+	for entry in entries:
+		if not entry is Dictionary or not entry.get("id") is String or entry.id.is_empty() or entry.id in ids: return false
+		var config := CustomerCatalog.customer(str(entry.get("customer_id", "")))
+		if config.is_empty() or entry.get("item_id") != config.recipe: return false
+		if entry.get("phase") == "queued":
+			if entry not in queue or entry.get("seat") != -1: return false
+		elif entry.get("phase") == "front":
+			if entry != state.front or entry.get("seat") != -1: return false
+		else:
+			if entry.get("phase") not in ["seating", "waiting", "eating", "farewell", "leaving"] or not _valid_count(entry.get("seat")) or entry.seat > 2 or entry.seat in seats: return false
+			seats.append(entry.seat)
+		ids.append(entry.id)
+	return true
+
+func accept_restaurant_customer(expected_id: String) -> Dictionary:
+	var state := restaurant_customers()
+	if not _customers_valid(state): return {"success": false, "reason": "invalid_state"}
+	if state.seated.size() >= 3: return {"success": false, "reason": "full"}
+	if state.front.get("id", "") != expected_id or expected_id.is_empty(): return {"success": false, "reason": "stale_customer"}
+	var previous := _state.duplicate(true)
+	var order: Dictionary = state.front.duplicate(true)
+	var occupied: Array = []
+	for entry in state.seated: occupied.append(int(entry.seat))
+	for seat in range(3):
+		if seat not in occupied:
+			order.seat = seat
+			break
+	order.phase = "seating"
+	state.seated.append(order)
+	state.front = {}
+	state.daily_orders = int(state.daily_orders) + 1
+	state.arrival_notice = false
+	_state["restaurant_customers"] = state
+	var recipes := unlocked_recipe_ids()
+	if order.item_id not in recipes: recipes.append(order.item_id)
+	_state[UNLOCKED_RECIPES_KEY] = recipes
+	# 教学资格与真实接单原子保存；已有探索历史不补发。
+	if not _state.has("ch2_guide_01") and not _state.get("capture_first_visit_started", false) and not maze_exploration_state().chapter_2_started and int(state.daily_orders) == 1:
+		_state["ch2_guide_01"] = {"step":"recipe", "recipe":order.item_id, "seen":{}, "banked":{}}
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed"}
+	return {"success": true, "order": order.duplicate(true)}
+
+func consume_customer_arrival_notice() -> bool:
+	var state := restaurant_customers()
+	if not bool(state.get("arrival_notice", false)): return false
+	state.arrival_notice = false
+	_state["restaurant_customers"] = state
+	return true
+
+func advance_restaurant_customer(id: String, expected: String, next: String) -> Dictionary:
+	var transitions := {"seating": "waiting", "eating": "farewell", "farewell": "leaving", "leaving": "departed"}
+	if transitions.get(expected) != next: return {"success": false, "reason": "invalid_transition"}
+	var state := restaurant_customers()
+	if not _customers_valid(state): return {"success": false, "reason": "invalid_state"}
+	for index in range(state.seated.size()):
+		var order: Dictionary = state.seated[index]
+		if order.id != id: continue
+		if order.phase != expected: return {"success": false, "reason": "stale_phase"}
+		var previous := _state.duplicate(true)
+		if next == "departed": state.seated.remove_at(index)
+		else: order.phase = next
+		_state["restaurant_customers"] = state
+		if not save():
+			_state = previous
+			return {"success": false, "reason": "save_failed"}
+		return {"success": true}
+	return {"success": false, "reason": "no_customer"}
+
+func deliver_restaurant_customer(id: String) -> Dictionary:
+	var transaction_time := int(Time.get_unix_time_from_system())
+	var state := restaurant_customers()
+	if not _customers_valid(state): return {"success": false, "reason": "invalid_state"}
+	var receipts = _state.get("restaurant_order_receipts", {})
+	if not receipts is Dictionary: return {"success": false, "reason": "invalid_state"}
+	if receipts.has(id): return {"success": false, "reason": "already_completed"}
+	for order in state.seated:
+		if order.id != id: continue
+		if order.phase != "waiting": return {"success": false, "reason": "not_waiting"}
+		var quality := dish_quality(order.item_id, transaction_time)
+		if quality == 0: return {"success": false, "reason": "missing_dish"}
+		var gold_reward := RecipeCatalog.order_gold(order.item_id)
+		if gold_reward == 0 or not chest_reward_state_valid() or gold_balance() > 9007199254740991 - gold_reward:
+			return {"success": false, "reason": "invalid_reward_state"}
+		var previous := _state.duplicate(true)
+		var inventory := inventory_snapshot()
+		var prepared := prepared_dishes_snapshot()
+		inventory[order.item_id] -= 1
+		prepared[order.item_id][str(quality)] -= 1
+		_consume_chilled_dish(order.item_id, quality, transaction_time)
+		var reward := int(QUALITY_REPUTATION[quality])
+		var next_receipts: Dictionary = receipts.duplicate(true)
+		next_receipts[id] = {"quality": quality, "reputation_awarded": reward, "gold_awarded": gold_reward, "item_id": order.item_id}
+		order.phase = "eating"
+		_state["restaurant_customers"] = state
+		_state["restaurant_order_receipts"] = next_receipts
+		_state[INVENTORY_KEY] = inventory
+		_state[PREPARED_DISHES_KEY] = prepared
+		_state[REPUTATION_KEY] = reputation() + reward
+		_state[GOLD_KEY] = gold_balance() + gold_reward
+		if not save():
+			_state = previous
+			return {"success": false, "reason": "save_failed"}
+		return {"success": true, "quality": quality, "reputation_awarded": reward, "gold_awarded": gold_reward}
+	return {"success": false, "reason": "no_customer"}
+
+func dish_quality(item_id: String, at_time := -1) -> int:
+	if not freezer_valid(): return 0
+	var now := int(Time.get_unix_time_from_system()) if at_time < 0 else at_time
+	return Freezer.usable_quality(freezer_snapshot(), prepared_dishes_snapshot(), item_id, now)
+
+
+const Freezer := preload("res://scripts/restaurant/freezer_store.gd")
+
+func freezer_valid() -> bool:
+	return Freezer.valid(_state.get(Freezer.KEY, Freezer.empty()), prepared_dishes_snapshot())
+
+func freezer_snapshot() -> Dictionary:
+	if not freezer_valid(): return {}
+	return _state.get(Freezer.KEY, Freezer.empty()).duplicate(true)
+
+func carried_dish_count() -> int:
+	var count := 0
+	for recipe_id in RecipeCatalog.RECIPES:
+		count += inventory_quantity(recipe_id)
+	return count
+
+## 首次冷藏前的料理没有截止时间；旧档多份成品全部保留，逐份处理。
+func freezer_carried_options() -> Array:
+	if not freezer_valid(): return []
+	var ledger := freezer_snapshot()
+	var prepared := prepared_dishes_snapshot()
+	var options: Array = ledger.carried.duplicate(true)
+	for unit in options: unit["count"] = 1
+	for recipe_id in prepared:
+		for quality in [1, 2, 3]:
+			var count := int(prepared[recipe_id].get(str(quality), 0))
+			for unit in ledger.carried:
+				if unit.recipe_id == recipe_id and int(unit.quality) == quality: count -= 1
+			if count > 0: options.append({"id": 0, "recipe_id": recipe_id, "quality": quality, "expires_at": 0, "count": count})
+	return options
+
+func _consume_chilled_dish(recipe_id: String, quality: int, at_time: int) -> void:
+	var ledger := freezer_snapshot()
+	var index := Freezer.carried_index(ledger, recipe_id, quality, at_time)
+	if index >= 0:
+		ledger.carried.remove_at(index)
+		_state[Freezer.KEY] = ledger
+
+## 存取、丢弃与旧库存星级同步提交；调用方仅在成功后刷新界面。
+func freezer_unlocked() -> bool:
+	return yufeng_salia_state() == "done"
+
+func freezer_notice_pending() -> bool:
+	return freezer_unlocked() and not bool(_state.get("freezer_unlock_notice_seen", false))
+
+func acknowledge_freezer_notice() -> bool:
+	if not freezer_unlocked(): return false
+	var previous := _state.duplicate(true)
+	_state["freezer_unlock_notice_seen"] = true
+	if save(): return true
+	_state = previous
+	return false
+
+func freezer_action(action: String, unit_id := 0, recipe_id := "", quality := 1) -> Dictionary:
+	if not freezer_unlocked(): return {"success": false, "reason": "story_locked"}
+	if not can_discard_carried_food(): return {"success": false, "reason": "chapter_locked"}
+	if cooking_state().status == "active": return {"success": false, "reason": "busy"}
+	if not freezer_valid(): return {"success": false, "reason": "invalid_state"}
+	var ledger := freezer_snapshot()
+	var prepared := prepared_dishes_snapshot()
+	var inventory := inventory_snapshot()
+	var now := int(Time.get_unix_time_from_system())
+	if action == "store" or action == "discard_carried":
+		var selected := {}
+		for option in freezer_carried_options():
+			if int(option.id) == unit_id and option.recipe_id == recipe_id and int(option.quality) == quality:
+				selected = option
+				break
+		if selected.is_empty(): return {"success": false, "reason": "changed"}
+		if action == "store":
+			if ledger.stored.size() >= Freezer.CAPACITY: return {"success": false, "reason": "full"}
+			if int(selected.expires_at) > 0 and int(selected.expires_at) <= now: return {"success": false, "reason": "expired"}
+			var unit := selected.duplicate(true)
+			unit.erase("count")
+			if unit_id == 0:
+				unit.id = int(ledger.next_id)
+				ledger.next_id = int(ledger.next_id) + 1
+				unit.expires_at = now + Freezer.LIFETIME
+			ledger.stored.append(unit)
+		if unit_id > 0:
+			ledger.carried = ledger.carried.filter(func(unit): return int(unit.id) != unit_id)
+		inventory[recipe_id] -= 1
+		prepared[recipe_id][str(quality)] -= 1
+	elif action == "withdraw" or action == "discard":
+		var index := -1
+		for i in ledger.stored.size():
+			if int(ledger.stored[i].id) == unit_id: index = i
+		if index < 0: return {"success": false, "reason": "changed"}
+		var unit: Dictionary = ledger.stored[index]
+		if action == "withdraw":
+			if int(unit.expires_at) <= now: return {"success": false, "reason": "expired"}
+			if carried_dish_count() > 0: return {"success": false, "reason": "hands_full"}
+			ledger.carried.append(unit)
+			inventory[unit.recipe_id] = int(inventory.get(unit.recipe_id, 0)) + 1
+			prepared[unit.recipe_id][str(int(unit.quality))] += 1
+		ledger.stored.remove_at(index)
+	else:
+		return {"success": false, "reason": "invalid_action"}
+	if not Freezer.valid(ledger, prepared): return {"success": false, "reason": "invalid_state"}
+	var previous := _state.duplicate(true)
+	_state[Freezer.KEY] = ledger
+	_state[INVENTORY_KEY] = inventory
+	_state[PREPARED_DISHES_KEY] = prepared
+	if not save():
+		_state = previous
+		return {"success": false, "reason": "save_failed"}
+	return {"success": true}
+
+# 通用收藏与章节剧情队伍分开；缺字段只读兼容，坏字段不回退授奖。
+var _recruit_busy := false
+const Recruitment := preload("res://scripts/characters/recruitment.gd")
+
+func owned_characters() -> Array:
+	var collection := Recruitment.owned(self)
+	return collection.ids if collection.valid else []
+
+func stardust_balance() -> int:
+	return Recruitment.balance(self)
+
+func recruit(count: int, random_source: Callable = Callable()) -> Dictionary:
+	return Recruitment.draw(self, count, random_source)

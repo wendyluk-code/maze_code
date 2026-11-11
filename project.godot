@@ -14,16 +14,23 @@ config/name="maze_code"
 run/main_scene="res://scenes/start_screen.tscn"
 config/features=PackedStringArray("4.7")
 
+[display]
+
+window/size/no_focus.maze_automated_test=true
+window/size/mode.maze_hitstop_screenless_test=1
+window/size/no_focus.maze_hitstop_screenless_test=true
+
 [autoload]
 
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 SaveManager="*res://scripts/save_manager.gd"
 TutorialManager="*res://scripts/tutorial_manager.gd"
 LocalDebug="*res://scripts/debug/local_debug.gd"
+GameAudio="*res://scripts/audio/game_audio.gd"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/godot_ai/plugin.cfg")
+enabled=PackedStringArray("res://addons/godot_ai/plugin.cfg", "res://addons/audio_mixer/plugin.cfg")
 
 [gui]
 

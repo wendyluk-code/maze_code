@@ -29,6 +29,6 @@ static func find(id: String) -> Dictionary:
 			if row.id==id: return row
 	return {}
 static func protected(region: String,point: Vector2,margin: float=0.0) -> bool:
-	for row in all(region):
-		if point.distance_to(row.position)<42.0+margin: return true
+	for p in POINTS.get(region,[]):
+		if point.distance_to(Vector2(p[1],p[2]))<42.0+margin: return true
 	return false

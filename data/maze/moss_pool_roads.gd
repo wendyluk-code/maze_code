@@ -1,26 +1,26 @@
 extends RefCounted
-## 青苔池仅五段土路可行走；水池、瀑布、作物及崖壁均不开放。
-const SIZE := Vector2(1484,1060)
-const SPAWN := Vector2(1201,956)
-const ENTRANCE := Vector2(1208,1015)
+## 飞书原图1408×1117；按可见土路标定，水池、瀑布、树林及崖壁不开放。
+const SIZE := Vector2(1408,1117)
+const SPAWN := Vector2(1100,1030)
+const ENTRANCE := Vector2(1140,1080)
 const INTERACT_RADIUS := 80.0
 const FOOT_RADIUS := 4.0
 const FENSHUI_PORTAL := Vector2(189.5,170.5)
 const FENSHUI_RETURN := Vector2(239,194)
 ## 盐池左侧道路连接青苔池右侧道路；落点在路标内侧，避开路标阻挡。
-const SALT_MARKER := Vector2(1445,662)
-const SALT_ARRIVAL := Vector2(1380,633)
+const SALT_MARKER := Vector2(1370,730)
+const SALT_ARRIVAL := Vector2(1315,710)
 const SALT_SIDE_MARKER := Vector2(35,390)
 const SALT_SIDE_ARRIVAL := Vector2(105,402)
 const SALT_LINK_ATLAS := Vector2(662,263)
 
 static func roads() -> Array:
 	return [
-		{"width":16.0,"points":PackedVector2Array([Vector2(0,359),Vector2(70,385),Vector2(156,424),Vector2(240,447),Vector2(313,446),Vector2(384,422),Vector2(446,394),Vector2(502,359),Vector2(539,322),Vector2(551,289)])},
-		{"width":13.0,"points":PackedVector2Array([Vector2(650,575),Vector2(687,558),Vector2(727,534),Vector2(755,506),Vector2(778,490)])},
-		{"width":15.0,"points":PackedVector2Array([Vector2(1265,622),Vector2(1313,619),Vector2(1371,628),Vector2(1433,658),Vector2(1484,676)])},
-		{"width":14.0,"points":PackedVector2Array([Vector2(1100,738),Vector2(1080,781),Vector2(1101,827),Vector2(1147,870),Vector2(1194,915),Vector2(1201,956),Vector2(1208,1015),Vector2(1208,1060)])},
-		{"width":14.0,"points":PackedVector2Array([Vector2(728,885),Vector2(707,923),Vector2(680,960),Vector2(666,1004),Vector2(664,1060)])}
+		{"width":14.0,"points":PackedVector2Array([Vector2(0,430),Vector2(70,458),Vector2(140,474),Vector2(188,469),Vector2(240,438),Vector2(300,402),Vector2(350,382),Vector2(390,354),Vector2(424,324),Vector2(434,299),Vector2(423,270)])},
+		{"width":12.0,"points":PackedVector2Array([Vector2(580,505),Vector2(620,512),Vector2(650,531),Vector2(669,550),Vector2(667,575),Vector2(652,596),Vector2(620,616),Vector2(585,637),Vector2(560,646)])},
+		{"width":12.0,"points":PackedVector2Array([Vector2(920,498),Vector2(940,477),Vector2(955,460),Vector2(970,435),Vector2(990,408),Vector2(1000,390),Vector2(1010,370),Vector2(1000,345)])},
+		{"width":16.0,"points":PackedVector2Array([Vector2(1150,1117),Vector2(1150,1100),Vector2(1120,1070),Vector2(1100,1030),Vector2(1075,1000),Vector2(1060,970),Vector2(1050,950),Vector2(1030,910),Vector2(1005,870),Vector2(985,840),Vector2(974,824),Vector2(990,780),Vector2(1014,738),Vector2(1060,702),Vector2(1120,669),Vector2(1170,665),Vector2(1230,689),Vector2(1315,710),Vector2(1408,742)])},
+		{"width":14.0,"points":PackedVector2Array([Vector2(490,860),Vector2(520,890),Vector2(548,917),Vector2(570,941),Vector2(570,969),Vector2(545,990),Vector2(500,1008),Vector2(460,1016),Vector2(400,1025),Vector2(350,1035)])}
 	]
 
 static func is_walkable(point: Vector2, radius: float = FOOT_RADIUS) -> bool:

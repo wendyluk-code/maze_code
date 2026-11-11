@@ -40,10 +40,12 @@ func _ready() -> void:
 		rule_texture.atlas = load(ART_ROOT + "panel_backplate.png")
 		rule_texture.region = Rect2(300, 50, 100, 8)
 		rule.texture = rule_texture
-	_art("ApprovedArtwork", "key_visual", Rect2(350, 140, 1030, 454))
-	_vertical_name("DingdangName", "叮\n当", "dingdang", Rect2(447, 389, 34, 72))
-	_vertical_name("SaliaName", "萨\n莉\n亚", "salia", Rect2(980, 267, 34, 106))
-	_vertical_name("YufengName", "御\n风", "yufeng", Rect2(1238, 337, 34, 72))
+	var artwork := _art("ApprovedArtwork", "key_visual_four", Rect2(350, 140, 1030, 454))
+	artwork.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_vertical_name("YayaName", "芽\n芽", "yaya", Rect2(361, 410, 34, 72))
+	_vertical_name("TieshanName", "铁\n山", "tieshan", Rect2(594, 286, 34, 72))
+	_vertical_name("SaliaName", "萨\n莉\n亚", "salia", Rect2(1038, 260, 34, 106))
+	_vertical_name("YufengName", "御\n风", "yufeng", Rect2(1260, 320, 34, 72))
 
 	single_button = _make_button("SingleDraw", "抽1次", Rect2(491.5, 594, 330, 67), 1, SINGLE_COST)
 	ten_button = _make_button("TenDraw", "抽10次", Rect2(849.5, 594, 331, 67), 10, TEN_COST)

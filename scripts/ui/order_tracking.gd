@@ -79,17 +79,6 @@ func _process(delta: float) -> void:
 	if _refresh_elapsed >= 0.2:
 		_refresh_elapsed = 0.0
 		refresh_saved_state()
-	if not _expanded:
-		return
-	var warehouse := get_tree().get_first_node_in_group("warehouse_modal")
-	var cooking := get_tree().get_first_node_in_group("cooking_modal")
-	var departure := get_tree().get_first_node_in_group("departure_panel")
-	var other_ui_open: bool = is_instance_valid(warehouse) and warehouse.visible
-	other_ui_open = other_ui_open or (is_instance_valid(cooking) and cooking.visible)
-	other_ui_open = other_ui_open or (is_instance_valid(departure) and bool(departure.get("_open")))
-	other_ui_open = other_ui_open or (is_instance_valid(departure) and departure.has_method("_cards_open") and departure._cards_open())
-	if other_ui_open:
-		collapse_details()
 
 func get_layout_side() -> String:
 	return "left"
@@ -98,6 +87,8 @@ func entry_rect() -> Rect2:
 	return _task_button.get_global_rect()
 
 func _input(event: InputEvent) -> void:
+	var player := get_tree().get_first_node_in_group("player")
+	if is_instance_valid(player) and bool(player.get("input_locked")): return
 	if not _expanded or not is_visible_in_tree():
 		return
 	if event is InputEventKey and event.pressed:
@@ -303,7 +294,9 @@ func _sync_quest_content() -> void:
 	_collection_was_active = elder_state.status == "active"
 	_notification.visible = SaveManager.has_unread_quests()
 	# 库存变化也属于视图签名；定义和实例不另存采集累计进度。
-	var signature := JSON.stringify([snapshot.active, elder_state, _collection_feedback_left > 0, SaveManager.inventory_snapshot()])
+	var orders := SaveManager.customer_orders_active()
+	for order in orders: order.erase("remaining")
+	var signature := JSON.stringify([snapshot.active, elder_state, _collection_feedback_left > 0, SaveManager.inventory_snapshot(), SaveManager.yufeng_salia_record(), preload("res://scripts/quests/salt_pool_progress.gd").snapshot(SaveManager), orders])
 	if signature == _quest_view_signature: return
 	_quest_view_signature = signature
 	for key in _status_icons.keys():
@@ -312,11 +305,44 @@ func _sync_quest_content() -> void:
 		_customer_tasks.remove_child(child)
 		child.queue_free()
 	var has_customer_orders := false
+	var has_yufeng_quest := false
 	var order_active := false
 	var exploration: Dictionary = {}
 	var collection: Dictionary = {}
 	for quest in snapshot.active:
-		if quest.type == "order" and quest.has("order_id"):
+		if quest.id in ["yufeng_pool_clue","chapter_1_salt_pool"]:
+			has_yufeng_quest = true
+			var panel := PanelContainer.new()
+			panel.add_theme_stylebox_override("panel",_main_task_style())
+			_customer_tasks.add_child(panel)
+			var content := VBoxContainer.new()
+			content.add_theme_constant_override("separation",6)
+			panel.add_child(content)
+			var heading := HBoxContainer.new()
+			heading.add_theme_constant_override("separation",6)
+			content.add_child(heading)
+			_add_status_icon_to(heading,"customer_yufeng_pool")
+			heading.add_child(_make_label("探索任务",19,SproutTheme.INK))
+			var title := _make_label(quest.title,18,SproutTheme.INK)
+			title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			title.custom_minimum_size.x = PANEL_WIDTH-48.0
+			content.add_child(title)
+			var indent := MarginContainer.new()
+			indent.add_theme_constant_override("margin_left",12)
+			_customer_tasks.add_child(indent)
+			var subtasks := VBoxContainer.new()
+			subtasks.add_theme_constant_override("separation",8)
+			indent.add_child(subtasks)
+			if quest.id == "yufeng_pool_clue":
+				var record: Dictionary = SaveManager.yufeng_salia_record()
+				_add_progress_subtask(subtasks,"击败池中巨蛙",record.get("frog_defeated",false))
+				var inspected: bool = record.phase in ["clue","report","post","gift_pending","gift_reward","farewell","joined","fade","done"]
+				_add_progress_subtask(subtasks,"调查池中线索",inspected)
+			else:
+				var progress: Dictionary = preload("res://scripts/quests/salt_pool_progress.gd").snapshot(SaveManager)
+				_add_progress_subtask(subtasks,"捕获岩鬃兽",progress.get("captured",false))
+
+		elif quest.type == "order" and quest.has("order_id"):
 			has_customer_orders = true
 			var order := SaveManager.restaurant_customer_order(quest.order_id)
 			var group := VBoxContainer.new()
@@ -339,10 +365,14 @@ func _sync_quest_content() -> void:
 			dish_row.add_theme_constant_override("separation", 8)
 			content.add_child(dish_row)
 			dish_row.add_child(_make_item_icon(str(order.item_id)))
-			var dish_name := _make_label("交出%s" % str(order.item_name), 18, SproutTheme.INK)
+			var dish_name := _make_label(("已交付：" if order.get("food_done", false) else "交出") + str(order.item_name), 18, SproutTheme.INK)
 			dish_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			dish_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			dish_row.add_child(dish_name)
+			if order.has("drink_ice") and not order.get("cycle", false):
+				var drink_text: String = ("已交付：" if order.get("drink_done", false) else "交出") + "甘露水 · " + preload("res://scripts/restaurant/ganlu_service.gd").ICE_NAMES[int(order.drink_ice)]
+				content.add_child(_make_label(drink_text,18,SproutTheme.INK))
+			if order.get("food_done", false): continue
 			var indent := MarginContainer.new()
 			indent.add_theme_constant_override("margin_left", 12)
 			group.add_child(indent)
@@ -388,7 +418,7 @@ func _sync_quest_content() -> void:
 		_collection_status.text = "%d/%d" % [elder_state.required if delivered else elder_state.wood, elder_state.required] if elder_state.valid else "异常"
 		_status_icons.collection_materials.progress = 1.0 if collected else 0.0
 		_status_icons.collection.progress = 1.0 if delivered else 0.0
-	_empty_tasks.visible = not order_active and not has_customer_orders and exploration.is_empty() and not _collection_task.visible
+	_empty_tasks.visible = not order_active and not has_customer_orders and not has_yufeng_quest and exploration.is_empty() and not _collection_task.visible
 	if is_instance_valid(_scroll):
 		_queue_panel_height()
 	else:
@@ -477,6 +507,8 @@ func _make_item_icon(item_id: String) -> TextureRect:
 	icon.texture = texture
 	if item_id not in ["wood", "rockmane_meat", "rock_salt", "salt_grilled_rockmane", "moondew_honey", "slime_gel", "brick_snail_meat", "petrifying_lizard_tail"]:
 		icon.texture = preload("res://scripts/cooking/recipe_catalog.gd").item_texture(item_id)
+	# 所有任务物品都按可见主体适配，不能把原图透明画布缩进28像素格。
+	icon.texture = preload("res://scripts/ui/components/bag_icon_display.gd").texture(icon.texture)
 	icon.custom_minimum_size = Vector2(28, 28)
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -787,3 +819,18 @@ func hide_tracking() -> void:
 	_immediate_cleanup()
 	visible = false
 	_notification.visible = false
+
+func _add_progress_subtask(parent: Node, title: String, complete: bool) -> void:
+	var content := _make_subtask(parent,title,false)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation",5)
+	content.add_child(row)
+	var icon := STATUS_ICON.new()
+	icon.progress = 1.0 if complete else 0.0
+	row.add_child(icon)
+	var label := _make_label(title,16,SproutTheme.INK)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(label)
+	var counter := _make_status_button()
+	_set_counter(counter,int(complete))
+	row.add_child(counter)

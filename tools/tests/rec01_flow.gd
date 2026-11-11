@@ -112,7 +112,7 @@ func _service_checks() -> void:
 		sm.data[Growth.KEY][id] = {"level":30,"exp":0,"rank":6,"breakthroughs":5}
 		var record := Growth.record(sm, id)
 		var active := Growth.active_skill(id, 30)
-		_check(record.valid and record.attack == entry[1] and record.health == entry[2] and record.defense == 30 and record.satiety_max == entry[3] and is_equal_approx(record.recovery_percent, entry[4]) and is_equal_approx(active.interval, entry[5]) and is_equal_approx(active.multiplier, 1.5), "30级完整成长与主动显示:" + id)
+		_check(record.valid and record.attack == entry[1] and record.health == entry[2] and record.defense == 30 and record.satiety_max == 10 and is_equal_approx(record.recovery_percent, entry[4]) and is_equal_approx(active.interval, entry[5]) and is_equal_approx(active.multiplier, 1.5), "30级完整成长与主动显示:" + id)
 	sm.data[Growth.KEY] = original_growth
 	sm.save()
 
@@ -138,19 +138,7 @@ func _flow_recruit() -> void:
 		_check(page.cards_modal.visible and page.cards_modal.character_id == id, "真实角色详情:"+id)
 		_check(page.cards_modal.active_description.get_theme_font_size("font_size") == 21, "主动描述保持原21字号:"+id)
 		await _shot(id+"_details")
-		if page.cards_modal.active_rules_button.visible:
-			await _click(page.cards_modal.active_rules_button)
-			var rules = page.cards_modal.active_rules_modal
-			_check(rules.visible and rules._body_label.get_theme_font_size("font_size") == 26, "完整说明使用可读字号:"+id)
-			_check(rules._body_label.get_line_count() == rules._body_label.get_visible_line_count(), "完整说明全部行可见:"+id)
-			var bounds: Rect2 = rules._panel.get_global_rect()
-			_check(get_viewport().get_visible_rect().encloses(bounds), "完整说明面板在视口内:"+id)
-			if id == "dingdang":
-				for phrase in ["同一目标仅保留一个锁印", "钥匙本身不引爆，只刷新锁印", "雷电传导不触发锁印", "锁印不会转移", "240像素", "15%", "并消耗锁印"]:
-					_check(rules._body_label.text.contains(phrase), "锁印完整机制:"+phrase)
-			await _shot(id+"_full_rules")
-			await _send_key(KEY_ESCAPE)
-			_check(not rules.visible and page.cards_modal.visible, "Esc只关完整说明:"+id)
+		_check(not page.cards_modal.find_children("*", "Button", true, false).any(func(button): return button.text == "完整说明"), "角色详情无完整说明入口:"+id)
 		await _click(page.cards_modal.tabs[1])
 		await _shot(id+"_skills")
 		await _send_key(KEY_ESCAPE)

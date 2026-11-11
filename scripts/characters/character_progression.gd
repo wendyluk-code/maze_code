@@ -21,7 +21,7 @@ const BASE_CHARACTERS := {
 		"attack_growth": 3,
 		"health": 10,
 		"health_growth": 2,
-		"satiety": 2,
+		"satiety": 3,
 		"recovery": 0.015,
 		"recovery_growth": 0.0005,
 		"active_name": "引雷",
@@ -98,7 +98,7 @@ const BASE_CHARACTERS := {
 		"attack_growth": 2,
 		"health": 18,
 		"health_growth": 3,
-		"satiety": 2,
+		"satiety": 4,
 		"recovery": 0.015,
 		"recovery_growth": 0.0005,
 		"active_name": "逐风刃",
@@ -178,7 +178,7 @@ const BASE_CHARACTERS := {
 		"attack_growth": 1,
 		"health": 20,
 		"health_growth": 3,
-		"satiety": 3,
+		"satiety": 1,
 		"recovery": 0.02,
 		"recovery_growth": 0.001,
 		"active_name": "锁印",
@@ -250,7 +250,7 @@ const BASE_CHARACTERS := {
 		"skill_icon": "res://assets/ui/combat_skills/dingdang.png"
 	},
 
-	"yaya": {"active_name": "光点", "active_description": "沿直线发射一枚光点，命中首个敌人后消散。", "interval_start": 0.42, "interval_end": 0.30, "rarity": "R", "name": "芽芽", "faction": "grass", "portrait": "res://assets/characters/yaya_portrait.png", "detail_portrait": "res://assets/ui/character_details/yaya_front.png", "attack": 1, "attack_growth": 1, "health": 12, "health_growth": 2, "satiety": 2, "recovery": 0.020, "recovery_growth": 0.001,
+	"yaya": {"active_name": "光点", "active_description": "依次发射飞叶，命中首个敌人后消散。", "interval_start": 0.42, "interval_end": 0.30, "rarity": "R", "name": "芽芽", "faction": "grass", "portrait": "res://assets/characters/yaya_portrait.png", "detail_portrait": "res://assets/ui/character_details/yaya_front.png", "attack": 1, "attack_growth": 1, "health": 12, "health_growth": 2, "satiety": 2, "recovery": 0.020, "recovery_growth": 0.001,
 		"skills": [
 			["双份惊喜", "成功捕获后，有15%概率复制本次获得的整组材料一份。"],
 			["留心收集", "基础复制概率增加5个百分点，达到20%。"],
@@ -258,7 +258,7 @@ const BASE_CHARACTERS := {
 			["满载而归", "基础复制概率再增加5个百分点，达到25%。"],
 			["好事成双", "复制触发时，有20%概率再额外复制一份。"],
 			["丰收拿手菜", "本趟前3次成功捕获克制系魔物，必定触发复制，仍可触发额外复制。"]]},
-	"tieshan": {"active_name": "旋斧", "active_description": "挥斧横扫周围敌人，每次挥斧对同一目标仅造成一次伤害。", "interval_start": 0.80, "interval_end": 0.60, "rarity": "R", "name": "铁山", "faction": "earth", "portrait": "res://assets/characters/tieshan/tieshan_portrait.png", "detail_portrait": "res://assets/ui/character_details/tieshan_front.png", "attack": 2, "attack_growth": 2, "health": 24, "health_growth": 4, "satiety": 1, "recovery": 0.010, "recovery_growth": 0.0005,
+	"tieshan": {"active_name": "旋斧", "active_description": "挥斧横扫周围敌人，每次挥斧对同一目标仅造成一次伤害。", "interval_start": 0.80, "interval_end": 0.60, "rarity": "R", "name": "铁山", "faction": "earth", "portrait": "res://assets/characters/tieshan/tieshan_portrait.png", "detail_portrait": "res://assets/ui/character_details/tieshan_front.png", "attack": 2, "attack_growth": 2, "health": 24, "health_growth": 4, "satiety": 3, "recovery": 0.010, "recovery_growth": 0.0005,
 		"skills": [
 			["同心列阵", "每名同元素队友，使团队攻击力增加3%，不计铁山自己。"],
 			["并肩前行", "每名同元素队友的加成增加1个百分点，达到4%。"],
@@ -267,6 +267,23 @@ const BASE_CHARACTERS := {
 			["四人同心", "有3名同元素队友时，团队攻击力额外增加4%。"],
 			["众志成山", "每名同元素队友的加成再增加2个百分点，达到7%。"]]}
 }
+
+# 在5/10/15/20/25/30级分别增加；相同初始上限使用同一条成长曲线。
+const SATIETY_GAINS := {
+	5: [1,1,1,1,0,1],
+	4: [1,1,1,1,1,1],
+	3: [1,1,1,1,1,2],
+	2: [1,1,2,1,1,2],
+	1: [1,2,1,2,1,2]
+}
+
+static func satiety_limit(id: String, level: int) -> int:
+	if not CHARACTERS.has(id): return 0
+	var initial := int(CHARACTERS[id].satiety)
+	var total := initial
+	for index in range(clampi(level,1,30) / 5):
+		total += int(SATIETY_GAINS[initial][index])
+	return total
 
 # 主动技能与防御的唯一成长来源，界面和实战共用。
 static func defense(id: String, level: int) -> int:
@@ -340,7 +357,7 @@ static func record(sm: Node, id: String) -> Dictionary:
 		"attack": int(config.attack) + (level - 1) * int(config.attack_growth),
 		"defense": defense(id, level),
 		"health": int(config.health) + (level - 1) * int(config.health_growth),
-		"satiety_max": int(config.satiety) + floori(level / 5.0),
+		"satiety_max": satiety_limit(id, level),
 		"recovery_percent": float(config.recovery) + (level - 1) * float(config.recovery_growth)}
 
 static func breakthrough(sm: Node, id: String) -> Dictionary:
@@ -418,6 +435,8 @@ static func portrait_path(id: String) -> String:
 	return path if ResourceLoader.exists(path) else str(CHARACTERS[id].portrait)
 
 static func skill_icon_path(id: String) -> String:
+	if id == "yaya":
+		return "res://assets/ui/ingredients/insulating_leaf.png"
 	var path: String = CHARACTERS[id].get("skill_icon", "res://assets/ui/combat_skills/" + id + ".png")
 	return path if ResourceLoader.exists(path) else str(CHARACTERS[id].portrait)
 

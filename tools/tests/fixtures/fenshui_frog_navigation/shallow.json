@@ -1,0 +1,1046 @@
+{
+  "capture_first_visit_started": true,
+  "capture_run_v1": {
+    "absorbed": 0,
+    "active": true,
+    "bag": {},
+    "base_power": 3,
+    "catalog_version": 2,
+    "combat": {
+      "action": "",
+      "action_left": 0,
+      "actors": {
+        "beetle_1": {
+          "away": 0,
+          "cooldown": 0,
+          "hp": 21,
+          "mode": "idle",
+          "position": [
+            1101,
+            813
+          ],
+          "velocity": [
+            0,
+            0
+          ],
+          "windup": 0
+        },
+        "beetle_2": {
+          "away": 0,
+          "cooldown": 0,
+          "hp": 21,
+          "mode": "idle",
+          "position": [
+            638,
+            412.666656494141
+          ],
+          "velocity": [
+            0,
+            0
+          ],
+          "windup": 0
+        },
+        "beetle_3": {
+          "away": 0,
+          "cooldown": 0,
+          "hp": 21,
+          "mode": "idle",
+          "position": [
+            547,
+            464
+          ],
+          "velocity": [
+            0,
+            0
+          ],
+          "windup": 0
+        },
+        "fenshui_silverfish_1": {
+          "away": 0,
+          "cooldown": 0,
+          "fish_aim": [
+            0,
+            1
+          ],
+          "fish_hit": false,
+          "fish_left": 0,
+          "fish_origin": [
+            1065,
+            405
+          ],
+          "fish_phase": "idle",
+          "flash_remaining": 0,
+          "hp": 20,
+          "mode": "idle",
+          "position": [
+            1129.61682128906,
+            319.529937744141
+          ],
+          "swim_heading": [
+            -0.930817008018494,
+            -0.365485548973084
+          ],
+          "swim_left": 1.49,
+          "velocity": [
+            -22.3388671875,
+            -8.7713623046875
+          ],
+          "windup": 0
+        },
+        "fenshui_silverfish_2": {
+          "away": 0,
+          "cooldown": 0,
+          "fish_aim": [
+            0,
+            1
+          ],
+          "fish_hit": false,
+          "fish_left": 0,
+          "fish_origin": [
+            1050,
+            230
+          ],
+          "fish_phase": "idle",
+          "flash_remaining": 0,
+          "hp": 20,
+          "mode": "idle",
+          "position": [
+            853.880249023438,
+            343.348907470703
+          ],
+          "swim_heading": [
+            -0.658410966396332,
+            0.752658605575562
+          ],
+          "swim_left": 1.55,
+          "velocity": [
+            -15.802001953125,
+            18.06396484375
+          ],
+          "windup": 0
+        },
+        "fenshui_silverfish_3": {
+          "away": 0,
+          "cooldown": 0,
+          "fish_aim": [
+            0,
+            1
+          ],
+          "fish_hit": false,
+          "fish_left": 0,
+          "fish_origin": [
+            620,
+            360
+          ],
+          "fish_phase": "idle",
+          "flash_remaining": 0,
+          "hp": 20,
+          "mode": "idle",
+          "position": [
+            514.229797363281,
+            428.435089111328
+          ],
+          "swim_heading": [
+            -0.98382431268692,
+            -0.179136082530022
+          ],
+          "swim_left": 1.62,
+          "velocity": [
+            -23.612060546875,
+            -4.29931640625
+          ],
+          "windup": 0
+        },
+        "fenshui_silverfish_4": {
+          "away": 0,
+          "cooldown": 0,
+          "fish_aim": [
+            0,
+            1
+          ],
+          "fish_hit": false,
+          "fish_left": 0,
+          "fish_origin": [
+            390,
+            395
+          ],
+          "fish_phase": "idle",
+          "flash_remaining": 0,
+          "hp": 20,
+          "mode": "idle",
+          "position": [
+            367.701904296875,
+            388.242919921875
+          ],
+          "swim_heading": [
+            -0.00450136605650187,
+            0.999989867210388
+          ],
+          "swim_left": 1.85,
+          "velocity": [
+            -0.1080322265625,
+            23.9996337890625
+          ],
+          "windup": 0
+        },
+        "fenshui_thunder_eel_1": {
+          "away": 0,
+          "cooldown": 0,
+          "eel_left": 0,
+          "eel_origin": [
+            609.361877441406,
+            556.587829589844
+          ],
+          "eel_path": [],
+          "eel_phase": "idle",
+          "flash_remaining": 0,
+          "hp": 30,
+          "mode": "idle",
+          "position": [
+            609.361877441406,
+            556.587829589844
+          ],
+          "swim_heading": [
+            0.999691367149353,
+            -0.0248412229120731
+          ],
+          "swim_left": 0.390000000000001,
+          "velocity": [
+            19.993896484375,
+            -0.496826171875
+          ],
+          "windup": 0
+        },
+        "fenshui_thunder_eel_2": {
+          "away": 0,
+          "cooldown": 0,
+          "eel_left": 0,
+          "eel_origin": [
+            1041.306640625,
+            617.525573730469
+          ],
+          "eel_path": [],
+          "eel_phase": "idle",
+          "flash_remaining": 0,
+          "hp": 30,
+          "mode": "idle",
+          "position": [
+            1041.306640625,
+            617.525573730469
+          ],
+          "swim_heading": [
+            -0.540649652481079,
+            -0.841247916221619
+          ],
+          "swim_left": 0.510000000000002,
+          "velocity": [
+            -10.81298828125,
+            -16.824951171875
+          ],
+          "windup": 0
+        },
+        "fenshui_wind_frog_1": {
+          "away": 0,
+          "cooldown": 0,
+          "electric_left": 0,
+          "flash_remaining": 0,
+          "frog_aim": [
+            0,
+            1
+          ],
+          "frog_air_duration": 0.8,
+          "frog_facing": 0,
+          "frog_form_left": 0,
+          "frog_jump": 6,
+          "frog_left": 0.65,
+          "frog_origin": [
+            896,
+            528
+          ],
+          "frog_phase": "warning",
+          "frog_shots": [],
+          "frog_spit_left": 0,
+          "frog_target": [
+            896,
+            528
+          ],
+          "frog_wet": true,
+          "hp": 96,
+          "mode": "chase",
+          "position": [
+            896,
+            528
+          ],
+          "velocity": [
+            0,
+            0
+          ],
+          "windup": 0
+        },
+        "lizard_1": {
+          "away": 0,
+          "cooldown": 0,
+          "hp": 84,
+          "mode": "idle",
+          "position": [
+            270,
+            720
+          ],
+          "velocity": [
+            0,
+            0
+          ],
+          "windup": 0
+        },
+        "slime_1": {
+          "away": 0,
+          "cooldown": 0,
+          "hp": 14,
+          "mode": "idle",
+          "position": [
+            860,
+            295
+          ],
+          "velocity": [
+            0,
+            0
+          ],
+          "windup": 0
+        },
+        "slime_2": {
+          "away": 0,
+          "cooldown": 0,
+          "hp": 14,
+          "mode": "idle",
+          "position": [
+            865.5,
+            795
+          ],
+          "velocity": [
+            0,
+            0
+          ],
+          "windup": 0
+        },
+        "snail_1": {
+          "away": 0,
+          "cooldown": 0,
+          "hp": 28,
+          "mode": "idle",
+          "position": [
+            497,
+            578
+          ],
+          "velocity": [
+            0,
+            0
+          ],
+          "windup": 0
+        },
+        "snail_2": {
+          "away": 0,
+          "cooldown": 0,
+          "hp": 28,
+          "mode": "idle",
+          "position": [
+            1006.33331298828,
+            1050
+          ],
+          "velocity": [
+            0,
+            0
+          ],
+          "windup": 0
+        },
+        "snail_3": {
+          "away": 0,
+          "cooldown": 0,
+          "hp": 28,
+          "mode": "idle",
+          "position": [
+            741,
+            1095
+          ],
+          "velocity": [
+            0,
+            0
+          ],
+          "windup": 0
+        },
+        "snail_4": {
+          "away": 0,
+          "cooldown": 0,
+          "hp": 28,
+          "mode": "idle",
+          "position": [
+            1081,
+            704
+          ],
+          "velocity": [
+            0,
+            0
+          ],
+          "windup": 0
+        }
+      },
+      "aim": [
+        1,
+        0
+      ],
+      "attack": 3,
+      "axe_pending": false,
+      "checkpoint": 0,
+      "cooldown": 0,
+      "elapsed": 15.6500000000001,
+      "enemy_shots": [],
+      "fenshui_encounters": true,
+      "flash_remaining": 0,
+      "frog_encounter": true,
+      "frog_unlocked": true,
+      "hero": [
+        952.45166015625,
+        778.280395507813
+      ],
+      "hit_remaining": 0,
+      "hits": 0,
+      "hp": 36,
+      "last_attacker": "slime",
+      "layout": [
+        {
+          "kind": "slime",
+          "position": [
+            860,
+            295
+          ]
+        },
+        {
+          "kind": "slime",
+          "position": [
+            865.5,
+            795
+          ]
+        },
+        {
+          "kind": "snail",
+          "position": [
+            497,
+            578
+          ]
+        },
+        {
+          "kind": "snail",
+          "position": [
+            1006.33331298828,
+            1050
+          ]
+        },
+        {
+          "kind": "snail",
+          "position": [
+            741,
+            1095
+          ]
+        },
+        {
+          "kind": "snail",
+          "position": [
+            1081,
+            704
+          ]
+        },
+        {
+          "kind": "beetle",
+          "position": [
+            1101,
+            813
+          ]
+        },
+        {
+          "kind": "beetle",
+          "position": [
+            638,
+            412.666656494141
+          ]
+        },
+        {
+          "kind": "beetle",
+          "position": [
+            547,
+            464
+          ]
+        },
+        {
+          "kind": "lizard",
+          "position": [
+            270,
+            720
+          ]
+        }
+      ],
+      "max_hp": 36,
+      "region": "fenshui",
+      "selected": 0,
+      "shots": [],
+      "skill_levels": {
+        "tieshan": 1,
+        "yaya": 1
+      },
+      "slime_lesson": {
+        "attack_read": false,
+        "completed": false,
+        "enabled": false,
+        "hits": 0,
+        "switch_read": false
+      },
+      "sprint": 1,
+      "sprint_rest": 1,
+      "throws": 0,
+      "version": 1
+    },
+    "first_eligible": true,
+    "first_used": false,
+    "food_cursor": 0,
+    "food_version": 1,
+    "layout": [
+      {
+        "kind": "slime",
+        "position": [
+          860,
+          295
+        ]
+      },
+      {
+        "kind": "slime",
+        "position": [
+          865.5,
+          795
+        ]
+      },
+      {
+        "kind": "snail",
+        "position": [
+          497,
+          578
+        ]
+      },
+      {
+        "kind": "snail",
+        "position": [
+          1006.33331298828,
+          1050
+        ]
+      },
+      {
+        "kind": "snail",
+        "position": [
+          741,
+          1095
+        ]
+      },
+      {
+        "kind": "snail",
+        "position": [
+          1081,
+          704
+        ]
+      },
+      {
+        "kind": "beetle",
+        "position": [
+          1101,
+          813
+        ]
+      },
+      {
+        "kind": "beetle",
+        "position": [
+          638,
+          412.666656494141
+        ]
+      },
+      {
+        "kind": "beetle",
+        "position": [
+          547,
+          464
+        ]
+      },
+      {
+        "kind": "lizard",
+        "position": [
+          270,
+          720
+        ]
+      }
+    ],
+    "maze_elapsed": 15.6500000000001,
+    "members": [
+      {
+        "element": "grass",
+        "id": "yaya",
+        "level": 1,
+        "rank": 1
+      },
+      {
+        "element": "earth",
+        "id": "tieshan",
+        "level": 1,
+        "rank": 1
+      }
+    ],
+    "monsters": {
+      "beetle_1": {
+        "capture_roll": 0.724187970161438,
+        "copy_roll": 0.225711852312088,
+        "drop_roll": 0.200338318943977,
+        "extra_roll": 0.786991894245148,
+        "guaranteed": false,
+        "refresh_count": 0,
+        "respawn_at": 0,
+        "spawn_position": [
+          1101,
+          813
+        ],
+        "status": "alive"
+      },
+      "beetle_2": {
+        "capture_roll": 0.348339527845383,
+        "copy_roll": 0.731045663356781,
+        "drop_roll": 0.0320124924182892,
+        "extra_roll": 0.983672201633453,
+        "guaranteed": false,
+        "refresh_count": 0,
+        "respawn_at": 0,
+        "spawn_position": [
+          638,
+          412.666656494141
+        ],
+        "status": "alive"
+      },
+      "beetle_3": {
+        "capture_roll": 0.783067226409912,
+        "copy_roll": 0.477138578891754,
+        "drop_roll": 0.768717050552368,
+        "extra_roll": 0.766060829162598,
+        "guaranteed": false,
+        "refresh_count": 0,
+        "respawn_at": 0,
+        "spawn_position": [
+          547,
+          464
+        ],
+        "status": "alive"
+      },
+      "fenshui_silverfish_1": {
+        "capture_roll": 0.427666485309601,
+        "copy_roll": 0.21186426281929,
+        "drop_roll": 0.790271520614624,
+        "extra_roll": 0.911652088165283,
+        "guaranteed": false,
+        "refresh_count": 0,
+        "respawn_at": 0,
+        "spawn_position": [
+          1065,
+          405
+        ],
+        "status": "alive"
+      },
+      "fenshui_silverfish_2": {
+        "capture_roll": 0.942997753620148,
+        "copy_roll": 0.458266168832779,
+        "drop_roll": 0.654932796955109,
+        "extra_roll": 0.921237468719482,
+        "guaranteed": false,
+        "refresh_count": 0,
+        "respawn_at": 0,
+        "spawn_position": [
+          1050,
+          230
+        ],
+        "status": "alive"
+      },
+      "fenshui_silverfish_3": {
+        "capture_roll": 0.84973406791687,
+        "copy_roll": 0.810579240322113,
+        "drop_roll": 0.991779506206512,
+        "extra_roll": 0.514915287494659,
+        "guaranteed": false,
+        "refresh_count": 0,
+        "respawn_at": 0,
+        "spawn_position": [
+          620,
+          360
+        ],
+        "status": "alive"
+      },
+      "fenshui_silverfish_4": {
+        "capture_roll": 0.744595170021057,
+        "copy_roll": 0.980754017829895,
+        "drop_roll": 0.672863662242889,
+        "extra_roll": 0.395898729562759,
+        "guaranteed": false,
+        "refresh_count": 0,
+        "respawn_at": 0,
+        "spawn_position": [
+          390,
+          395
+        ],
+        "status": "alive"
+      },
+      "fenshui_thunder_eel_1": {
+        "capture_roll": 0.00872504338622093,
+        "copy_roll": 0.701890766620636,
+        "drop_roll": 0.304926663637161,
+        "extra_roll": 0.0581241920590401,
+        "guaranteed": false,
+        "refresh_count": 0,
+        "respawn_at": 0,
+        "spawn_position": [
+          470,
+          550
+        ],
+        "status": "alive"
+      },
+      "fenshui_thunder_eel_2": {
+        "capture_roll": 0.0844407379627228,
+        "copy_roll": 0.338344603776932,
+        "drop_roll": 0.657551407814026,
+        "extra_roll": 0.237985730171204,
+        "guaranteed": false,
+        "refresh_count": 0,
+        "respawn_at": 0,
+        "spawn_position": [
+          1040,
+          640
+        ],
+        "status": "alive"
+      },
+      "fenshui_wind_frog_1": {
+        "capture_roll": 0.620763719081879,
+        "copy_roll": 0.741471529006958,
+        "drop_roll": 0.636260449886322,
+        "extra_roll": 0.0438417308032513,
+        "guaranteed": false,
+        "refresh_count": 0,
+        "respawn_at": 0,
+        "spawn_position": [
+          900,
+          450
+        ],
+        "status": "alive"
+      },
+      "lizard_1": {
+        "capture_roll": 0.929654002189636,
+        "copy_roll": 0.91686886548996,
+        "drop_roll": 0.331817984580994,
+        "extra_roll": 0.409135341644287,
+        "guaranteed": false,
+        "refresh_count": 0,
+        "respawn_at": 0,
+        "spawn_position": [
+          270,
+          720
+        ],
+        "status": "alive"
+      },
+      "slime_1": {
+        "capture_roll": 0.289967179298401,
+        "copy_roll": 0.552411913871765,
+        "drop_roll": 0.815313339233398,
+        "extra_roll": 0.0698594823479652,
+        "guaranteed": false,
+        "refresh_count": 0,
+        "respawn_at": 0,
+        "spawn_position": [
+          860,
+          295
+        ],
+        "status": "alive"
+      },
+      "slime_2": {
+        "capture_roll": 0.423866093158722,
+        "copy_roll": 0.403016299009323,
+        "drop_roll": 0.643304049968719,
+        "extra_roll": 0.318294733762741,
+        "guaranteed": false,
+        "refresh_count": 0,
+        "respawn_at": 0,
+        "spawn_position": [
+          865.5,
+          795
+        ],
+        "status": "alive"
+      },
+      "snail_1": {
+        "capture_roll": 0.450443208217621,
+        "copy_roll": 0.518622219562531,
+        "drop_roll": 0.701036751270294,
+        "extra_roll": 0.818299233913422,
+        "guaranteed": false,
+        "refresh_count": 0,
+        "respawn_at": 0,
+        "spawn_position": [
+          497,
+          578
+        ],
+        "status": "alive"
+      },
+      "snail_2": {
+        "capture_roll": 0.531559526920319,
+        "copy_roll": 0.829432249069214,
+        "drop_roll": 0.196972608566284,
+        "extra_roll": 0.199287042021751,
+        "guaranteed": false,
+        "refresh_count": 0,
+        "respawn_at": 0,
+        "spawn_position": [
+          1006.33331298828,
+          1050
+        ],
+        "status": "alive"
+      },
+      "snail_3": {
+        "capture_roll": 0.704944729804993,
+        "copy_roll": 0.24237160384655,
+        "drop_roll": 0.883684813976288,
+        "extra_roll": 0.0374118126928806,
+        "guaranteed": false,
+        "refresh_count": 0,
+        "respawn_at": 0,
+        "spawn_position": [
+          741,
+          1095
+        ],
+        "status": "alive"
+      },
+      "snail_4": {
+        "capture_roll": 0.112714022397995,
+        "copy_roll": 0.0673584043979645,
+        "drop_roll": 0.870993971824646,
+        "extra_roll": 0.782395482063293,
+        "guaranteed": false,
+        "refresh_count": 0,
+        "respawn_at": 0,
+        "spawn_position": [
+          1081,
+          704
+        ],
+        "status": "alive"
+      }
+    },
+    "pending": "",
+    "satiety": 3,
+    "satiety_max": 3,
+    "spawn_rng_state": "3269698254",
+    "version": 1,
+    "yaya_counter": 0
+  },
+  "ch2_guide_01": {
+    "banked": {},
+    "recipe": "",
+    "revision": 2,
+    "seen": {},
+    "step": "explore"
+  },
+  "chapter_1_departure": {
+    "cards": {
+      "card_ids": [],
+      "status": "pending_content",
+      "unlocked": false
+    },
+    "empty_warehouse_checked": true,
+    "entrance_lit": true,
+    "map": {
+      "other_regions": "fog",
+      "unlocked_floors": [
+        1
+      ],
+      "visible_regions": [
+        "old_salt_pool"
+      ]
+    },
+    "objective": "与芽芽、铁山一同进入迷宫浅层",
+    "party": [
+      "yaya",
+      "tieshan"
+    ],
+    "step": "ready_to_depart",
+    "tieshan_name_revealed": true
+  },
+  "chapter_1_done": true,
+  "chapter_1_intro": "guest_arrived",
+  "chapter_1_outro": "done",
+  "character_satiety_v1": {
+    "at": 1793679479.504,
+    "paused": true,
+    "values": {
+      "tieshan": 1,
+      "yaya": 2
+    }
+  },
+  "claimed_chests": [],
+  "claimed_dig_sites": [],
+  "cooking_guide_seen": false,
+  "current_order": {
+    "id": "chapter_1_first_order",
+    "item_id": "salt_grilled_rockmane",
+    "item_name": "盐烤岩鬃肉",
+    "quantity": 1,
+    "status": "completed"
+  },
+  "elder_magic_backpack_unlocked": false,
+  "first_order_cooking": {
+    "ingredient_balances": {
+      "rock_salt": 0,
+      "rockmane_meat": 0
+    },
+    "ingredients_consumed": {
+      "rock_salt": 1,
+      "rockmane_meat": 1
+    },
+    "pointer": 0,
+    "quality": 1,
+    "recipe_id": "salt_grilled_rockmane",
+    "status": "locked"
+  },
+  "first_order_progress": {
+    "ingredients_claimed": true,
+    "next_step": "chapter_wrap_up"
+  },
+  "first_order_settlement": {
+    "gold_awarded": 20,
+    "item_id": "salt_grilled_rockmane",
+    "order_id": "chapter_1_first_order",
+    "quality": 1,
+    "quantity": 1,
+    "reputation_awarded": 60
+  },
+  "gold": 20,
+  "inventory": {
+    "rock_salt": 0,
+    "rockmane_meat": 0,
+    "salt_grilled_rockmane": 0,
+    "wood": 0
+  },
+  "maze_exploration": {
+    "chapter_2_started": true,
+    "position": [
+      952.45166015625,
+      778.280395507813
+    ],
+    "region": "fenshui",
+    "version": 1
+  },
+  "owned_character_cards_v1": {
+    "tieshan/tieshan": 1,
+    "yaya/field_kitchen": 1,
+    "yaya/hotpot_collab": 1,
+    "yaya/small_spoon_person": 1,
+    "yaya/warm_care": 2,
+    "yaya/yaya": 1
+  },
+  "prepared_dishes": {
+    "brick_snail_sashimi": {
+      "1": 0,
+      "2": 0,
+      "3": 0
+    },
+    "cool_slime_jelly": {
+      "1": 0,
+      "2": 0,
+      "3": 0
+    },
+    "frog_soup": {
+      "1": 0,
+      "2": 0,
+      "3": 0
+    },
+    "lizard_tail_skewer": {
+      "1": 0,
+      "2": 0,
+      "3": 0
+    },
+    "mimic_crab_gratin": {
+      "1": 0,
+      "2": 0,
+      "3": 0
+    },
+    "salt_crust_silverfish": {
+      "1": 0,
+      "2": 0,
+      "3": 0
+    },
+    "salt_grilled_rockmane": {
+      "1": 0,
+      "2": 0,
+      "3": 0
+    },
+    "scorpion_lotus_fritters": {
+      "1": 0,
+      "2": 0,
+      "3": 0
+    },
+    "slime_candy": {
+      "1": 0,
+      "2": 0,
+      "3": 0
+    },
+    "thunder_eel_roll": {
+      "1": 0,
+      "2": 0,
+      "3": 0
+    },
+    "wind_frog_bread": {
+      "1": 0,
+      "2": 0,
+      "3": 0
+    }
+  },
+  "prologue_done": true,
+  "quest_journal": {
+    "instances": {
+      "chapter_1_first_order": {
+        "status": "archived",
+        "unread": false
+      },
+      "chapter_1_salt_pool": {
+        "status": "active",
+        "unread": true
+      }
+    },
+    "version": 1
+  },
+  "reputation": 60,
+  "restaurant_customers": {
+    "arrival_notice": false,
+    "daily_key": "",
+    "daily_orders": 0,
+    "front": {},
+    "queue": [],
+    "seated": [],
+    "serial": 0
+  },
+  "stamina": {
+    "at": 1793679479,
+    "value": 100
+  },
+  "tutorial_checkpoint": {
+    "chapter": 1,
+    "line_index": 0,
+    "next_index": 0,
+    "step_key": ""
+  },
+  "tutorial_done": true,
+  "unlocked_recipe_ids": [
+    "salt_grilled_rockmane"
+  ],
+  "warehouse_stock": {
+    "rock_salt": 0,
+    "rockmane_meat": 0
+  },
+  "yufeng_salia_encounter": {
+    "line": 0,
+    "phase": "done",
+    "version": 2
+  }
+}

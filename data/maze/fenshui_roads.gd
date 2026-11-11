@@ -9,6 +9,21 @@ const Gates = preload("res://data/maze/fenshui_gates.gd")
 const WATER_SPEED := 0.65
 static var OUTLINE := PackedVector2Array([Vector2(8,14),Vector2(70,30),Vector2(113,83),Vector2(151,126),Vector2(263,142),Vector2(350,177),Vector2(471,187),Vector2(558,206),Vector2(650,175),Vector2(717,172),Vector2(812,173),Vector2(835,125),Vector2(798,79),Vector2(781,4),Vector2(846,4),Vector2(859,61),Vector2(912,104),Vector2(965,146),Vector2(1122,142),Vector2(1190,161),Vector2(1160,205),Vector2(1194,257),Vector2(1270,279),Vector2(1390,264),Vector2(1490,233),Vector2(1570,188),Vector2(1707,137),Vector2(1707,188),Vector2(1590,222),Vector2(1519,260),Vector2(1466,302),Vector2(1493,355),Vector2(1528,404),Vector2(1557,430),Vector2(1530,484),Vector2(1481,533),Vector2(1431,578),Vector2(1480,625),Vector2(1570,657),Vector2(1707,704),Vector2(1707,756),Vector2(1588,711),Vector2(1480,675),Vector2(1366,645),Vector2(1323,689),Vector2(1319,758),Vector2(1223,787),Vector2(1123,786),Vector2(1051,803),Vector2(1020,847),Vector2(1027,909),Vector2(955,909),Vector2(948,844),Vector2(905,806),Vector2(824,777),Vector2(715,814),Vector2(588,831),Vector2(463,862),Vector2(337,909),Vector2(282,909),Vector2(394,849),Vector2(529,800),Vector2(627,763),Vector2(669,711),Vector2(594,670),Vector2(504,642),Vector2(432,594),Vector2(341,582),Vector2(266,561),Vector2(201,535),Vector2(152,547),Vector2(91,520),Vector2(8,503),Vector2(8,465),Vector2(89,485),Vector2(152,506),Vector2(217,466),Vector2(259,429),Vector2(286,373),Vector2(309,330),Vector2(294,277),Vector2(245,236),Vector2(201,198),Vector2(108,163),Vector2(77,123),Vector2(58,72),Vector2(8,47)])
 const ISLANDS := [Vector4(650,245,96,42),Vector4(1184,248,112,56),Vector4(1000,337,53,29),Vector4(379,329,53,25),Vector4(544,381,36,37),Vector4(560,481,110,48),Vector4(1138,528,86,37),Vector4(1355,484,111,52),Vector4(1373,326,46,29),Vector4(1443,378,38,24),Vector4(948,670,80,35),Vector4(1132,717,65,30)]
+## v4低缓石台：脚底可登、站立面为干地；其余高岛保持原阻挡。
+const LOW_ISLANDS := [0,2,4,5,6,10,11]
+
+static func on_low_island(point: Vector2) -> bool:
+	for index in LOW_ISLANDS:
+		var island: Vector4=ISLANDS[index]
+		if ((point-Vector2(island.x,island.y))/Vector2(island.z,island.w)).length()<=1.0: return true
+	return false
+
+static func island_blocks(point: Vector2, radius: float=0.0, include_low: bool=false) -> bool:
+	for index in ISLANDS.size():
+		if not include_low and index in LOW_ISLANDS: continue
+		var island: Vector4=ISLANDS[index]
+		if ((point-Vector2(island.x,island.y))/(Vector2(island.z,island.w)+Vector2.ONE*radius)).length()<=1.0: return true
+	return false
 
 ## 用户绿圈指定的浅水缺口。优先于粗略岛体椭圆，但仍受栅栏阻挡。
 static var ROAD_EDGE := PackedVector2Array([Vector2(1275,406),Vector2(1359,410),Vector2(1438,429),Vector2(1480,457),Vector2(1490,503),Vector2(1470,515),Vector2(1456,500),Vector2(1419,475),Vector2(1358,451),Vector2(1285,437)])
@@ -40,26 +55,34 @@ static func is_water_edge(point: Vector2, radius: float = 0.0) -> bool:
 		if fits: return true
 	return false
 
-static func dry_paths() -> Array:
-	return [
+static var _dry_paths: Array = [
 		{"width":22.0,"points":PackedVector2Array([Vector2(15,26),Vector2(88,73),Vector2(125,141),Vector2(264,188),Vector2(354,262),Vector2(425,325),Vector2(462,376),Vector2(413,433),Vector2(275,463),Vector2(161,526),Vector2(24,483)])},
 		{"width":22.0,"points":PackedVector2Array([Vector2(811,12),Vector2(830,80),Vector2(887,118),Vector2(911,160),Vector2(877,230),Vector2(850,296),Vector2(779,340),Vector2(755,404),Vector2(781,475),Vector2(842,533),Vector2(881,594),Vector2(857,659),Vector2(836,739),Vector2(725,784),Vector2(595,807),Vector2(459,841),Vector2(315,910)])},
 		{"width":23.0,"points":PackedVector2Array([Vector2(1700,161),Vector2(1590,203),Vector2(1495,250),Vector2(1399,283),Vector2(1295,317),Vector2(1214,352),Vector2(1298,390),Vector2(1396,427),Vector2(1445,455),Vector2(1476,509),Vector2(1410,563),Vector2(1391,609),Vector2(1511,654),Vector2(1697,726)])},
 		{"width":22.0,"points":PackedVector2Array([Vector2(840,746),Vector2(920,782),Vector2(975,827),Vector2(988,908)])}
 	]
 
+static func dry_paths() -> Array:
+	return _dry_paths
+
 static func is_walkable(point: Vector2, radius: float = FOOT_RADIUS) -> bool:
+	return _walkable(point,radius,true)
+
+static func air_walkable(point: Vector2, radius: float=0.0) -> bool:
+	return _walkable(point,radius,false)
+
+static func _walkable(point: Vector2, radius: float, allow_low: bool) -> bool:
 	if not point.is_finite() or radius < 0: return false
 	if Gates.blocks(point,radius): return false
 	if Geometry2D.is_point_in_polygon(point,ROAD_EDGE) or is_water_edge(point): return true
 	if not Geometry2D.is_point_in_polygon(point,OUTLINE): return false
-	for i in OUTLINE.size():
-		if point.distance_to(Geometry2D.get_closest_point_to_segment(point,OUTLINE[i],OUTLINE[(i+1)%OUTLINE.size()])) < radius: return false
-	for island in ISLANDS:
-		if ((point-Vector2(island.x,island.y))/(Vector2(island.z,island.w)+Vector2.ONE*radius)).length() <= 1.0: return false
-	return true
+	if radius>0.0:
+		for i in OUTLINE.size():
+			if point.distance_to(Geometry2D.get_closest_point_to_segment(point,OUTLINE[i],OUTLINE[(i+1)%OUTLINE.size()])) < radius: return false
+	return not island_blocks(point,radius,not allow_low)
 
 static func terrain_multiplier(point: Vector2) -> float:
+	if on_low_island(point): return 1.0
 	if Geometry2D.is_point_in_polygon(point,ROAD_EDGE): return 1.0
 	if is_water_edge(point): return WATER_SPEED
 	for road in dry_paths():

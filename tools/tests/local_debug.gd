@@ -43,6 +43,7 @@ func _run() -> void:
 			food = Progression.satiety_snapshot(sm)
 			_check(food.values.yaya == 2 and food.values.tieshan == 1, "不超过角色上限")
 			_check(not debug.grant("gold", -1).success, "拒绝负数")
+			await _ingredients(debug)
 			await _shot("debug_restaurant")
 			await _send_key(KEY_ESCAPE)
 			_check(not debug.panel.visible and not get_tree().paused and scene.get_node("Player").can_process(), "Esc关闭恢复输入")
@@ -118,3 +119,46 @@ func _type_code() -> void:
 		Input.parse_input_event(event)
 		await get_tree().process_frame
 		await get_tree().process_frame
+
+func _ingredients(debug: Node) -> void:
+	var expected := {}
+	for recipe in debug.Recipes.RECIPES.values():
+		for id in recipe.ingredients: expected[id] = true
+	_check(debug.ingredient_rows.size() == expected.size(), "全部现有食谱食材去重展示")
+	var before: Dictionary = sm.data.duplicate(true)
+	for bad in [{}, {"wood": 1}, {"rock_salt": 0}, {"rock_salt": -1}, {"rock_salt": 1.5}, {"rock_salt": 1000}, {"rockmane_meat": 2, "rock_salt": 1000}]:
+		_check(not debug.grant_ingredients(bad).success and sm.data == before, "非法批次不修改任何库存")
+	var path: String = sm._active_save_path
+	sm._active_save_path = ""
+	_check(not debug.grant_ingredients({"rock_salt": 1, "rockmane_meat": 1}).success and sm.data == before, "批量补充保存失败完整回滚")
+	sm._active_save_path = path
+	sm.data.warehouse_stock.rock_salt = 999
+	var full: Dictionary = sm.data.duplicate(true)
+	_check(not debug.grant_ingredients({"rockmane_meat": 1, "rock_salt": 1}).success and sm.data == full, "任一食材超库存上限整批拒绝")
+	sm.data = before.duplicate(true)
+	sm._prologue_preview = true
+	_check(not debug.grant_ingredients({"rock_salt": 1}).success and sm.data == before, "预览不补充")
+	sm._prologue_preview = false
+	debug.tabs.current_tab = 2
+	debug.ingredient_page.get_child(1).scroll_vertical = 0
+	await get_tree().process_frame
+	var ids: Array = debug.ingredient_rows.keys()
+	var first: Dictionary = debug.ingredient_rows[ids[0]]
+	var second: Dictionary = debug.ingredient_rows[ids[1]]
+	var stock: Dictionary = sm.warehouse_snapshot()
+	await _click(first.selected)
+	await _click(second.selected)
+	first.quantity.text = "2"
+	second.quantity.text = "1.5"
+	await _click(debug.ingredient_submit)
+	_check(sm.data == before, "界面非法输入整批不写入")
+	second.quantity.text = "3"
+	await _click(debug.ingredient_submit)
+	_check(sm.warehouse_snapshot().get(ids[0], 0) == stock.get(ids[0], 0) + 2 and sm.warehouse_snapshot().get(ids[1], 0) == stock.get(ids[1], 0) + 3, "实际多选并点击按各自数量入库")
+	_check(not first.selected.button_pressed and not second.selected.button_pressed, "成功后清除勾选防止误重复")
+	_check(first.stock.text == "库存 %d" % sm.warehouse_snapshot()[ids[0]], "成功后显示最新库存")
+	var after: Dictionary = sm.data.duplicate(true)
+	sm.load_data()
+	_check(sm.warehouse_snapshot()[ids[0]] == after.warehouse_stock[ids[0]] and sm.warehouse_snapshot()[ids[1]] == after.warehouse_stock[ids[1]], "批量食材保存读档保持")
+	await _shot("debug_ingredients")
+	debug.tabs.current_tab = 0

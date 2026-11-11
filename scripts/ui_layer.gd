@@ -67,7 +67,7 @@ func _process(_delta: float) -> void:
 	# 教学对话框/过场时隐藏；其余时刻按各自 target 的交互距离显示
 	var tm := get_node_or_null("/root/TutorialManager")
 	var hiding := false
-	if tm and tm.active and tm.idx < tm.steps.size():
+	if tm and tm.active and tm.idx >= 0 and tm.idx < tm.steps.size():
 		var st: Dictionary = tm.steps[tm.idx]
 		if st.get("type", "") in ["dialog", "cutscene_guest"] or is_instance_valid(tm._chapter_outro):
 			hiding = true
@@ -108,10 +108,23 @@ func _process(_delta: float) -> void:
 		if "display_name" in node:
 			btn.get_node("Content/ActionLabel").text = action_for(str(node.display_name))
 		_place_button(btn, node, cam, zone, vp)
+	# 首单只展示当前教学目标，沿用原最近目标选择与交互事务。
+	if tm != null and tm.active and tm._chapter_1_run:
+		var allowed: Node2D = null
+		if tm.idx >= 0 and tm.idx < tm.steps.size():
+			var step: Dictionary = tm.steps[tm.idx]
+			if step.get("type", "") in ["move_to", "interact"]:
+				allowed = tm.resolve_target(step.get("target", ""))
+		if selected != allowed: selected = null
 	if is_instance_valid(selected):
 		var selected_button: Control = _buttons.get(selected)
 		if is_instance_valid(selected_button):
 			selected_button.visible = true
+			if preload("res://scripts/maze/first_exploration.gd").departure(SaveManager) and str(selected.get("display_name"))!="迷宫入口": selected_button.visible = false
+			if str(selected.get("display_name")) == "冰柜" and SaveManager.freezer_unlocked() and is_instance_valid(restaurant_hud) and is_instance_valid(restaurant_hud.ganlu.freezer_view):
+				selected_button.visible = false
+			if str(selected.get("display_name")) == "吧台" and (SaveManager.is_chapter_1_done() or (tm != null and tm.active and tm._chapter_1_run)):
+				selected_button.visible = false
 
 func is_target_in_interaction_range(target: Node2D) -> bool:
 	if not is_instance_valid(player) or not is_instance_valid(target):
@@ -145,7 +158,7 @@ func action_for(display_name: String) -> String:
 		"魔法汤锅", "料理台":
 			return "烹饪"
 		"小餐车":
-			return "送餐"
+			return "倒水"
 		"冰柜":
 			return "冷藏"
 		"吧台":

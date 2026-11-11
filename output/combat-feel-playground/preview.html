@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>料理迷宫 · 统一对打编辑器</title>
+<script>if(location.protocol==='file:')location.replace('http://127.0.0.1:8777/');</script>
+<link rel="stylesheet" href="editor.css">
+</head>
+<body>
+<a class="skip" href="#game">跳到战斗画面</a>
+<main>
+<header><div><small class="eyebrow">全项目战斗调试 · 唯一入口 8777</small><h1>料理迷宫 · 对打编辑器</h1></div><span id="engineState" class="pill">正在准备真实训练场</span></header>
+<p>边操作边调“出招 → 命中 → 卡肉 → 受击 → 恢复”。使用真实Godot战斗与怪物所在地图；训练场与正式存档隔离。</p>
+<nav id="oldMonsterNav" hidden><label for="enemy">旧版对手</label><select id="enemy" aria-label="旧版分水庭怪物"><option value="frog">巨蛙</option><option value="fish">银鳞鱼</option><option value="eel">雷鳗</option></select><button id="restartScene">重置位置与双方生命</button></nav>
+<div id="monsterDock"></div>
+<nav class="training-options" aria-label="训练选项">
+<label>角色招式 <select id="weapon" aria-label="角色招式"><option value="0">锅铲（空格）</option><option value="1">芽芽（1）</option><option value="2">铁山（2）</option></select></label>
+<label>怪物技能 <select id="enemySkill" aria-label="怪物技能"></select></label>
+<label><input type="checkbox" id="skillLoop">只循环所选技能</label>
+<label><input type="checkbox" id="ai" checked>怪物主动攻击</label>
+<label title="双方最低保留1点生命，仍保留实际受击和控制"><input type="checkbox" id="dummy" checked>无限生命</label>
+<label><input type="checkbox" id="boxes">显示范围 / 占位</label>
+</nav>
+<div class="layout">
+<section class="arena" aria-label="真实战斗训练场">
+<iframe id="game" title="真实Godot单怪训练场" allow="autoplay; fullscreen; gamepad"></iframe>
+<small>先点击“开始体验”，再在画面内操作：WASD移动，Shift加速，左键攻击，Tab锁定，Q解除；空格/1/2换招。右侧参数只预览，保存正式值需另行明确操作。</small>
+<nav class="actions" aria-label="战斗调试操作">
+<button id="startTraining">开始体验</button><button id="attack">角色攻击</button><button id="enemyAttack">怪物攻击一次</button><button id="lock">锁定 / 解锁</button><button id="resetScene">复位并恢复生命</button><button id="pause">暂停 / 继续</button><button id="step">推进16毫秒</button>
+</nav>
+<div id="status" role="status">等待引擎…</div><div id="trainingMessage" role="status"></div><div id="events" aria-label="战斗事件"></div>
+<nav><button id="baseline">用游戏基准重开</button><button id="apply">应用候选并重开</button><button id="wide">收起 / 展开侧栏布局</button><button id="saveTraining">保存本机候选</button><button id="loadTraining">载入本机候选</button><button id="exportTraining">导出当前候选</button><button id="importTraining">导入训练候选</button><input id="trainingFile" type="file" accept=".json" hidden><span id="mode" class="pill"></span></nav>
+<div id="rockDock"></div>
+<section id="combatSavePanel" aria-label="保存正式游戏参数">
+<h2>保存到正式游戏</h2>
+<p>训练预览与正式保存分开。保存前显示差异并备份；不会修改正式存档。源码游戏重启、网页重新导出后读取。</p>
+<nav><button id="saveCurrentCombat" disabled>保存当前怪物全部参数到游戏</button><button id="saveRoleCombat" disabled>保存角色已接参数到游戏</button><button id="saveAllCombat" disabled>保存全部改动到游戏</button><button id="loadCombatGame" disabled>重新读取游戏参数</button></nav>
+<nav><label>正式参数历史 <select id="combatHistory" aria-label="正式参数历史"></select></label><button id="loadCombatHistory" disabled>载入历史到草稿</button></nav>
+<p id="combatSaveMessage" role="status">正在读取正式参数…</p><details><summary>本次保存差异</summary><pre id="combatSaveDiff"></pre></details>
+</section>
+<details><summary>实际参数与运行诊断</summary><pre id="trainingActual"></pre><pre id="actual"></pre></details>
+<details id="legacyTools"><summary>旧三怪工具（已停用，历史数据保留）</summary>
+<nav><button id="save">保存参数草稿</button><button id="export">导出旧集合</button><button id="import">导入新旧JSON</button><button id="reset">当前招式恢复原值</button><input id="file" type="file" accept=".json" hidden></nav>
+<div id="message" role="status"></div><div id="legacyDock"></div>
+<details><summary>导入迁移说明</summary><pre id="migration">旧网页像素不直接当世界单位；无法可靠映射的字段明确保留、不应用。</pre></details>
+<details><summary>历史候选参数文本</summary><textarea id="json" readonly aria-label="历史候选参数文本"></textarea></details>
+</details>
+<details><summary>适用边界与未完成项</summary><p id="boundary">统一入口不等于全部技能参数均已接通。仅已接消费者的字段允许调节；范围显示使用实际范围函数与脚底占位，仍须结合地形、朝向、阶段及双方存活判伤。未接字段在右侧明确列出，不提供假滑块。正式游戏、正式存档不会因训练场操作而改变。岩鬃兽丢锁原因仍在诊断，未宣称修复。</p></details>
+</section>
+<aside aria-label="战斗参数">
+<h2 id="parameterTitle">当前怪物</h2><div id="capability" role="status"></div>
+<div id="attackParameterDock"></div>
+<section id="fishParameterPanel"><h3>银鳞鱼专属参数</h3><label>正在编辑 <select id="kind" aria-label="编辑攻击或受击类型"></select></label><div id="fields"></div></section>
+<div id="playerDock"></div>
+<details><summary>写入正式参数与历史恢复</summary><small>以下操作会写正式参数。当前批次未代为执行；保存前备份，源码游戏重启、网页包重新导出后才读取。</small><div id="gameSaveDock"></div></details>
+</aside>
+</div>
+</main>
+<script src="profile-format.js"></script><script src="monster-controls.js"></script><script src="player-controls.js"></script><script src="profiles-ui.js"></script><script src="rock-full-ui.js"></script><script src="unified-editor.js"></script><script src="combat-persistence.js"></script><script src="tuning-panel.js"></script><script src="editor-core.js"></script>
+</body></html>

@@ -21,7 +21,9 @@ const Roads := preload("res://data/maze/entry_roads.gd")
 
 static func snapshot(sm: Node) -> Dictionary:
 	var raw: Variant = sm.get("_state").get(KEY, {})
-	return raw.duplicate(true) if raw is Dictionary else {}
+	var run: Dictionary=raw.duplicate(true) if raw is Dictionary else {}
+	if run.get("combat") is Dictionary: Combat.FenshuiTrial.restore_recovery(run.combat)
+	return run
 
 static func catalog_version(run: Dictionary) -> int:
 	return int(run.get("catalog_version", 1))
@@ -44,6 +46,12 @@ static func begin(sm: Node, point: Vector2, region: String = "maze_entry") -> Di
 	var state: Dictionary = sm.get("_state")
 	if state.has(KEY) and not state[KEY] is Dictionary: return {"success":false,"reason":"invalid_run"}
 	var existing := snapshot(sm)
+	var first_gate := preload("res://scripts/maze/first_exploration.gd")
+	if not existing.get("active",false) and first_gate.pending(sm) and not state.has(first_gate.CHECKPOINT) and state.get(SEEN,false):
+		var migrated: Dictionary = first_gate.rollback(sm)
+		if not migrated.success: return migrated
+		state = sm.get("_state")
+		existing = snapshot(sm)
 	if existing.get("active",false):
 		if not existing.has("combat"): return {"success":false,"reason":"unsupported_combat_version"}
 		if not existing.combat is Dictionary or not Combat.valid(existing.combat) or not Catalog.valid_layout(existing.get("layout",[])): return {"success":false,"reason":"invalid_run"}
@@ -74,14 +82,28 @@ static func begin(sm: Node, point: Vector2, region: String = "maze_entry") -> Di
 		layout_changed = ensure_region(existing,region) or layout_changed
 		if not valid(existing): return {"success":false,"reason":"invalid_run"}
 		var previous := state.duplicate(true)
+		layout_changed = Combat.Skills.clear_marks(existing.combat) or layout_changed
+		layout_changed = Combat.Skills.Smoke.clear(existing.combat) or layout_changed
+		layout_changed = Combat.Skills.Trail.clear(existing.combat) or layout_changed
+		layout_changed = Combat.Skills.Tide.clear(existing.combat) or layout_changed
+		layout_changed = Combat.Skills.Charge.clear(existing.combat) or layout_changed
+		# 重新进入时旧钥匙和香料罐不能重建已清理的效果。
+		var resumed_shots: Array = existing.combat.shots.filter(func(shot): return shot.get("kind","") not in ["dingdang","jiaopopo"])
+		layout_changed = resumed_shots.size()!=existing.combat.shots.size() or layout_changed
+		existing.combat.shots=resumed_shots
+		if existing.combat.get("action","") in ["dingdang","jiaopopo"]:
+			existing.combat.action=""
+			existing.combat.action_left=0.0
+			layout_changed=true
 		var migration := migrate_food(sm, existing)
 		if not migration.success: return migration
 		state[KEY] = existing
+		var joined := preload("res://scripts/maze/story_party_join.gd").apply(sm,existing)
 		var resumed: Dictionary = sm.record_maze_location(region,point)
 		if not resumed.success:
 			sm.set("_state", previous)
 			return resumed
-		if resumed.get("reason", "") == "unchanged" and (layout_changed or migration.get("changed", false)): return _commit(sm, previous)
+		if resumed.get("reason", "") == "unchanged" and (joined or layout_changed or migration.get("changed", false)): return _commit(sm, previous)
 		return resumed
 	if region != "maze_entry": return {"success":false,"reason":"missing_active_run"}
 	var party: Array = sm.exploration_entry_party()
@@ -102,12 +124,14 @@ static func begin(sm: Node, point: Vector2, region: String = "maze_entry") -> Di
 	power = team_power(power,members)
 	var previous := state.duplicate(true)
 	state[sm.UNLOCKED_RECIPES_KEY]=sm.unlocked_recipe_ids()
+	preload("res://scripts/maze/first_exploration.gd").remember(sm, food_state)
 	Progression.store_satiety(sm, food_state, true)
 	var layout: Array = Catalog.random_layout(randi())
 	var monsters := {}
 	for row in Catalog.all(Catalog.BALANCE_VERSION, layout):
 		monsters[row.id] = {"status":"alive","capture_roll":randf(),"drop_roll":randf(),"copy_roll":randf(),"extra_roll":randf(),"guaranteed":false,"respawn_at":0.0,"spawn_position":[row.position.x,row.position.y],"refresh_count":0}
 	var first: bool = not state.get(SEEN,false) and not sm.maze_exploration_state().chapter_2_started
+	if first: state[preload("res://scripts/maze/first_exploration.gd").KEY] = "active"
 	state[SEEN] = true
 	# 首次进入迷宫即建立探索教学，不要求玩家先接顾客订单。
 	# 已由首单接单流程建立的 lesson 保留 recipe 入口，避免重复覆盖餐厅提示。
@@ -115,12 +139,14 @@ static func begin(sm: Node, point: Vector2, region: String = "maze_entry") -> Di
 		state["ch2_guide_01"] = {"step":"explore", "recipe":"", "seen":{}, "banked":{}, "revision":2}
 	state[KEY] = {"version":1,"active":true,"base_power":power,"absorbed":0,"satiety":food,"satiety_max":food,"members":members,"monsters":monsters,"layout":layout,"bag":{},"first_eligible":first,"first_used":false,"yaya_counter":0,"pending":"","maze_elapsed":0.0}
 	state[KEY]["combat"] = Combat.create(power,health,point, Catalog.all(Catalog.BALANCE_VERSION, layout))
+	state[KEY].combat.chengyan_guard=Combat.Skills.Guard.fresh()
 	state[KEY]["catalog_version"] = Catalog.BALANCE_VERSION
 	state[KEY]["spawn_rng_state"] = str(randi())
 	state[KEY]["food_version"] = 1
 	state[KEY]["food_cursor"] = 0
 	state[KEY]["satiety_max"] = 0
 	for member in members: state[KEY].satiety_max += int(Progression.record(sm, member.id).satiety_max)
+	preload("res://scripts/maze/story_party_join.gd").apply(sm,state[KEY])
 	# 沿用现有入场事务，包括其他任务接入的体力扣除；本服务不重设体力规则。
 	var entry: Dictionary = sm.record_maze_location("maze_entry",point)
 	if not entry.success:
@@ -325,7 +351,7 @@ static func resolve(sm: Node, id: String, capture: bool) -> Dictionary:
 	var previous: Dictionary = sm.get("_state").duplicate(true)
 	var row := monster_for(run, id)
 	var monster: Dictionary = run.monsters[id]
-	var pity := capture and failure_streak(sm,row.kind) >= 3
+	var pity := capture and (failure_streak(sm,row.kind) >= 3 or preload("res://scripts/maze/first_exploration.gd").pending(sm))
 	var items := {}
 	var caught := false
 	var copies := 0
@@ -357,9 +383,12 @@ static func resolve(sm: Node, id: String, capture: bool) -> Dictionary:
 					copies = 1 + (1 if rank>=5 and float(monster.extra_roll)<0.2 else 0)
 			for item in items:
 				items[item] *= 1+copies
+				preload("res://scripts/maze/backpack_contents.gd").record(sm.get("_state"), item, "capture")
 				run.bag[item] = int(run.bag.get(item,0))+int(items[item])
 	if caught:
 		preload("res://scripts/maze/capture_recipes.gd").unlock(sm,row.kind)
+		if row.kind == "rockmane" and sm.maze_exploration_state().region == "salt_pool" and run.combat.actors[row.id].hp <= 0:
+			preload("res://scripts/quests/salt_pool_progress.gd").mark(sm,"captured")
 	if capture:
 		var counts := {}
 		for kind in Catalog.capture_kinds(): counts[kind] = failure_streak(sm,kind)
@@ -382,9 +411,15 @@ static func resolve(sm: Node, id: String, capture: bool) -> Dictionary:
 	if result.success: result.merge({"caught":caught,"items":items,"copies":copies})
 	return result
 
-static func finish(sm: Node, bank: bool, point: Vector2) -> Dictionary:
+static func finish(sm: Node, bank: bool, point: Vector2, debug_restart: bool = false) -> Dictionary:
+	# 仅调试地图的固定隔离副本允许重开；普通调用、正式档及结算返程仍走首次探索限制。
+	var trial_restart: bool = debug_restart and not bank and OS.is_debug_build() and sm._active_save_path == "user://debug-map-trial.json"
+	var gate_message: String = "" if trial_restart else preload("res://scripts/maze/first_exploration.gd").return_message(sm,bank)
+	if not gate_message.is_empty(): return {"success":false,"reason":"first_exploration","message":gate_message}
 	var run := snapshot(sm)
 	if not valid(run) or not run.get("active",false) or not str(run.pending).is_empty(): return {"success":false,"reason":"invalid_run"}
+	if not bank and run.has("combat") and run.combat.hp <= 0 and preload("res://scripts/maze/first_exploration.gd").pending(sm):
+		return preload("res://scripts/maze/first_exploration.gd").rollback(sm)
 	if bank and run.has("combat") and run.combat.hp<=0: return {"success":false,"reason":"defeated"}
 	if bank and portal_combat_locked(sm): return {"success":false,"reason":"in_combat"}
 	if bank and not _at_salt_moss_link(sm,point) and not (preload("res://data/maze/settlement_exit.gd").can_bank(point) if sm.maze_exploration_state().region == "maze_entry" else (point.distance_to(sm.maze_terrain(sm.maze_exploration_state().region).ENTRANCE)<sm.maze_terrain(sm.maze_exploration_state().region).INTERACT_RADIUS or (sm.maze_exploration_state().region == "fenshui" and (point.distance_to(preload("res://data/maze/salt_pool_roads.gd").FENSHUI_PORTAL)<65.0 or point.distance_to(preload("res://data/maze/moss_pool_roads.gd").FENSHUI_PORTAL)<70.0)))): return {"success":false,"reason":"not_exit"}
@@ -411,18 +446,35 @@ static func finish(sm: Node, bank: bool, point: Vector2) -> Dictionary:
 		for id in run.bag:
 			warehouse[id] = clampi(int(warehouse.get(id, 0)) + int(run.bag[id]), 0, 999)
 		state["warehouse_stock"] = warehouse
+	var returned: Dictionary = state.get("exploration_task_loot", {}).duplicate(true)
+	if bank:
+		for id in run.bag:
+			returned[id] = int(returned.get(id, 0)) + int(run.bag[id])
+	preload("res://scripts/restaurant/restaurant_day.gd").enqueue_loot(state, returned, run.bag if bank else {}, state.get("exploration_task_loot", {}))
+	state["exploration_task_loot"] = {}
+	state.erase("exploration_bag_order")
+	state["return_loot_version"] = 1
 	var lesson: Variant = state.get("ch2_guide_01", {})
 	if lesson is Dictionary and not lesson.is_empty() and lesson.get("step", "") != "done":
 		lesson["step"] = "warehouse" if bank and not run.bag.is_empty() else "entrance"
 		lesson["banked"] = run.bag.duplicate(true) if bank else {}
 		state["ch2_guide_01"] = lesson
 	Bento.finish(sm,run)
+	Combat.Skills.Trail.clear(run.combat)
+	Combat.Skills.Tide.clear(run.combat)
+	Combat.Skills.Charge.clear(run.combat)
 	run.active = false
 	run.bag = {}
 	run.absorbed = 0
 	state[KEY] = run
 	state[sm.MAZE_STATE_KEY] = {"version":1,"region":"restaurant","position":[point.x,point.y],"chapter_2_started":true}
+	if bank and preload("res://scripts/maze/first_exploration.gd").pending(sm) and sm.elder_backpack_unlocked():
+		state[preload("res://scripts/maze/first_exploration.gd").KEY] = "done"
+		state["first_business_intro_pending"] = true
+		state.erase(preload("res://scripts/maze/first_exploration.gd").CHECKPOINT)
+		state["ch2_guide_01"]["step"] = "warehouse"
 	if state.get("customer_05_trip_started", false): state["customer_05_returned"] = true
+	preload("res://scripts/quests/salt_pool_progress.gd").finish(sm,bank)
 	return _commit(sm,previous)
 
 static func _party_food(food: Dictionary, members: Array) -> float:
@@ -496,7 +548,7 @@ static func refresh_due(_run: Dictionary, _point: Vector2, _visible: Rect2) -> b
 
 static func combat_attack(sm: Node, point: Vector2, aim: Vector2 = Vector2.RIGHT) -> Dictionary:
 	var run := snapshot(sm)
-	if not valid(run) or not run.get("active",false) or not run.has("combat") or not str(run.pending).is_empty() or not sm.maze_terrain(sm.maze_exploration_state().region).is_walkable(point):
+	if not valid(run) or not run.get("active",false) or not run.has("combat") or not str(run.pending).is_empty() or not _combat_point_allowed(sm,run,point):
 		return {"success":false,"reason":"invalid_combat"}
 	var previous: Dictionary=sm.get("_state").duplicate(true)
 	Combat.Skills.sync_levels(run, sm)
@@ -504,7 +556,9 @@ static func combat_attack(sm: Node, point: Vector2, aim: Vector2 = Vector2.RIGHT
 	run.combat.hero=Combat.pack(point)
 	sm.get("_state")[KEY]=run
 	sm.get("_state")[sm.MAZE_STATE_KEY].position=Combat.pack(point)
-	return _commit(sm,previous)
+	var result := _commit(sm,previous)
+	result["fired"] = bool(result.success)
+	return result
 
 ## 换区只提交位置和瞬时战斗清理，同一趟队伍、生命、饱腹、携物及原区怪物保持。
 static func portal_combat_locked(sm: Node) -> bool:
@@ -520,20 +574,24 @@ static func portal_combat_locked(sm: Node) -> bool:
 static func change_region(sm: Node, region: String, point: Vector2) -> Dictionary:
 	var run := snapshot(sm)
 	if portal_combat_locked(sm): return {"success":false,"reason":"in_combat"}
-	if region not in ["maze_entry","fenshui","salt_pool","moss_pool"] or not valid(run) or not run.get("active",false) or not str(run.pending).is_empty(): return {"success":false,"reason":"invalid_region_change"}
+	if region not in ["maze_entry","fenshui","salt_pool","moss_pool","waterkeeper_cottage"] or not valid(run) or not run.get("active",false) or not str(run.pending).is_empty(): return {"success":false,"reason":"invalid_region_change"}
 	var previous: Dictionary = sm.get("_state").duplicate(true)
 	var c: Dictionary = run.combat
-	if region == "maze_entry" and sm.maze_exploration_state().region == "fenshui":
-		run["returned_regions"] = run.get("returned_regions", {})
-		run.returned_regions[region] = true
-		for row in Catalog.all(catalog_version(run),run.layout):
-			run.monsters[row.id].status = "skipped"
-			run.monsters[row.id].respawn_at = 1.0e20
+	# 同趟往返只切换区域与主角位置，不清场或重置已存在的魔物。
 	ensure_region(run,region)
 	c.hero = Combat.pack(point)
 	Combat.Skills.ensure(c)
+	Combat.Skills.clear_marks(c)
+	Combat.Skills.Smoke.clear(c)
+	Combat.Skills.Trail.clear(c)
+	Combat.Skills.Tide.clear(c)
+	Combat.Skills.Charge.clear(c)
 	for key in ["shots","enemy_shots"]: c[key] = []
-	for key in ["hit_remaining","flash_remaining","action_left"]: c[key] = 0.0
+	for key in ["hit_remaining","flash_remaining","action_left","hurt_recovery_left"]: c[key] = 0.0
+	if c.has("rock_launch_left"): c.rock_launch_left=0.0
+	for key in ["rock_slow_left","rock_stun_left","rock_launch_guard"]:
+		if c.has(key): c[key]=0.0
+	if c.has("rock_slow_factor"): c.rock_slow_factor=1.0
 	c["axe_pending"] = false
 	sm.get("_state")[KEY] = run
 	var result: Dictionary = sm.record_maze_location(region,point)
@@ -547,7 +605,7 @@ static func _quiet_region_tick(sm: Node, run: Dictionary, point: Vector2, dt: fl
 	var original_actors: Dictionary = run.combat.actors.duplicate(true)
 	for monster in run.monsters.values(): monster.status = "skipped"
 	Combat.Skills.sync_levels(run, sm)
-	run.combat["frog_unlocked"]=sm.yufeng_salia_state()=="done"
+	run.combat["frog_unlocked"]=preload("res://scripts/maze/yufeng_salia_story.gd").frog_unlocked(sm)
 	Combat.advance(run,point,dt,sprinting)
 	var healing := Bento.advance(run,dt)
 	run.monsters = original_monsters
@@ -556,7 +614,7 @@ static func _quiet_region_tick(sm: Node, run: Dictionary, point: Vector2, dt: fl
 	run.combat["checkpoint"] = float(run.combat.get("checkpoint",0.0))+dt
 	sm.get("_state")[KEY] = run
 	sm.get("_state")[sm.MAZE_STATE_KEY].position = Combat.pack(point)
-	if healing or run.combat.checkpoint >= 0.5:
+	if run.combat.get("chengyan_guard",{})!=previous[KEY].combat.get("chengyan_guard",{}) or healing or run.combat.checkpoint >= 0.5:
 		run.combat.checkpoint = 0.0
 		return _commit(sm,previous)
 	return {"success":true}
@@ -572,10 +630,17 @@ static func combat_command(sm: Node, command: String, value: Variant) -> Diction
 	sm.get("_state")[KEY]=run
 	return _commit(sm,previous)
 
-static func combat_tick(sm: Node, point: Vector2, dt: float, visible: Rect2 = Rect2(), sprinting: bool = false) -> Dictionary:
+static func _combat_point_allowed(sm: Node,run: Dictionary,point: Vector2) -> bool:
+	var region: String=sm.maze_exploration_state().region
+	if sm.maze_terrain(region).is_walkable(point): return true
+	if region!="salt_pool" or not preload("res://scripts/maze/rock_charge_terrain.gd").allowed(point): return false
+	var c: Dictionary=run.combat
+	return float(c.get("rock_launch_left",0.0))>0 or not sm.maze_terrain(region).is_walkable(Combat.vec(c.hero))
+
+static func combat_tick(sm: Node, point: Vector2, dt: float, visible: Rect2 = Rect2(), sprinting: bool = false, axe_hitstop: RefCounted=null, player_direction: Vector2=Vector2.ZERO) -> Dictionary:
 	var run := snapshot(sm)
 	if not is_finite(dt) or dt<=0.0 or dt>0.5: return {"success":false,"reason":"invalid_delta"}
-	if not valid(run) or not run.get("active",false) or not run.has("combat") or not str(run.pending).is_empty() or run.combat.hp<=0 or not sm.maze_terrain(sm.maze_exploration_state().region).is_walkable(point):
+	if not valid(run) or not run.get("active",false) or not run.has("combat") or not str(run.pending).is_empty() or run.combat.hp<=0 or not _combat_point_allowed(sm,run,point):
 		return {"success":false,"reason":"invalid_combat"}
 	var previous: Dictionary = sm.get("_state").duplicate(true)
 	var before: Dictionary = run.combat.duplicate(true)
@@ -585,8 +650,13 @@ static func combat_tick(sm: Node, point: Vector2, dt: float, visible: Rect2 = Re
 	var guide: Dictionary = sm.get("_state").get("ch2_guide_01", {})
 	Combat.Skills.sync_lesson(run, guide)
 	Combat.Skills.sync_levels(run, sm)
-	run.combat["frog_unlocked"]=sm.yufeng_salia_state()=="done"
-	Combat.advance(run,point,dt,sprinting)
+	run.combat["frog_unlocked"]=preload("res://scripts/maze/yufeng_salia_story.gd").frog_unlocked(sm)
+	var axe_clock: Dictionary={} if axe_hitstop==null else axe_hitstop.state.duplicate(true)
+	var hit_feedback: Array=[]
+	var player_hurt_feedback: Array=[]
+	if Combat.Skills.kind(run,int(run.combat.get("selected",0)))=="yaya" and player_direction.is_finite() and not player_direction.is_zero_approx():
+		run.combat.aim=Combat.Skills.pack(player_direction.normalized())
+	Combat.advance(run,point,dt,sprinting,axe_clock,hit_feedback,player_hurt_feedback)
 	var mining := Crystals.apply(sm.get("_state"),run,Crystals.day())
 	if not mining.success:
 		sm.set("_state",previous)
@@ -608,25 +678,43 @@ static func combat_tick(sm: Node, point: Vector2, dt: float, visible: Rect2 = Re
 			var monster: Dictionary = run.monsters[row.id]
 			if before.actors[row.id].hp <= 0 or run.combat.actors[row.id].hp > 0: continue
 			if int(monster.get("experience_generation", -1)) == int(monster.refresh_count): continue
-			var amount: int = {"slime":20,"snail":35,"beetle":35,"lizard":150,"silverfish":25,"thunder_eel":40,"wind_frog":120,"mimic_crab":35,"blind_scorpion":30,"rockmane":150}[row.kind]
+			var amount: int = Combat.Balance.EXPERIENCE[row.kind]
 			var growth := Progression.grant_experience(sm, run.members.map(func(member): return member.id), amount)
 			if not growth.success:
 				sm.set("_state", previous)
 				return growth
 			Combat.Skills.sync_levels(run, sm)
 			monster.experience_generation = int(monster.refresh_count)
+			if row.kind == "rockmane": preload("res://scripts/quests/salt_pool_progress.gd").mark(sm,"defeated")
+			if row.id == Catalog.Frog.ID:
+				var story: Dictionary = sm.yufeng_salia_record()
+				if story.phase == "investigate":
+					story.frog_defeated = true
+					sm.get("_state")[sm.YUFENG_SALIA_KEY] = story
 			awarded = true
 	run.combat["checkpoint"] = float(before.get("checkpoint",0.0))+dt
 	sm.get("_state")[KEY]=run
 	sm.get("_state")[sm.MAZE_STATE_KEY].position=run.combat.hero.duplicate()
-	var frog_changed: bool = run.combat.get("frog_encounter",false) and run.combat.actors[Catalog.Frog.ID]!=before.actors[Catalog.Frog.ID]
+	var frog_changed: bool = run.combat.get("frog_encounter",false) and _frog_checkpoint_changed(before.actors[Catalog.Frog.ID],run.combat.actors[Catalog.Frog.ID])
 	var rock_changed: bool=run.combat.get("rock_encounter",false) and run.combat.actors[Catalog.Rock.ID]!=before.actors[Catalog.Rock.ID]
-	if mining.changed or not mining.feedback.is_empty() or rock_changed or frog_changed or healing or lesson_changed or awarded or migrated or refreshed or run.combat.hp!=before.hp or run.combat.hits!=before.hits or run.combat.throws!=before.throws or run.combat.get("blocks",0)!=before.get("blocks",0) or run.combat.checkpoint>=0.5:
+	var electric_changed: bool=run.combat.get("electric_serial",0)!=before.get("electric_serial",0)
+	if electric_changed or run.combat.get("lanjiao_charge",{})!=before.get("lanjiao_charge",{}) or run.combat.get("lanjiao_boost",0)!=before.get("lanjiao_boost",0) or run.combat.get("chengyan_guard",{})!=before.get("chengyan_guard",{}) or run.combat.get("xiluomei_net",{})!=before.get("xiluomei_net",{}) or run.combat.get("ahong_trail",{})!=before.get("ahong_trail",{}) or mining.changed or not mining.feedback.is_empty() or rock_changed or frog_changed or healing or lesson_changed or awarded or migrated or refreshed or run.combat.hp!=before.hp or run.combat.hits!=before.hits or run.combat.throws!=before.throws or run.combat.get("blocks",0)!=before.get("blocks",0) or run.combat.checkpoint>=0.5:
 		run.combat.checkpoint=0.0
 		var committed:=_commit(sm,previous)
-		if committed.success: committed["mining_feedback"]=mining.feedback
+		if committed.success:
+			committed["mining_feedback"]=mining.feedback
+			committed["hit_feedback"]=hit_feedback
+			committed["player_hurt_feedback"]=player_hurt_feedback
+			if axe_hitstop!=null: axe_hitstop.state=axe_clock
 		return committed
-	return {"success":true}
+	if axe_hitstop!=null: axe_hitstop.state=axe_clock
+	return {"success":true,"hit_feedback":hit_feedback,"player_hurt_feedback":player_hurt_feedback}
+
+static func _frog_checkpoint_changed(before: Dictionary, after: Dictionary) -> bool:
+	# 阶段、生命、固定落点及水团生灭立即保存；单纯位移和剩时沿用0.5秒检查点。
+	for key in ["frog_phase","mode","hp","frog_origin","frog_target","frog_aim","frog_facing","frog_counter_from","frog_air_duration","frog_wet"]:
+		if before.get(key)!=after.get(key): return true
+	return before.get("frog_shots",[]).size()!=after.get("frog_shots",[]).size()
 
 
 static func ensure_region(run: Dictionary, region: String) -> bool:
@@ -667,5 +755,5 @@ static func _at_salt_moss_link(sm: Node, point: Vector2) -> bool:
 	var region: String = sm.maze_exploration_state().region
 	var link = preload("res://data/maze/moss_pool_roads.gd")
 	if region == "salt_pool": return point.distance_to(link.SALT_SIDE_MARKER)<80.0
-	if region == "moss_pool": return point.distance_to(link.SALT_MARKER)<80.0
+	if region == "moss_pool": return point.distance_to(link.SALT_MARKER)<80.0 or point.distance_to(preload("res://data/maze/waterkeeper_cottage_roads.gd").MOSS_MARKER)<80.0
 	return false

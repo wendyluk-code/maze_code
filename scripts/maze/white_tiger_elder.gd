@@ -101,6 +101,7 @@ func set_near(_near: bool) -> void:
 
 func interact() -> void:
 	if phase != "idle" or not _available(): return
+	GameAudio.interaction()
 	_generation += 1
 	phase = "focus"
 	_armed = not Input.is_action_pressed("interact")
@@ -152,6 +153,7 @@ func _dialog_finished() -> void:
 
 func _confirm() -> void:
 	if phase not in ["accept_choice", "delivery_choice"]: return
+	GameAudio.interaction()
 	var accepting := phase == "accept_choice"
 	var result := SaveManager.accept_elder_firewood(_player.position) if accepting else SaveManager.deliver_elder_firewood(_player.position)
 	if not result.success:
@@ -191,6 +193,7 @@ func _input(event: InputEvent) -> void:
 		if phase == "ingredient_reward":
 			if (event.keycode == KEY_E and _armed) or event.keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE, KEY_ESCAPE]:
 				if event.keycode == KEY_E: _armed = false
+				GameAudio.interaction()
 				ingredient_reward.close_modal()
 			elif event.keycode == KEY_TAB:
 				ingredient_reward._confirm_button.grab_focus()
@@ -198,6 +201,7 @@ func _input(event: InputEvent) -> void:
 		if phase == "backpack_reward":
 			if event.keycode == KEY_E and _armed:
 				_armed = false
+				GameAudio.interaction()
 				phase = "backpack_collect"
 				backpack_reward.collect_into(_maze().backpack_entry)
 			return
@@ -235,6 +239,7 @@ func _show_backpack_reward() -> void:
 
 func _ingredient_collected() -> void:
 	if phase == "ingredient_reward":
+		GameAudio.interaction()
 		get_viewport().gui_release_focus()
 		_next_reward_step()
 

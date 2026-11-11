@@ -2,12 +2,13 @@ extends RefCounted
 ## 左键只触发攻击；方向由当前招式范围内最近的有效目标决定。
 const Combat=preload("res://scripts/maze/combat_simulation.gd")
 const Catalog=preload("res://data/maze/capture_catalog.gd")
+const Monster=preload("res://scripts/maze/monster_combat.gd")
 
 static func target(run: Dictionary, point: Vector2, sparring: bool=false) -> String:
 	var c: Dictionary=run.get("combat",{})
 	if c.is_empty() or float(c.get("hp",0))<=0: return ""
 	var kind:=Combat.Skills.kind(run,int(c.get("selected",0)))
-	var reach: float=Combat.Skills.AXE_RADIUS if kind=="tieshan" else float(Combat.Skills.LENGTH.get(kind,0))
+	var reach: float=Combat.Skills.reach(run,kind)
 	var nearest:=""
 	var distance:=reach+0.001
 	var ids: Array=[]
@@ -19,8 +20,7 @@ static func target(run: Dictionary, point: Vector2, sparring: bool=false) -> Str
 	for id in ids:
 		if not c.actors.has(id) or not run.monsters.has(id): continue
 		var actor: Dictionary=c.actors[id]
-		if run.monsters[id].status!="alive" or actor.hp<=0 or actor.mode=="return": continue
-		if not sparring and not Catalog.targetable(c,id): continue
+		if not Monster.eligible(run,id): continue
 		var at:=Combat.vec(actor.position)
 		var d:=point.distance_to(at)
 		if d>reach or d>=distance: continue

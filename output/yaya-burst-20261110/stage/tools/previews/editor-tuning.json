@@ -1,0 +1,1465 @@
+{
+  "version": 1,
+  "groups": {
+    "base.rockmane": {
+      "label": "岩鬃兽 · 基础",
+      "owner": "rockmane",
+      "category": "monster",
+      "fields": {
+        "hp": {
+          "label": "生命上限",
+          "unit": "点",
+          "min": 1,
+          "max": 1000,
+          "step": 1,
+          "default": 120,
+          "connected": true
+        }
+      }
+    },
+    "base.mimic_crab": {
+      "label": "拟态宝箱蟹 · 基础",
+      "owner": "mimic_crab",
+      "category": "monster",
+      "fields": {
+        "hp": {
+          "label": "生命上限",
+          "unit": "点",
+          "min": 1,
+          "max": 1000,
+          "step": 1,
+          "default": 28,
+          "connected": true
+        },
+        "interval": {
+          "label": "攻击间隔",
+          "unit": "秒",
+          "min": 0.2,
+          "max": 10,
+          "step": 0.05,
+          "default": 2,
+          "connected": true
+        },
+        "windup": {
+          "label": "近战前摇",
+          "unit": "秒",
+          "min": 0.1,
+          "max": 2,
+          "step": 0.05,
+          "default": 0.65,
+          "connected": true
+        },
+        "speed": {
+          "label": "追击速度",
+          "unit": "单位/秒",
+          "min": 10,
+          "max": 400,
+          "step": 5,
+          "default": 80,
+          "connected": true
+        },
+        "trigger": {
+          "label": "警戒距离",
+          "unit": "单位",
+          "min": 30,
+          "max": 500,
+          "step": 5,
+          "default": 100,
+          "connected": true
+        },
+        "leash": {
+          "label": "脱战距离",
+          "unit": "单位",
+          "min": 60,
+          "max": 800,
+          "step": 5,
+          "default": 145,
+          "connected": true
+        },
+        "home_limit": {
+          "label": "离巢上限",
+          "unit": "单位",
+          "min": 30,
+          "max": 1000,
+          "step": 5,
+          "default": 75,
+          "connected": true
+        },
+        "reach": {
+          "label": "近战距离",
+          "unit": "单位",
+          "min": 10,
+          "max": 120,
+          "step": 1,
+          "default": 34,
+          "connected": true
+        }
+      }
+    },
+    "base.blind_scorpion": {
+      "label": "盲水蝎 · 基础",
+      "owner": "blind_scorpion",
+      "category": "monster",
+      "fields": {
+        "hp": {
+          "label": "生命上限",
+          "unit": "点",
+          "min": 1,
+          "max": 1000,
+          "step": 1,
+          "default": 22,
+          "connected": true
+        },
+        "interval": {
+          "label": "攻击间隔",
+          "unit": "秒",
+          "min": 0.2,
+          "max": 10,
+          "step": 0.05,
+          "default": 1.8,
+          "connected": true
+        },
+        "windup": {
+          "label": "近战前摇",
+          "unit": "秒",
+          "min": 0.1,
+          "max": 2,
+          "step": 0.05,
+          "default": 0.6,
+          "connected": true
+        },
+        "speed": {
+          "label": "追击速度",
+          "unit": "单位/秒",
+          "min": 10,
+          "max": 400,
+          "step": 5,
+          "default": 90,
+          "connected": true
+        },
+        "trigger": {
+          "label": "警戒距离",
+          "unit": "单位",
+          "min": 30,
+          "max": 500,
+          "step": 5,
+          "default": 100,
+          "connected": true
+        },
+        "leash": {
+          "label": "脱战距离",
+          "unit": "单位",
+          "min": 60,
+          "max": 800,
+          "step": 5,
+          "default": 145,
+          "connected": true
+        },
+        "home_limit": {
+          "label": "离巢上限",
+          "unit": "单位",
+          "min": 30,
+          "max": 1000,
+          "step": 5,
+          "default": 75,
+          "connected": true
+        },
+        "reach": {
+          "label": "近战距离",
+          "unit": "单位",
+          "min": 10,
+          "max": 120,
+          "step": 1,
+          "default": 42,
+          "connected": true
+        }
+      }
+    },
+    "base.wind_frog": {
+      "label": "风袋巨蛙 · 基础",
+      "owner": "wind_frog",
+      "category": "monster",
+      "fields": {
+        "hp": {
+          "label": "生命上限",
+          "unit": "点",
+          "min": 1,
+          "max": 1000,
+          "step": 1,
+          "default": 96,
+          "connected": true
+        }
+      }
+    },
+    "base.silverfish": {
+      "label": "银鳞鱼 · 基础",
+      "owner": "silverfish",
+      "category": "monster",
+      "fields": {
+        "hp": {
+          "label": "生命上限",
+          "unit": "点",
+          "min": 1,
+          "max": 1000,
+          "step": 1,
+          "default": 20,
+          "connected": true
+        },
+        "speed": {
+          "label": "追击速度",
+          "unit": "单位/秒",
+          "min": 10,
+          "max": 400,
+          "step": 5,
+          "default": 65,
+          "connected": true
+        },
+        "trigger": {
+          "label": "警戒距离",
+          "unit": "单位",
+          "min": 30,
+          "max": 500,
+          "step": 5,
+          "default": 110,
+          "connected": true
+        },
+        "leash": {
+          "label": "脱战距离",
+          "unit": "单位",
+          "min": 60,
+          "max": 800,
+          "step": 5,
+          "default": 150,
+          "connected": false,
+          "reason": "银鳞鱼当前专属状态机未消费此旧脱战字段"
+        }
+      }
+    },
+    "base.thunder_eel": {
+      "label": "雷鳗 · 基础",
+      "owner": "thunder_eel",
+      "category": "monster",
+      "fields": {
+        "hp": {
+          "label": "生命上限",
+          "unit": "点",
+          "min": 1,
+          "max": 1000,
+          "step": 1,
+          "default": 30,
+          "connected": true
+        },
+        "speed": {
+          "label": "追击速度",
+          "unit": "单位/秒",
+          "min": 10,
+          "max": 400,
+          "step": 5,
+          "default": 55,
+          "connected": true
+        },
+        "trigger": {
+          "label": "警戒距离",
+          "unit": "单位",
+          "min": 30,
+          "max": 500,
+          "step": 5,
+          "default": 110,
+          "connected": true
+        },
+        "leash": {
+          "label": "脱战距离",
+          "unit": "单位",
+          "min": 60,
+          "max": 800,
+          "step": 5,
+          "default": 150,
+          "connected": true
+        }
+      }
+    },
+    "base.slime": {
+      "label": "史莱姆 · 基础",
+      "owner": "slime",
+      "category": "monster",
+      "fields": {
+        "hp": {
+          "label": "生命上限",
+          "unit": "点",
+          "min": 1,
+          "max": 1000,
+          "step": 1,
+          "default": 14,
+          "connected": true
+        },
+        "interval": {
+          "label": "攻击间隔",
+          "unit": "秒",
+          "min": 0.2,
+          "max": 10,
+          "step": 0.05,
+          "default": 1.8,
+          "connected": true
+        },
+        "windup": {
+          "label": "近战前摇",
+          "unit": "秒",
+          "min": 0.1,
+          "max": 2,
+          "step": 0.05,
+          "default": 0.45,
+          "connected": true
+        },
+        "speed": {
+          "label": "追击速度",
+          "unit": "单位/秒",
+          "min": 10,
+          "max": 400,
+          "step": 5,
+          "default": 85,
+          "connected": true
+        },
+        "trigger": {
+          "label": "警戒距离",
+          "unit": "单位",
+          "min": 30,
+          "max": 500,
+          "step": 5,
+          "default": 150,
+          "connected": true
+        },
+        "leash": {
+          "label": "脱战距离",
+          "unit": "单位",
+          "min": 60,
+          "max": 800,
+          "step": 5,
+          "default": 420,
+          "connected": true
+        },
+        "home_limit": {
+          "label": "离巢上限",
+          "unit": "单位",
+          "min": 30,
+          "max": 1000,
+          "step": 5,
+          "default": 600,
+          "connected": true
+        },
+        "reach": {
+          "label": "近战距离",
+          "unit": "单位",
+          "min": 10,
+          "max": 120,
+          "step": 1,
+          "default": 32,
+          "connected": true
+        }
+      }
+    },
+    "base.snail": {
+      "label": "砖壳蜗牛 · 基础",
+      "owner": "snail",
+      "category": "monster",
+      "fields": {
+        "hp": {
+          "label": "生命上限",
+          "unit": "点",
+          "min": 1,
+          "max": 1000,
+          "step": 1,
+          "default": 28,
+          "connected": true
+        },
+        "interval": {
+          "label": "攻击间隔",
+          "unit": "秒",
+          "min": 0.2,
+          "max": 10,
+          "step": 0.05,
+          "default": 2,
+          "connected": true
+        },
+        "windup": {
+          "label": "近战前摇",
+          "unit": "秒",
+          "min": 0.1,
+          "max": 2,
+          "step": 0.05,
+          "default": 0.6,
+          "connected": true
+        },
+        "speed": {
+          "label": "追击速度",
+          "unit": "单位/秒",
+          "min": 10,
+          "max": 400,
+          "step": 5,
+          "default": 65,
+          "connected": true
+        },
+        "trigger": {
+          "label": "警戒距离",
+          "unit": "单位",
+          "min": 30,
+          "max": 500,
+          "step": 5,
+          "default": 140,
+          "connected": true
+        },
+        "leash": {
+          "label": "脱战距离",
+          "unit": "单位",
+          "min": 60,
+          "max": 800,
+          "step": 5,
+          "default": 380,
+          "connected": true
+        },
+        "home_limit": {
+          "label": "离巢上限",
+          "unit": "单位",
+          "min": 30,
+          "max": 1000,
+          "step": 5,
+          "default": 520,
+          "connected": true
+        },
+        "reach": {
+          "label": "近战距离",
+          "unit": "单位",
+          "min": 10,
+          "max": 120,
+          "step": 1,
+          "default": 32,
+          "connected": true
+        }
+      }
+    },
+    "base.beetle": {
+      "label": "剑甲虫 · 基础",
+      "owner": "beetle",
+      "category": "monster",
+      "fields": {
+        "hp": {
+          "label": "生命上限",
+          "unit": "点",
+          "min": 1,
+          "max": 1000,
+          "step": 1,
+          "default": 21,
+          "connected": true
+        },
+        "interval": {
+          "label": "攻击间隔",
+          "unit": "秒",
+          "min": 0.2,
+          "max": 10,
+          "step": 0.05,
+          "default": 1.3,
+          "connected": true
+        },
+        "windup": {
+          "label": "近战前摇",
+          "unit": "秒",
+          "min": 0.1,
+          "max": 2,
+          "step": 0.05,
+          "default": 0.35,
+          "connected": true
+        },
+        "speed": {
+          "label": "追击速度",
+          "unit": "单位/秒",
+          "min": 10,
+          "max": 400,
+          "step": 5,
+          "default": 145,
+          "connected": true
+        },
+        "trigger": {
+          "label": "警戒距离",
+          "unit": "单位",
+          "min": 30,
+          "max": 500,
+          "step": 5,
+          "default": 190,
+          "connected": true
+        },
+        "leash": {
+          "label": "脱战距离",
+          "unit": "单位",
+          "min": 60,
+          "max": 800,
+          "step": 5,
+          "default": 500,
+          "connected": true
+        },
+        "home_limit": {
+          "label": "离巢上限",
+          "unit": "单位",
+          "min": 30,
+          "max": 1000,
+          "step": 5,
+          "default": 750,
+          "connected": true
+        },
+        "reach": {
+          "label": "近战距离",
+          "unit": "单位",
+          "min": 10,
+          "max": 120,
+          "step": 1,
+          "default": 32,
+          "connected": true
+        }
+      }
+    },
+    "base.lizard": {
+      "label": "石化蜥蜴 · 基础",
+      "owner": "lizard",
+      "category": "monster",
+      "fields": {
+        "hp": {
+          "label": "生命上限",
+          "unit": "点",
+          "min": 1,
+          "max": 1000,
+          "step": 1,
+          "default": 84,
+          "connected": true
+        },
+        "interval": {
+          "label": "攻击间隔",
+          "unit": "秒",
+          "min": 0.2,
+          "max": 10,
+          "step": 0.05,
+          "default": 2.2,
+          "connected": true
+        },
+        "windup": {
+          "label": "近战前摇",
+          "unit": "秒",
+          "min": 0.1,
+          "max": 2,
+          "step": 0.05,
+          "default": 0.7,
+          "connected": true
+        },
+        "speed": {
+          "label": "追击速度",
+          "unit": "单位/秒",
+          "min": 10,
+          "max": 400,
+          "step": 5,
+          "default": 100,
+          "connected": true
+        },
+        "trigger": {
+          "label": "警戒距离",
+          "unit": "单位",
+          "min": 30,
+          "max": 500,
+          "step": 5,
+          "default": 200,
+          "connected": true
+        },
+        "leash": {
+          "label": "脱战距离",
+          "unit": "单位",
+          "min": 60,
+          "max": 800,
+          "step": 5,
+          "default": 550,
+          "connected": true
+        },
+        "home_limit": {
+          "label": "离巢上限",
+          "unit": "单位",
+          "min": 30,
+          "max": 1000,
+          "step": 5,
+          "default": 700,
+          "connected": true
+        },
+        "reach": {
+          "label": "近战距离",
+          "unit": "单位",
+          "min": 10,
+          "max": 120,
+          "step": 1,
+          "default": 40,
+          "connected": true
+        }
+      }
+    },
+    "effect.hero": {
+      "label": "锅铲命中",
+      "owner": "player",
+      "category": "player",
+      "fields": {
+        "fx_scale": {
+          "label": "特效尺寸（原G的%）",
+          "min": 25,
+          "max": 250,
+          "step": 5,
+          "unit": "%",
+          "default": 100,
+          "connected": true
+        },
+        "fx_duration": {
+          "label": "接触特效时长（毫秒）",
+          "min": 60,
+          "max": 1200,
+          "step": 10,
+          "unit": "毫秒",
+          "default": 200,
+          "connected": true
+        },
+        "opacity": {
+          "label": "特效不透明度（%）",
+          "min": 0,
+          "max": 100,
+          "step": 5,
+          "unit": "%",
+          "default": 100,
+          "connected": true
+        },
+        "offset_x": {
+          "label": "接触点横移（世界单位）",
+          "min": -80,
+          "max": 80,
+          "step": 1,
+          "unit": "单位",
+          "default": 0,
+          "connected": true
+        },
+        "offset_y": {
+          "label": "接触点纵移（世界单位）",
+          "min": -80,
+          "max": 80,
+          "step": 1,
+          "unit": "单位",
+          "default": 0,
+          "connected": true
+        },
+        "angle": {
+          "label": "特效额外旋转（度）",
+          "min": -180,
+          "max": 180,
+          "step": 5,
+          "unit": "度",
+          "default": 0,
+          "connected": true
+        },
+        "hitstop": {
+          "label": "局部卡肉（毫秒）",
+          "min": 0,
+          "max": 200,
+          "step": 5,
+          "unit": "毫秒",
+          "default": 50,
+          "connected": true
+        },
+        "action_scale": {
+          "label": "出招整段时长（原G的%）",
+          "min": 50,
+          "max": 200,
+          "step": 5,
+          "unit": "%",
+          "default": 100,
+          "connected": true
+        },
+        "interval_scale": {
+          "label": "出招间隔（原G的%）",
+          "min": 50,
+          "max": 200,
+          "step": 5,
+          "unit": "%",
+          "default": 100,
+          "connected": true
+        }
+      }
+    },
+    "effect.yaya": {
+      "label": "芽芽命中",
+      "owner": "player",
+      "category": "player",
+      "fields": {
+        "fx_scale": {
+          "label": "特效尺寸（原G的%）",
+          "min": 25,
+          "max": 250,
+          "step": 5,
+          "unit": "%",
+          "default": 100,
+          "connected": true
+        },
+        "fx_duration": {
+          "label": "接触特效时长（毫秒）",
+          "min": 60,
+          "max": 1200,
+          "step": 10,
+          "unit": "毫秒",
+          "default": 230,
+          "connected": true
+        },
+        "opacity": {
+          "label": "特效不透明度（%）",
+          "min": 0,
+          "max": 100,
+          "step": 5,
+          "unit": "%",
+          "default": 100,
+          "connected": true
+        },
+        "offset_x": {
+          "label": "接触点横移（世界单位）",
+          "min": -80,
+          "max": 80,
+          "step": 1,
+          "unit": "单位",
+          "default": 0,
+          "connected": true
+        },
+        "offset_y": {
+          "label": "接触点纵移（世界单位）",
+          "min": -80,
+          "max": 80,
+          "step": 1,
+          "unit": "单位",
+          "default": 0,
+          "connected": true
+        },
+        "angle": {
+          "label": "特效额外旋转（度）",
+          "min": -180,
+          "max": 180,
+          "step": 5,
+          "unit": "度",
+          "default": 0,
+          "connected": true
+        },
+        "hitstop": {
+          "label": "局部卡肉（毫秒）",
+          "min": 0,
+          "max": 200,
+          "step": 5,
+          "unit": "毫秒",
+          "default": 50,
+          "connected": true
+        },
+        "action_scale": {
+          "label": "出招整段时长（原G的%）",
+          "min": 50,
+          "max": 200,
+          "step": 5,
+          "unit": "%",
+          "default": 100,
+          "connected": true
+        },
+        "interval_scale": {
+          "label": "出招间隔（原G的%）",
+          "min": 50,
+          "max": 200,
+          "step": 5,
+          "unit": "%",
+          "default": 100,
+          "connected": true
+        }
+      }
+    },
+    "effect.tieshan": {
+      "label": "铁山命中",
+      "owner": "player",
+      "category": "player",
+      "fields": {
+        "fx_scale": {
+          "label": "特效尺寸（原G的%）",
+          "min": 25,
+          "max": 250,
+          "step": 5,
+          "unit": "%",
+          "default": 100,
+          "connected": true
+        },
+        "fx_duration": {
+          "label": "接触特效时长（毫秒）",
+          "min": 60,
+          "max": 1200,
+          "step": 10,
+          "unit": "毫秒",
+          "default": 280,
+          "connected": true
+        },
+        "opacity": {
+          "label": "特效不透明度（%）",
+          "min": 0,
+          "max": 100,
+          "step": 5,
+          "unit": "%",
+          "default": 100,
+          "connected": true
+        },
+        "offset_x": {
+          "label": "接触点横移（世界单位）",
+          "min": -80,
+          "max": 80,
+          "step": 1,
+          "unit": "单位",
+          "default": 0,
+          "connected": true
+        },
+        "offset_y": {
+          "label": "接触点纵移（世界单位）",
+          "min": -80,
+          "max": 80,
+          "step": 1,
+          "unit": "单位",
+          "default": 0,
+          "connected": true
+        },
+        "angle": {
+          "label": "特效额外旋转（度）",
+          "min": -180,
+          "max": 180,
+          "step": 5,
+          "unit": "度",
+          "default": 0,
+          "connected": true
+        },
+        "hitstop": {
+          "label": "局部卡肉（毫秒）",
+          "min": 0,
+          "max": 200,
+          "step": 5,
+          "unit": "毫秒",
+          "default": 70,
+          "connected": true
+        },
+        "action_scale": {
+          "label": "出招整段时长（原G的%）",
+          "min": 50,
+          "max": 200,
+          "step": 5,
+          "unit": "%",
+          "default": 100,
+          "connected": true
+        },
+        "interval_scale": {
+          "label": "出招间隔（原G的%）",
+          "min": 50,
+          "max": 200,
+          "step": 5,
+          "unit": "%",
+          "default": 100,
+          "connected": true
+        }
+      }
+    },
+    "effect.fish": {
+      "label": "鱼冲撞受击",
+      "owner": "silverfish",
+      "category": "hurt",
+      "fields": {
+        "fx_scale": {
+          "label": "特效尺寸（原G的%）",
+          "min": 25,
+          "max": 250,
+          "step": 5,
+          "unit": "%",
+          "default": 100,
+          "connected": true
+        },
+        "fx_duration": {
+          "label": "接触特效时长（毫秒）",
+          "min": 60,
+          "max": 1200,
+          "step": 10,
+          "unit": "毫秒",
+          "default": 230,
+          "connected": true
+        },
+        "opacity": {
+          "label": "特效不透明度（%）",
+          "min": 0,
+          "max": 100,
+          "step": 5,
+          "unit": "%",
+          "default": 100,
+          "connected": true
+        },
+        "offset_x": {
+          "label": "接触点横移（世界单位）",
+          "min": -80,
+          "max": 80,
+          "step": 1,
+          "unit": "单位",
+          "default": 0,
+          "connected": true
+        },
+        "offset_y": {
+          "label": "接触点纵移（世界单位）",
+          "min": -80,
+          "max": 80,
+          "step": 1,
+          "unit": "单位",
+          "default": 0,
+          "connected": true
+        },
+        "angle": {
+          "label": "特效额外旋转（度）",
+          "min": -180,
+          "max": 180,
+          "step": 5,
+          "unit": "度",
+          "default": 0,
+          "connected": true
+        },
+        "hurt": {
+          "label": "玩家受击硬直（毫秒）",
+          "min": 190,
+          "max": 1500,
+          "step": 10,
+          "unit": "毫秒",
+          "default": 600,
+          "connected": true
+        },
+        "windup": {
+          "label": "怪物前摇（毫秒）",
+          "min": 100,
+          "max": 1200,
+          "step": 10,
+          "unit": "毫秒",
+          "default": 750,
+          "connected": true
+        },
+        "recover": {
+          "label": "怪物收势（毫秒）",
+          "min": 100,
+          "max": 1200,
+          "step": 10,
+          "unit": "毫秒",
+          "default": 900,
+          "connected": true
+        }
+      }
+    },
+    "effect.electric": {
+      "label": "电击受击",
+      "owner": "thunder_eel",
+      "category": "hurt",
+      "fields": {
+        "fx_scale": {
+          "label": "特效尺寸（原G的%）",
+          "min": 25,
+          "max": 250,
+          "step": 5,
+          "unit": "%",
+          "default": 100,
+          "connected": true
+        },
+        "fx_duration": {
+          "label": "接触特效时长（毫秒）",
+          "min": 60,
+          "max": 1200,
+          "step": 10,
+          "unit": "毫秒",
+          "default": 230,
+          "connected": true
+        },
+        "opacity": {
+          "label": "特效不透明度（%）",
+          "min": 0,
+          "max": 100,
+          "step": 5,
+          "unit": "%",
+          "default": 100,
+          "connected": true
+        },
+        "offset_x": {
+          "label": "接触点横移（世界单位）",
+          "min": -80,
+          "max": 80,
+          "step": 1,
+          "unit": "单位",
+          "default": 0,
+          "connected": true
+        },
+        "offset_y": {
+          "label": "接触点纵移（世界单位）",
+          "min": -80,
+          "max": 80,
+          "step": 1,
+          "unit": "单位",
+          "default": 0,
+          "connected": true
+        },
+        "angle": {
+          "label": "特效额外旋转（度）",
+          "min": -180,
+          "max": 180,
+          "step": 5,
+          "unit": "度",
+          "default": 0,
+          "connected": true
+        },
+        "hurt": {
+          "label": "玩家受击硬直（毫秒）",
+          "min": 190,
+          "max": 1500,
+          "step": 10,
+          "unit": "毫秒",
+          "default": 600,
+          "connected": true
+        },
+        "windup": {
+          "label": "怪物前摇（毫秒）",
+          "min": 100,
+          "max": 1200,
+          "step": 10,
+          "unit": "毫秒",
+          "default": 1200,
+          "connected": true
+        },
+        "recover": {
+          "label": "怪物收势（毫秒）",
+          "min": 100,
+          "max": 1200,
+          "step": 10,
+          "unit": "毫秒",
+          "default": 350,
+          "connected": true
+        },
+        "interval_scale": {
+          "label": "出招间隔（原G的%）",
+          "min": 50,
+          "max": 200,
+          "step": 5,
+          "unit": "%",
+          "default": 100,
+          "connected": true
+        }
+      }
+    },
+    "effect.water": {
+      "label": "水枪受击",
+      "owner": "wind_frog",
+      "category": "hurt",
+      "fields": {
+        "fx_scale": {
+          "label": "特效尺寸（原G的%）",
+          "min": 25,
+          "max": 250,
+          "step": 5,
+          "unit": "%",
+          "default": 100,
+          "connected": true
+        },
+        "fx_duration": {
+          "label": "接触特效时长（毫秒）",
+          "min": 60,
+          "max": 1200,
+          "step": 10,
+          "unit": "毫秒",
+          "default": 230,
+          "connected": true
+        },
+        "opacity": {
+          "label": "特效不透明度（%）",
+          "min": 0,
+          "max": 100,
+          "step": 5,
+          "unit": "%",
+          "default": 100,
+          "connected": true
+        },
+        "offset_x": {
+          "label": "接触点横移（世界单位）",
+          "min": -80,
+          "max": 80,
+          "step": 1,
+          "unit": "单位",
+          "default": 0,
+          "connected": true
+        },
+        "offset_y": {
+          "label": "接触点纵移（世界单位）",
+          "min": -80,
+          "max": 80,
+          "step": 1,
+          "unit": "单位",
+          "default": 0,
+          "connected": true
+        },
+        "angle": {
+          "label": "特效额外旋转（度）",
+          "min": -180,
+          "max": 180,
+          "step": 5,
+          "unit": "度",
+          "default": 0,
+          "connected": true
+        },
+        "hurt": {
+          "label": "玩家受击硬直（毫秒）",
+          "min": 190,
+          "max": 1500,
+          "step": 10,
+          "unit": "毫秒",
+          "default": 600,
+          "connected": true
+        },
+        "windup": {
+          "label": "怪物前摇（毫秒）",
+          "min": 100,
+          "max": 1200,
+          "step": 10,
+          "unit": "毫秒",
+          "default": 800,
+          "connected": true
+        },
+        "interval_scale": {
+          "label": "出招间隔（原G的%）",
+          "min": 50,
+          "max": 200,
+          "step": 5,
+          "unit": "%",
+          "default": 100,
+          "connected": true
+        }
+      }
+    },
+    "effect.slam": {
+      "label": "巨蛙落地受击",
+      "owner": "wind_frog",
+      "category": "hurt",
+      "fields": {
+        "fx_scale": {
+          "label": "特效尺寸（原G的%）",
+          "min": 25,
+          "max": 250,
+          "step": 5,
+          "unit": "%",
+          "default": 100,
+          "connected": true
+        },
+        "fx_duration": {
+          "label": "接触特效时长（毫秒）",
+          "min": 60,
+          "max": 1200,
+          "step": 10,
+          "unit": "毫秒",
+          "default": 230,
+          "connected": true
+        },
+        "opacity": {
+          "label": "特效不透明度（%）",
+          "min": 0,
+          "max": 100,
+          "step": 5,
+          "unit": "%",
+          "default": 100,
+          "connected": true
+        },
+        "offset_x": {
+          "label": "接触点横移（世界单位）",
+          "min": -80,
+          "max": 80,
+          "step": 1,
+          "unit": "单位",
+          "default": 0,
+          "connected": true
+        },
+        "offset_y": {
+          "label": "接触点纵移（世界单位）",
+          "min": -80,
+          "max": 80,
+          "step": 1,
+          "unit": "单位",
+          "default": 0,
+          "connected": true
+        },
+        "angle": {
+          "label": "特效额外旋转（度）",
+          "min": -180,
+          "max": 180,
+          "step": 5,
+          "unit": "度",
+          "default": 0,
+          "connected": true
+        },
+        "hurt": {
+          "label": "玩家受击硬直（毫秒）",
+          "min": 190,
+          "max": 1500,
+          "step": 10,
+          "unit": "毫秒",
+          "default": 900,
+          "connected": true
+        },
+        "windup": {
+          "label": "怪物前摇（毫秒）",
+          "min": 100,
+          "max": 1200,
+          "step": 10,
+          "unit": "毫秒",
+          "default": 1000,
+          "connected": true
+        },
+        "recover": {
+          "label": "怪物收势（毫秒）",
+          "min": 100,
+          "max": 1200,
+          "step": 10,
+          "unit": "毫秒",
+          "default": 1200,
+          "connected": true
+        }
+      }
+    },
+    "rock.lunge": {
+      "label": "岩鬃兽 · 冲撞",
+      "owner": "rockmane",
+      "category": "skill",
+      "fields": {
+        "distance": {
+          "label": "冲撞行程",
+          "unit": "单位",
+          "default": 160,
+          "min": 40,
+          "max": 240,
+          "step": 5,
+          "connected": true
+        },
+        "speed": {
+          "label": "冲撞基准速度",
+          "unit": "单位/秒",
+          "default": 200,
+          "min": 100,
+          "max": 350,
+          "step": 10,
+          "connected": true
+        },
+        "charge": {
+          "label": "普通冲撞蓄力",
+          "unit": "秒",
+          "default": 1.2,
+          "min": 0.4,
+          "max": 2.5,
+          "step": 0.05,
+          "connected": true
+        },
+        "recover": {
+          "label": "普通冲撞收势",
+          "unit": "秒",
+          "default": 2,
+          "min": 0.3,
+          "max": 4,
+          "step": 0.05,
+          "connected": true
+        },
+        "stun": {
+          "label": "撞晕弱点窗口",
+          "unit": "秒",
+          "default": 1.5,
+          "min": 0.3,
+          "max": 4,
+          "step": 0.05,
+          "connected": true
+        }
+      }
+    },
+    "rock.roar": {
+      "label": "岩鬃兽 · 咆哮",
+      "owner": "rockmane",
+      "category": "skill",
+      "fields": {
+        "range": {
+          "label": "咆哮半径",
+          "unit": "单位",
+          "default": 260,
+          "min": 80,
+          "max": 400,
+          "step": 5,
+          "connected": true
+        },
+        "angle": {
+          "label": "扇形总夹角",
+          "unit": "度",
+          "default": 70,
+          "min": 20,
+          "max": 140,
+          "step": 5,
+          "connected": true
+        },
+        "charge": {
+          "label": "咆哮前摇",
+          "unit": "秒",
+          "default": 1.1,
+          "min": 0.3,
+          "max": 2.5,
+          "step": 0.05,
+          "connected": true
+        },
+        "release": {
+          "label": "咆哮声波时长",
+          "unit": "秒",
+          "default": 0.45,
+          "min": 0.2,
+          "max": 1,
+          "step": 0.05,
+          "connected": true
+        },
+        "reuse": {
+          "label": "咆哮复用间隔",
+          "unit": "秒",
+          "default": 12,
+          "min": 4,
+          "max": 12,
+          "step": 0.5,
+          "connected": true
+        },
+        "rest": {
+          "label": "气绝反击窗口",
+          "unit": "秒",
+          "default": 5,
+          "min": 1,
+          "max": 5,
+          "step": 0.1,
+          "connected": true
+        }
+      }
+    },
+    "rock.combo": {
+      "label": "岩鬃兽 · 四连节奏",
+      "owner": "rockmane",
+      "category": "skill",
+      "fields": {
+        "charge1": {
+          "label": "第1冲蓄力",
+          "unit": "秒",
+          "default": 1.1,
+          "min": 0.3,
+          "max": 2.5,
+          "step": 0.05,
+          "connected": true
+        },
+        "recover1": {
+          "label": "第1冲收势",
+          "unit": "秒",
+          "default": 0.35,
+          "min": 0.15,
+          "max": 2,
+          "step": 0.05,
+          "connected": true
+        },
+        "charge2": {
+          "label": "第2冲蓄力",
+          "unit": "秒",
+          "default": 0.85,
+          "min": 0.3,
+          "max": 2.5,
+          "step": 0.05,
+          "connected": true
+        },
+        "recover2": {
+          "label": "第2冲收势",
+          "unit": "秒",
+          "default": 0.45,
+          "min": 0.15,
+          "max": 2,
+          "step": 0.05,
+          "connected": true
+        },
+        "charge3": {
+          "label": "第3冲蓄力",
+          "unit": "秒",
+          "default": 0.85,
+          "min": 0.3,
+          "max": 2.5,
+          "step": 0.05,
+          "connected": true
+        },
+        "recover3": {
+          "label": "第3冲收势",
+          "unit": "秒",
+          "default": 0.55,
+          "min": 0.15,
+          "max": 2,
+          "step": 0.05,
+          "connected": true
+        },
+        "charge4": {
+          "label": "第4冲蓄力",
+          "unit": "秒",
+          "default": 1.3,
+          "min": 0.3,
+          "max": 2.5,
+          "step": 0.05,
+          "connected": true
+        },
+        "recover4": {
+          "label": "第4冲收势",
+          "unit": "秒",
+          "default": 0.8,
+          "min": 0.15,
+          "max": 2,
+          "step": 0.05,
+          "connected": true
+        }
+      }
+    },
+    "eel.skill": {
+      "label": "雷鳗 · 状态窗口",
+      "owner": "thunder_eel",
+      "category": "skill",
+      "fields": {
+        "rest": {
+          "label": "三次放电后力竭",
+          "unit": "秒",
+          "default": 4,
+          "min": 1,
+          "max": 4,
+          "step": 0.1,
+          "connected": true
+        },
+        "form": {
+          "label": "成泡恢复",
+          "unit": "秒",
+          "default": 1,
+          "min": 0.2,
+          "max": 1,
+          "step": 0.05,
+          "connected": true
+        },
+        "range": {
+          "label": "放电半径",
+          "unit": "单位",
+          "default": 125,
+          "min": 40,
+          "max": 200,
+          "step": 5,
+          "connected": true
+        }
+      }
+    },
+    "frog.skill": {
+      "label": "巨蛙 · 落地范围",
+      "owner": "wind_frog",
+      "category": "skill",
+      "fields": {
+        "range": {
+          "label": "落地砸击半径",
+          "unit": "单位",
+          "default": 125,
+          "min": 40,
+          "max": 200,
+          "step": 5,
+          "connected": true
+        }
+      }
+    }
+  }
+}

@@ -17,11 +17,14 @@ func _ready() -> void:
 	hide()
 
 static func attach_to(root: Control):
+	var notices := CanvasLayer.new()
+	notices.layer = 1
+	root.add_child(notices)
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	center.offset_top = 22
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(center)
+	notices.add_child(center)
 	var toast = load("res://scripts/ui/components/feedback_toast.gd").new()
 	center.add_child(toast)
 	return toast

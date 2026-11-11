@@ -25,7 +25,7 @@ func _balance_state() -> void:
 		for id in ["yaya","tieshan"]:
 			sm.data[Progression.KEY] = {id:{"level":level,"exp":0,"rank":1,"breakthroughs":mini(5,floori((level-1)/5.0))}}
 			var row := Progression.record(sm,id)
-			_check(row.valid and row.satiety_max == (2 if id == "yaya" else 1)+floori(level/5.0), "%s等级%d饱腹边界" % [id,level])
+			_check(row.valid and row.satiety_max == Progression.satiety_limit(id,level), "%s等级%d饱腹边界" % [id,level])
 	sm.data.erase(Progression.KEY)
 	_check(Run.begin(sm,Roads.SPAWN).success, "新探索建立")
 	_check(Run.snapshot(sm).base_power == 7 and Run.snapshot(sm).satiety == 3, "初始战力7饱腹3")

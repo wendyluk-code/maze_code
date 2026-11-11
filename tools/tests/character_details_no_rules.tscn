@@ -1,0 +1,4 @@
+[gd_scene load_steps=2 format=3]
+[ext_resource type="Script" path="res://tools/tests/character_details_no_rules.gd" id="1"]
+[node name="CharacterDetailsNoRules" type="Node"]
+script = ExtResource("1")
