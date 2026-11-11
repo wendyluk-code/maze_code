@@ -1,0 +1,32 @@
+extends SceneTree
+
+func _initialize() -> void:
+	_run.call_deferred()
+
+func _run() -> void:
+	var recorder = load("res://scripts/debug/performance_recorder.gd").new()
+	root.add_child(recorder)
+	recorder.begin_capture(true)
+	assert(recorder.active and recorder.detailed)
+	recorder.record_span("战斗推进及保存", 2000)
+	recorder.mark()
+	recorder._collect(Time.get_ticks_msec())
+	var captured: Dictionary = recorder.model.snapshot()
+	assert(captured.samples.size() == 1 and captured.markers.size() == 1)
+	assert(captured.samples[0].spans["战斗推进及保存"].total_us == 2000)
+	assert(captured.samples[0].has("frame_max_ms"))
+	recorder.stop_capture()
+	assert(not recorder.active)
+	assert(recorder.save_status == "已保存到本机项目目录")
+	var saved := ProjectSettings.globalize_path("res://output/performance-captures").path_join(recorder.model.session + ".json")
+	assert(FileAccess.file_exists(saved))
+	var content: Variant = JSON.parse_string(FileAccess.get_file_as_string(saved))
+	assert(content is Dictionary and content.markers.size() == 2)
+	assert(content.markers[1].label == "停止采集并保存")
+	recorder.begin_capture(false)
+	recorder.record_span("不应记录", 1000)
+	recorder._collect(Time.get_ticks_msec())
+	assert(not recorder.model.snapshot().samples[0].has("spans"))
+	recorder.queue_free()
+	print("性能采集运行检查通过：开始、标记、细分、保存与轻量模式")
+	quit()

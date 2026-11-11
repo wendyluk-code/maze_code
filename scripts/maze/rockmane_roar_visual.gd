@@ -64,7 +64,9 @@ func apply(actor: Dictionary, combat: Dictionary) -> void:
  aim=Vector2(actor.rock_aim[0],actor.rock_aim[1])
  shape=PackedVector2Array()
  if phase in ["charge","rush"]:
+  var perf_started := Time.get_ticks_usec() if is_instance_valid(LocalDebug.performance_recorder) and LocalDebug.performance_recorder.active and LocalDebug.performance_recorder.detailed else 0
   for point in Area.polygon(global_position,aim): shape.append(point-global_position)
+  if perf_started > 0: LocalDebug.performance_recorder.record_span("岩鬃兽咆哮轮廓", Time.get_ticks_usec() - perf_started)
  _update_wave()
  _update_trail()
  previous_phase=phase

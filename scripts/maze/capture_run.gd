@@ -695,7 +695,7 @@ static func combat_tick(sm: Node, point: Vector2, dt: float, visible: Rect2 = Re
 	run.combat["checkpoint"] = float(before.get("checkpoint",0.0))+dt
 	sm.get("_state")[KEY]=run
 	sm.get("_state")[sm.MAZE_STATE_KEY].position=run.combat.hero.duplicate()
-	var frog_changed: bool = run.combat.get("frog_encounter",false) and run.combat.actors[Catalog.Frog.ID]!=before.actors[Catalog.Frog.ID]
+	var frog_changed: bool = run.combat.get("frog_encounter",false) and _frog_checkpoint_changed(before.actors[Catalog.Frog.ID],run.combat.actors[Catalog.Frog.ID])
 	var rock_changed: bool=run.combat.get("rock_encounter",false) and run.combat.actors[Catalog.Rock.ID]!=before.actors[Catalog.Rock.ID]
 	var electric_changed: bool=run.combat.get("electric_serial",0)!=before.get("electric_serial",0)
 	if electric_changed or run.combat.get("lanjiao_charge",{})!=before.get("lanjiao_charge",{}) or run.combat.get("lanjiao_boost",0)!=before.get("lanjiao_boost",0) or run.combat.get("chengyan_guard",{})!=before.get("chengyan_guard",{}) or run.combat.get("xiluomei_net",{})!=before.get("xiluomei_net",{}) or run.combat.get("ahong_trail",{})!=before.get("ahong_trail",{}) or mining.changed or not mining.feedback.is_empty() or rock_changed or frog_changed or healing or lesson_changed or awarded or migrated or refreshed or run.combat.hp!=before.hp or run.combat.hits!=before.hits or run.combat.throws!=before.throws or run.combat.get("blocks",0)!=before.get("blocks",0) or run.combat.checkpoint>=0.5:
@@ -709,6 +709,12 @@ static func combat_tick(sm: Node, point: Vector2, dt: float, visible: Rect2 = Re
 		return committed
 	if axe_hitstop!=null: axe_hitstop.state=axe_clock
 	return {"success":true,"hit_feedback":hit_feedback,"player_hurt_feedback":player_hurt_feedback}
+
+static func _frog_checkpoint_changed(before: Dictionary, after: Dictionary) -> bool:
+	# 阶段、生命、固定落点及水团生灭立即保存；单纯位移和剩时沿用0.5秒检查点。
+	for key in ["frog_phase","mode","hp","frog_origin","frog_target","frog_aim","frog_facing","frog_counter_from","frog_air_duration","frog_wet"]:
+		if before.get(key)!=after.get(key): return true
+	return before.get("frog_shots",[]).size()!=after.get("frog_shots",[]).size()
 
 
 static func ensure_region(run: Dictionary, region: String) -> bool:

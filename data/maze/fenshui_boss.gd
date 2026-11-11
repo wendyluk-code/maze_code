@@ -19,7 +19,8 @@ static func row() -> Dictionary:
 
 static func water(p: Vector2, radius: float = 0.0) -> bool:
 	if preload("res://data/maze/region_resources.gd").protected("fenshui",p,radius): return false
-	for i in 9:
+	# 半径为零时九个采样点完全相同，只需保留一次相同判定。
+	for i in (1 if radius==0.0 else 9):
 		var q := p if i==8 else p+Vector2.RIGHT.rotated(i*TAU/8.0)*radius
 		if not Roads.is_walkable(q,0.0) or Roads.terrain_multiplier(q)!=Roads.WATER_SPEED: return false
 	return true
@@ -41,9 +42,14 @@ static func air_allowed(p: Vector2) -> bool:
 	return true
 
 static func jump_line(a: Vector2,b: Vector2) -> bool:
-	if not allowed(a) or not allowed(b) or a.distance_to(b)>JUMP_RANGE+0.001: return false
+	if a.distance_to(b)>JUMP_RANGE+0.001 or not allowed(a) or not allowed(b): return false
 	var steps := maxi(1,ceili(a.distance_to(b)/2.0))
+	# 仍检查原来的同一组采样点，只先检查中段，让越过岛体/栅栏的长射线尽早失败。
+	var probes := [floori(steps*0.5),floori(steps*0.25),floori(steps*0.75)]
+	for i in probes:
+		if not air_allowed(a.lerp(b,float(i)/steps)): return false
 	for i in range(steps+1):
+		if i in probes: continue
 		if not air_allowed(a.lerp(b,float(i)/steps)): return false
 	return true
 

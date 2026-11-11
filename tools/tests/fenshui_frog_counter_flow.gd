@@ -25,6 +25,12 @@ func _run() -> void:
  viewport.render_target_update_mode=SubViewport.UPDATE_ALWAYS
  viewport.handle_input_locally=false
  get_tree().root.add_child(viewport)
+ if OS.has_feature("web"):
+  var display:=TextureRect.new()
+  display.texture=viewport.get_texture()
+  display.mouse_filter=Control.MOUSE_FILTER_IGNORE
+  display.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+  add_child(display)
  maze=load("res://scenes/maze_fenshui.tscn").instantiate()
  viewport.add_child(maze)
  await get_tree().process_frame
@@ -134,7 +140,10 @@ func bubble_center(frog: Node2D) -> Vector2:
 func picture(label: String) -> void:
  await get_tree().process_frame
  RenderingServer.force_draw(false)
- viewport.get_texture().get_image().save_png(output+"/"+label+".png")
+ var image:=viewport.get_texture().get_image()
+ image.save_png(output+"/"+label+".png")
+ if OS.has_feature("web"):
+  JavaScriptBridge.eval("(window.fenshuiTestPictures??=[]).push("+JSON.stringify({"label":label,"png":Marshalls.raw_to_base64(image.save_png_to_buffer())})+")",true)
 
 func key(code: Key) -> void:
  for pressed in [true,false]:
@@ -163,5 +172,20 @@ func mouse(point: Vector2) -> void:
   await get_tree().process_frame
 
 func _finish() -> void:
- FileAccess.open(_arg("--report="),FileAccess.WRITE).store_string(JSON.stringify({"checks":checks,"failures":failures,"results":results,"trace":trace},"  "))
+ var report:={"checks":checks,"failures":failures,"results":results,"trace":trace}
+ FileAccess.open(_arg("--report="),FileAccess.WRITE).store_string(JSON.stringify(report,"  "))
+ if OS.has_feature("web"):
+  JavaScriptBridge.eval("window.fenshuiTestReport="+JSON.stringify(report),true)
+  return
  get_tree().quit(1 if failures else 0)
+
+func _verify_isolation() -> bool:
+ if OS.has_feature("web"):
+  return ProjectSettings.get_setting("application/config/name")=="maze_fenshui_lan"
+ return super._verify_isolation()
+
+func _arg(prefix: String) -> String:
+ if OS.has_feature("web"):
+  if prefix=="--report=": return "user://fenshui-web-test-report.json"
+  if prefix=="--output-dir=": return "user://"
+ return super._arg(prefix)

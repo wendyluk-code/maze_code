@@ -31,6 +31,10 @@ func simulate(point: Vector2,seconds: float) -> Dictionary:
   if a.frog_phase!=previous:
    trace.append({"time":(i+1)*0.05,"actor":a.duplicate(true)})
    previous=a.frog_phase
+  # 本样例验证实际导航，不要求玩家站桩承受完整12秒；战败是原事务的合法终态。
+  if state().combat.hp<=0.0:
+   trace.append({"terminal":"player_defeated","time":(i+1)*0.05,"hp":state().combat.hp})
+   break
  var result:={"success":success,"max_displacement":maximum,"closest_to_hero":progress,"zero_jump_steps":zero_steps,"return_steps":return_steps,"max_tick_ms":max_us/1000.0,"end":actor().duplicate(true)}
  trace.append(result)
  return result

@@ -58,17 +58,20 @@ func battle() -> void:
  for point in shape: local_shape.append(point-splash.anchor)
  _check(back_mask is Polygon2D and front_mask is Polygon2D and back_mask.polygon==local_shape and front_mask.polygon==local_shape,"水花前后层实际裁切到同一伤害多边形")
  _check(back_mask.clip_children==CanvasItem.CLIP_CHILDREN_ONLY and front_mask.clip_children==CanvasItem.CLIP_CHILDREN_ONLY,"前后水花均开启真实绘制裁切，不只存一个范围字段")
+ _check(splash.ripple_mask.polygon==local_shape and splash.ripple_mask.clip_children==CanvasItem.CLIP_CHILDREN_ONLY,"地面薄波纹也裁切到实际伤害水域")
  _check(await until_true(func(): return splash.frame<0,1.0),"落地水花自然结束")
  _check(not splash.area_snapshot().visible,"水花结束范围层不残留")
  splash.hide()
  await get_tree().process_frame
  _check(not splash.area_snapshot().visible,"消费者隐藏清理独立地面层")
+ _check(not splash.ripple.visible,"消费者隐藏同时清理薄波纹")
  splash.show()
  maze.capture_flow.set_process(false)
  a.frog_phase="warning"
  a.hp=0.0
  splash._process(0.0)
  _check(not splash.area_snapshot().visible,"巨蛙生命归零后不继续显示预警")
+ _check(not splash.ripple.visible,"巨蛙生命归零后不残留薄波纹")
  var ground: Node=splash.ground
  splash.queue_free()
  await get_tree().process_frame

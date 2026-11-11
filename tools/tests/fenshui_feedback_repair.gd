@@ -60,8 +60,7 @@ func battle() -> void:
 func splash_geometry() -> void:
  setup(HURT_POINT)
  var frog: Node=maze.capture_flow.monsters[Boss.ID]
- # 视觉交付同页的参考蛙宽132，水花105/330；先换算相对蛙体比例，
- # 再随游戏中已放大1.4倍的参考蛙体进入世界，不能把网页像素当世界像素。
+ # Q9：正式落地按实际伤害直径；起跳和旧独立消费者仍按原体型比例。
  var body_width: float=148.0/192.0*float(frog.config.width)*1.4
  for type in ["takeoff","landing"]:
   splash._begin(type,Vector2(1040,450))
@@ -69,7 +68,9 @@ func splash_geometry() -> void:
   splash._render()
   var actual: float=splash.back.scale.x*float(splash._peaks[type])
   var expected: float=body_width*(105.0 if type=="takeoff" else 330.0)/132.0
-  _check(absf(actual-expected)<0.01,"水花保持视觉交付相对蛙体比例并仅应用一次1.4体型："+type,{"actual":actual,"expected":expected,"frog":body_width})
+  if type=="landing" and splash.has_method("area_snapshot"):
+   expected=preload("res://scripts/maze/fenshui_electric_area.gd").radius(Boss.ID+"_slam")*2.0
+  _check(absf(actual-expected)<0.01,"水花按起跳体型或正式落地攻击直径标定："+type,{"actual":actual,"expected":expected,"frog":body_width})
   await picture(type)
 
 func crowd() -> void:

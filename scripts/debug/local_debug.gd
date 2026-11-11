@@ -24,6 +24,13 @@ var resource_page: VBoxContainer
 var map_page: VBoxContainer
 var ingredient_page: VBoxContainer
 var notification: Label
+var performance_recorder: Node
+var performance_page: VBoxContainer
+var performance_detail: CheckButton
+var performance_status: Label
+var performance_start: Button
+var performance_stop: Button
+var performance_ui_elapsed := 0.0
 var started_at := ""
 var code_stamp := ""
 var switching := false
@@ -51,13 +58,20 @@ func _ready() -> void:
 		set_process_input(false)
 		return
 	started_at = Time.get_datetime_string_from_system().replace("T"," ")
+	performance_recorder = preload("res://scripts/debug/performance_recorder.gd").new()
+	add_child(performance_recorder)
 	var code_parts := ""
 	for file in ["res://scripts/debug/local_debug.gd","res://scripts/debug/map_debug.gd","res://scripts/maze/capture_run.gd","res://scripts/maze/capture_monster.gd","res://scripts/maze/fenshui_electric_effects.gd"]:
 		if FileAccess.file_exists(file): code_parts += FileAccess.get_sha256(file)
 	code_stamp = code_parts.sha256_text().left(12)
 	_build()
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	if is_instance_valid(performance_page) and performance_page.visible:
+		performance_ui_elapsed += delta
+		if performance_ui_elapsed >= 0.5:
+			performance_ui_elapsed = 0.0
+			_refresh_performance()
 	# 轮询物理键，确保底层模态窗吞掉输入事件时仍可唤出。
 	for digit in 10:
 		for code in [KEY_0 + digit, KEY_KP_0 + digit]:
@@ -68,6 +82,12 @@ func _process(_delta: float) -> void:
 func _input(event: InputEvent) -> void:
 	if not OS.is_debug_build(): return
 	if event is InputEventKey and event.pressed and not event.echo and event.ctrl_pressed:
+		if event.keycode == KEY_F9 or event.physical_keycode == KEY_F9:
+			if is_instance_valid(performance_recorder) and performance_recorder.active:
+				performance_recorder.mark()
+				if not panel.visible: notification.show_message("已标记性能卡顿", 2.0)
+			get_viewport().set_input_as_handled()
+			return
 		if event.keycode in [KEY_0,KEY_KP_0] or event.physical_keycode in [KEY_0,KEY_KP_0]:
 			if not switching: _feedback(heal_party())
 			get_viewport().set_input_as_handled()
@@ -122,6 +142,7 @@ func _build() -> void:
 	tabs.add_tab("资源与生命")
 	tabs.add_tab("地图跳转")
 	tabs.add_tab("补充食材")
+	tabs.add_tab("性能采集")
 	rows.add_child(tabs)
 	resource_page = VBoxContainer.new()
 	resource_page.custom_minimum_size.y = 220
@@ -179,13 +200,43 @@ func _build() -> void:
 	_action_button(actions,"重新开始本趟试玩","MapRestart",func(): _map_action("restart"))
 	_action_button(actions,"退出试玩，返回原进度","MapLeave",func(): _map_action("leave"))
 	_build_ingredients()
+	performance_page = VBoxContainer.new()
+	performance_page.custom_minimum_size.y = 220
+	performance_page.add_theme_constant_override("separation", 8)
+	rows.add_child(performance_page)
+	var perf_hint := Label.new()
+	perf_hint.text = "调试构建专用；关闭面板后继续采集。Ctrl+F9 标记卡顿。\n保留最近15分钟；每15秒及结束时保存到本机。"
+	perf_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	performance_page.add_child(perf_hint)
+	performance_detail = CheckButton.new()
+	performance_detail.text = "详细采集（包含战斗和地图诊断数据）"
+	performance_page.add_child(performance_detail)
+	var perf_actions := HBoxContainer.new()
+	performance_page.add_child(perf_actions)
+	performance_start = _action_button(perf_actions,"开始采集","PerformanceStart",func():
+		performance_recorder.begin_capture(performance_detail.button_pressed)
+		_refresh_performance()
+	)
+	performance_stop = _action_button(perf_actions,"停止并保存","PerformanceStop",func():
+		performance_recorder.stop_capture()
+		_refresh_performance()
+	)
+	_action_button(performance_page,"下载上次采集结果","PerformanceDownload",func():
+		status.text = "已请求下载" if performance_recorder.download_report() else "暂无可下载的网页采集结果"
+	)
+	performance_status = Label.new()
+	performance_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	performance_page.add_child(performance_status)
 	tabs.tab_changed.connect(func(index):
 		resource_page.visible = index == 0
 		map_page.visible = index == 1
 		ingredient_page.visible = index == 2
+		performance_page.visible = index == 3
+		if index == 3: _refresh_performance()
 	)
 	map_page.hide()
 	ingredient_page.hide()
+	performance_page.hide()
 	status = Label.new()
 	status.text = ""
 	status.add_theme_font_size_override("font_size",14)
@@ -227,6 +278,14 @@ func _refresh_runtime() -> void:
 		if row.id == region: map_name = row.name
 	runtime_label.text = "启动 %s ｜ 代码摘要 %s ｜ 当前 %s\n目录 %s\n存档：%s（%s）" % [started_at,code_stamp,map_name,ProjectSettings.globalize_path("res://"),"地图试玩副本" if map_session.is_trial() else "当前加载存档",SaveManager._active_save_path.get_file()]
 
+func _refresh_performance() -> void:
+	if not is_instance_valid(performance_recorder): return
+	performance_recorder._read_web_status()
+	performance_start.disabled = performance_recorder.active
+	performance_stop.disabled = not performance_recorder.active
+	performance_detail.disabled = performance_recorder.active
+	performance_status.text = "状态：%s；%s" % ["采集中" if performance_recorder.active else "未采集", performance_recorder.save_status]
+
 func _map_action(action: String) -> void:
 	if switching or Transition.is_active(get_tree()): return
 	var result: Dictionary
@@ -263,10 +322,12 @@ func open_panel() -> void:
 	panel.show()
 	_refresh_runtime()
 	_refresh_ingredients()
+	_refresh_performance()
 	status.text = "金币 %d　星尘 %d" % [SaveManager.gold_balance(), SaveManager.stardust_balance()]
 	if tabs.current_tab == 0: amount.get_line_edit().grab_focus()
 	elif tabs.current_tab == 1: region_select.grab_focus()
-	else: ingredient_submit.grab_focus()
+	elif tabs.current_tab == 2: ingredient_submit.grab_focus()
+	else: performance_start.grab_focus()
 
 func recipe_ingredient_ids() -> Array[String]:
 	var ids: Array[String] = []

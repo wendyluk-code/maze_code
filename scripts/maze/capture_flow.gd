@@ -207,6 +207,17 @@ func display_run() -> Dictionary:
 	var event := sparring()
 	return event.run if event!=null else Run.snapshot(SaveManager)
 
+func combat_step(run: Dictionary) -> float:
+	var combat: Dictionary = run.combat
+	if axe_hitstop!=null and combat.get("action","")=="tieshan" and float(combat.get("action_left",0.0))>0.0: return 0.01
+	if maxf(float(combat.get("hit_remaining",0.0)),float(combat.get("flash_remaining",0.0)))>0.00001: return 0.01
+	# 死亡、捕获已处理或离图的演员不再推进受击剩时，不能因此永久细分整场战斗。
+	for id in combat.actors:
+		if not Catalog.active(combat,id) or run.monsters[id].status!="alive": continue
+		var actor: Dictionary = combat.actors[id]
+		if actor.hp>0.0 and maxf(float(actor.get("hit_remaining",0.0)),float(actor.get("flash_remaining",0.0)))>0.00001: return 0.01
+	return 0.05
+
 func charge_active() -> bool:
 	return Run.Combat.Skills.Charge.active(display_run().get("combat",{}))
 
@@ -285,6 +296,7 @@ func _process(delta: float) -> void:
 	hud.hide()
 	var target := "" if sparring()!=null else Run.Combat.select_target(run,maze.player.position)
 	if not locked_target_id.is_empty(): target=locked_target_id
+	var perf_visual_started := Time.get_ticks_usec() if is_instance_valid(LocalDebug.performance_recorder) and LocalDebug.performance_recorder.active and LocalDebug.performance_recorder.detailed else 0
 	for id in monsters:
 		if sparring()!=null:
 			monsters[id].hide()
@@ -304,6 +316,7 @@ func _process(delta: float) -> void:
 		monsters[id].health_bar.tooltip_text="生命 %d/%d" % [actor.hp,monsters[id].health_bar.max_value]
 		monsters[id].label.visible = id==target and actor.get("frog_phase","")!="emerging"
 		monsters[id].label.self_modulate = Color("ffaf70") if actor.mode=="windup" else Color.WHITE
+	if perf_visual_started > 0: LocalDebug.performance_recorder.record_span("怪物画面状态同步", Time.get_ticks_usec() - perf_visual_started)
 	_layout_combat_labels()
 	if is_instance_valid(rock_status_visual): rock_status_visual.sync(self,run)
 	if is_instance_valid(target_marker): target_marker.sync(self,delta)
@@ -348,16 +361,15 @@ func _process(delta: float) -> void:
 		return
 	combat_time = minf(0.2, combat_time + delta)
 	while combat_time > 0.00001:
-		var current_combat: Dictionary = Run.snapshot(SaveManager).combat
-		var step := 0.05
-		if axe_hitstop!=null and (current_combat.get("action","")=="tieshan" and float(current_combat.get("action_left",0.0))>0.0): step=0.01
-		# 受击期间细分至10毫秒，让0.12秒位移不会被20Hz常规步长拉长。
-		if maxf(float(current_combat.get("hit_remaining", 0.0)), float(current_combat.get("flash_remaining", 0.0))) > 0.00001: step = 0.01
-		for actor in current_combat.actors.values():
-			if maxf(float(actor.get("hit_remaining", 0.0)), float(actor.get("flash_remaining", 0.0))) > 0.00001: step = 0.01
+		var current_run := Run.snapshot(SaveManager)
+		var current_combat: Dictionary = current_run.combat
+		# 活体受击仍细分至10毫秒，保留原0.12秒击退精度。
+		var step := combat_step(current_run)
 		if combat_time + 0.000001 < step: break
 		combat_time = maxf(0.0, combat_time - step)
+		var perf_started := Time.get_ticks_usec() if is_instance_valid(LocalDebug.performance_recorder) and LocalDebug.performance_recorder.active and LocalDebug.performance_recorder.detailed else 0
 		var result := Run.combat_tick(SaveManager,maze.player.position,step,visible_world_rect(),maze.player.sprinting,axe_hitstop,maze.player.facing)
+		if perf_started > 0: LocalDebug.performance_recorder.record_span("战斗推进及保存", Time.get_ticks_usec() - perf_started)
 		if result.success:
 			GameAudio.update_boss_music(Run.snapshot(SaveManager))
 			if is_instance_valid(crystal_visual): crystal_visual.feedback(result.get("mining_feedback",[]))

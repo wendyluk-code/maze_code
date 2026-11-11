@@ -164,6 +164,11 @@ func _ready() -> void:
 	_previous_auto_quit = get_tree().auto_accept_quit
 	get_tree().auto_accept_quit = false
 	_interact_armed = not Input.is_action_pressed("interact")
+	if region_id=="fenshui" and not CaptureRun.snapshot(SaveManager).get("combat",{}).get("fs01_trial",false):
+		# 静态寻路准备放在入场提交之前，避免第一跳时同步建立网格。
+		var frog_path=preload("res://scripts/maze/frog_water_path.gd")
+		frog_path.prepare()
+		frog_path.nearest(CaptureRun.Catalog.Frog.HOME)
 	_commit_entry()
 	capture_flow = preload("res://scripts/maze/capture_flow.gd").new()
 	add_child(capture_flow)
@@ -625,8 +630,10 @@ func _process(delta: float) -> void:
 		show_toast("你有新顾客哦~")
 		_arrival_toast_shown = true
 	_sync_task_access()
+	var perf_map_started := Time.get_ticks_usec() if is_instance_valid(LocalDebug.performance_recorder) and LocalDebug.performance_recorder.active and LocalDebug.performance_recorder.detailed else 0
 	_update_chest_target()
 	_update_prompts()
+	if perf_map_started > 0: LocalDebug.performance_recorder.record_span("地图交互目标和提示", Time.get_ticks_usec() - perf_map_started)
 	if is_instance_valid(elder):
 		elder.set_near(player.position.distance_to(elder.position) <= WhiteTigerElder.Config.INTERACT_RADIUS and not _busy and not confirmation.visible and not map_ui.expanded)
 	if not _entry_ready:

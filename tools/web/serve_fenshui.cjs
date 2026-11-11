@@ -2,10 +2,12 @@ const http = require('node:http');
 const https = require('node:https');
 const fs = require('node:fs');
 const path = require('node:path');
+const {handlePerformanceCapture} = require('./performance_capture.cjs');
 const root = fs.realpathSync(process.argv[2]);
 const port = Number(process.argv[3] || 8086);
 const types = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.wasm':'application/wasm','.pck':'application/octet-stream','.png':'image/png','.ico':'image/x-icon','.svg':'image/svg+xml','.json':'application/json'};
 const handler = (req,res) => {
+  if (handlePerformanceCapture(req,res,path.resolve(__dirname,'../../output/performance-captures'))) return;
   if (!['GET','HEAD'].includes(req.method)) { res.writeHead(405); return res.end(); }
   let name;
   try { name = decodeURIComponent(new URL(req.url,'http://localhost').pathname); } catch { res.writeHead(400); return res.end(); }

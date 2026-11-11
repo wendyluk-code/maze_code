@@ -4,7 +4,7 @@ const Boss=preload("res://data/maze/fenshui_boss.gd")
 const Sheet=preload("res://assets/effects/fenshui/frog_splash/candidate_v1.png")
 const DURATIONS={"takeoff":0.340,"landing":0.650}
 # 视觉交付同页：参考蛙体132，起跳105、落地330。以相对体型换算，
-# 不把预览画布像素当成世界单位，也不让伤害半径替代素材尺寸。
+# 不把预览画布像素当成世界单位；正式落地消费者另按Q9的攻击范围适配地面覆盖。
 const WIDTH_PER_BODY={"takeoff":105.0/132.0,"landing":330.0/132.0}
 var flow: Node
 var back: Sprite2D
