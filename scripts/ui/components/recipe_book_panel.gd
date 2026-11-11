@@ -59,16 +59,7 @@ func _ready() -> void:
 	var heading := label("食谱", 32)
 	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(heading)
-	close_button = ModalStyle.close_button()
-	# 奶油底上的关闭叉号使用深棕色，悬停保持清晰对比。
-	close_button.add_theme_color_override("font_color", SproutTheme.INK)
-	for state in ["font_hover_color", "font_focus_color", "font_pressed_color", "font_hover_pressed_color"]:
-		close_button.add_theme_color_override(state, Color("#402813"))
-	var close_hover := StyleBoxFlat.new()
-	close_hover.bg_color = Color("#e6c38c")
-	close_hover.set_corner_radius_all(8)
-	for state in ["hover", "pressed", "hover_pressed", "focus"]:
-		close_button.add_theme_stylebox_override(state, close_hover)
+	close_button = ModalStyle.close_button(true)
 	close_button.pressed.connect(close)
 	header.add_child(close_button)
 	var table := PanelContainer.new()
@@ -235,7 +226,7 @@ func _render_recipes() -> void:
 			slot._icon_button.set_meta("ingredient_id", str(item.id))
 			slot._icon_button.set_meta("recipe_id", str(entry.id))
 			ingredient_targets.append(slot._icon_button)
-			bind_hint(slot._icon_button, str(item.name) + "\n获取方式：" + str(item.source).trim_prefix("获取方式：").trim_prefix("获取："))
+			bind_hint(slot._icon_button, str(item.name) + "\n获取方式：" + preload("res://scripts/cooking/ingredient_sources.gd").description(str(item.id)))
 			var item_name := label("%s ×%d" % [item.name, item.quantity], 17)
 			material.add_child(item_name)
 			item_name.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)

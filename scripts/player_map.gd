@@ -22,6 +22,7 @@ var animation_name: StringName = &"front_idle"
 var animation_frame := 0
 var _appearance := HeroAnimation.new()
 var _walking := false
+var _motion_audio := preload("res://scripts/audio/character_motion_audio.gd").new()
 var _return_from_maze := false
 
 @onready var label: Label = %HintLabel
@@ -48,6 +49,7 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	add_to_group("player")
+	interacted.connect(func(_target: Node2D): GameAudio.interaction())
 	var sprint_wind := preload("res://scripts/characters/sprint_wind.gd").new()
 	sprint_wind.name = "SprintWind"
 	add_child(sprint_wind)
@@ -69,6 +71,7 @@ func _physics_process(delta: float) -> void:
 	if input_locked:
 		velocity = Vector2.ZERO
 		_walking = false
+		_motion_audio.reset()
 		return
 	if spawn_init_state == SPAWN_INIT_PENDING:
 		_try_resolve_spawn()
@@ -93,6 +96,7 @@ func _physics_process(delta: float) -> void:
 			else:
 				position = last_valid
 
+	_motion_audio.update(GameAudio, global_position.distance_to(before_move), SPEED, Input.is_physical_key_pressed(KEY_SHIFT))
 	if spawn_ready and global_position.distance_squared_to(before_move) > 0.001 and (Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_D)):
 		SaveManager.record_customer_walk(delta)
 	if input_dir.x > 0.1:
@@ -151,6 +155,7 @@ func _process(delta: float) -> void:
 	# 对白会暂停物理帧；显示仍继续待机，不能停在迈步帧或保留旧移动状态。
 	if input_locked or not is_physics_processing():
 		_walking = false
+		_motion_audio.reset()
 	_apply_facing(delta)
 	_update_hint()
 
@@ -177,6 +182,7 @@ func nearest_interactable() -> Node2D:
 		var node := n as Node2D
 		if not node:
 			continue
+		if not preload("res://scripts/restaurant/preparation.gd").allowed(SaveManager,str(node.get("display_name"))): continue
 		var d := interaction_distance_to(node)
 		var allowed_range := 120.0 if node == serving_target else INTERACT_RANGE
 		if d > allowed_range:
@@ -203,11 +209,8 @@ func collision_radius_world() -> float:
 func _update_hint() -> void:
 	if not label:
 		return
-	var best := nearest_interactable()
-	if best:
-		label.text = "【E】丢弃" if display_name_of(best) == "垃圾桶" else "【E】与「%s」交互" % display_name_of(best)
-	else:
-		label.text = ""
+	# 餐厅交互统一由道具上方的悬浮按钮提示，保留空节点供既有场景引用。
+	label.text = ""
 
 func display_name_of(p: Node) -> String:
 	if p.has_method(&"get") and "display_name" in p:

@@ -20,10 +20,11 @@ _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 SaveManager="*res://scripts/save_manager.gd"
 TutorialManager="*res://scripts/tutorial_manager.gd"
 LocalDebug="*res://scripts/debug/local_debug.gd"
+GameAudio="*res://scripts/audio/game_audio.gd"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/godot_ai/plugin.cfg")
+enabled=PackedStringArray("res://addons/godot_ai/plugin.cfg", "res://addons/audio_mixer/plugin.cfg")
 
 [gui]
 

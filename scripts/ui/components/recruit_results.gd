@@ -44,7 +44,7 @@ func _ready() -> void:
 	outcome_line = _label("", Rect2(240, 510, 800, 36), 26)
 	outcome_line.add_theme_color_override("font_color", Color("#ffe0a0"))
 	next_button = _button("下一张", Rect2(0, 658, 160, 48), _advance)
-	skip_button = _button("确认", Rect2(0, 658, 160, 48), _show_overview)
+	skip_button = _button("查看全部", Rect2(0, 658, 160, 48), _show_overview)
 	loot = Loot.new()
 	add_child(loot)
 	loot._overlay.hide() # 共用父层遮罩，只保留宝箱原样奖励面板。
@@ -168,6 +168,7 @@ func _show_card() -> void:
 	current_face.position -= current_face.pivot_offset * 0.56
 	current_face.scale.x = 0.0
 	flip.tween_interval(0.2)
+	flip.tween_callback(func(): GameAudio.play_cue(&"party_join"))
 	flip.tween_property(back,"scale:x",0.0,0.25)
 	flip.tween_callback(func():
 		back.hide()
@@ -180,21 +181,33 @@ func _show_card() -> void:
 		caption.show())
 	flip.tween_property(caption, "modulate:a", 1.0, 0.4)
 	flip.tween_interval(0.2)
+	for rank_value in range(2,int(result.rank)+1):
+		var target_rank: int = rank_value
+		var star: TextureRect = current_face.stars[target_rank-1]
+		flip.tween_callback(func():
+			if generation != _generation: return
+			stage = "stars"
+			displayed_rank = target_rank
+			current_face.display_rank(target_rank)
+			star.modulate.a = 0.0)
+		flip.tween_property(star,"modulate:a",1.0,0.24)
+		flip.tween_interval(0.12)
 	flip.tween_callback(func():
 		if generation != _generation: return
 		displayed_rank = int(result.rank)
 		current_face.display_rank(displayed_rank)
 		stage = "upgrade"
-		outcome_line.text = "升至%d星" % displayed_rank
+		outcome_line.text = "已满6星" if result.kind == "stardust" else "升至%d星" % displayed_rank
 		outcome_line.show())
 	flip.tween_property(outcome_line, "modulate:a", 1.0, 0.4)
 	flip.tween_interval(0.35)
 	if result.kind == "stardust":
-		flip.tween_callback(func(): stage = "flipping")
-		flip.tween_property(current_face, "scale:x", 0.0, 0.3)
+		var dust_row := _make_dust_row(int(result.stardust))
+		dust_row.modulate.a = 0.0
 		flip.tween_callback(func():
-			if generation == _generation: _show_dust(result))
-		return
+			stage = "dust"
+			dust_shown = true)
+		flip.tween_property(dust_row, "modulate:a", 1.0, 0.4)
 	flip.tween_callback(func():
 		if generation != _generation: return
 		stage = "ready"
@@ -202,20 +215,32 @@ func _show_card() -> void:
 		next_button.disabled = false
 		next_button.grab_focus())
 
-func _show_dust(result: Dictionary) -> void:
-	current_face.hide()
-	caption.hide()
-	draw_line.hide()
-	outcome_line.hide()
-	title.hide()
-	next_button.hide()
-	flipping = false
-	dust_shown = true
-	stage = "dust"
-	loot.show_items([{"name": "星尘", "quantity": int(result.stardust), "icon": preload("res://assets/ui/recruitment/stardust.png")}])
-	# 调用方已有标题接口；不扩展或改变公共宝箱默认行为。
-	loot.show_modal("恭喜获得", "", "收下")
-	_buttons()
+func _make_dust_row(amount: int) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.name = "Conversion"
+	row.position = Vector2(240, 558)
+	row.size = Vector2(800, 36)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 6)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content.add_child(row)
+	var text := Label.new()
+	text.text = "转化为"
+	text.add_theme_font_size_override("font_size", 24)
+	text.add_theme_color_override("font_color", SproutTheme.CREAM)
+	row.add_child(text)
+	var icon := TextureRect.new()
+	icon.texture = preload("res://scripts/ui/components/bag_icon_display.gd").texture(preload("res://assets/ui/recruitment/stardust.png"))
+	icon.custom_minimum_size = Vector2(28, 28)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	row.add_child(icon)
+	var value := Label.new()
+	value.text = "+%d" % amount
+	value.add_theme_font_size_override("font_size", 26)
+	value.add_theme_color_override("font_color", Color("#a4e6ff"))
+	row.add_child(value)
+	return row
 
 func _loot_closed() -> void:
 	if visible and stage == "dust" and not overview: _advance()
@@ -247,7 +272,7 @@ static func aggregate(saved_results: Array) -> Array[Dictionary]:
 	return entries
 
 func _show_overview() -> void:
-	if not visible: return
+	if not visible or overview: return
 	_clear()
 	overview = true
 	stage = "overview"
@@ -264,6 +289,9 @@ func _show_overview() -> void:
 	var factor := 0.22 if count > 5 else (0.44 if count <= 3 else 0.38)
 	var spacing := 310.0 if count <= 3 else 240.0
 	var width := (count - 1) * spacing + 470.0 * factor
+	var faces: Array[Control] = []
+	var backs: Array[Control] = []
+	var summaries: Array[Control] = []
 	for i in count:
 		var entry: Dictionary = grouped[i]
 		var at := Vector2((1280.0 - width) * 0.5 + i * spacing, 125)
@@ -271,10 +299,42 @@ func _show_overview() -> void:
 			var row_count := mini(5, count - (i / 5) * 5)
 			var row_width := (row_count - 1) * 240.0 + 470.0 * factor
 			at = Vector2((1280.0 - row_width) * 0.5 + (i % 5) * 240.0, 76 + (i / 5) * 280)
-		_face(entry, at, factor)
+		var face := _face(entry, at, factor)
+		face.pivot_offset = Vector2(235, 360)
+		face.position -= face.pivot_offset * (1.0 - factor)
+		face.scale.x = 0.0
+		face.hide()
+		faces.append(face)
+		var back := TextureRect.new()
+		back.texture = preload("res://scripts/ui/components/bag_icon_display.gd").texture(preload("res://assets/ui/recruitment/card_back_sprout.png"))
+		back.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		back.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		back.position = at
+		back.size = Vector2(470, 720) * factor
+		back.pivot_offset = back.size * 0.5
+		content.add_child(back)
+		backs.append(back)
 		_summary(entry, Vector2(at.x + 470.0 * factor * 0.5, at.y + 720 * factor + 10), count > 5)
+		var summary := content.get_child(content.get_child_count() - 1) as Control
+		summary.modulate.a = 0.0
+		summaries.append(summary)
+	flip = create_tween()
+	flip.tween_interval(0.2)
+	flip.tween_callback(func(): GameAudio.play_cue(&"party_join"))
+	flip.tween_method(func(value: float):
+		for back in backs: back.scale.x = value, 1.0, 0.0, 0.25)
+	flip.tween_callback(func():
+		for back in backs: back.hide()
+		for face in faces: face.show())
+	flip.tween_method(func(value: float):
+		for face in faces: face.scale.x = value, 0.0, factor, 0.25)
+	flip.tween_method(func(value: float):
+		for summary in summaries: summary.modulate.a = value, 0.0, 1.0, 0.35)
+	flip.tween_callback(func():
+		for back in backs: back.queue_free())
 
 	next_button.grab_focus()
+	GameAudio.play_cue(&"cooking_complete")
 
 func _input(event: InputEvent) -> void:
 	if not visible: return

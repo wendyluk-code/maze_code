@@ -22,12 +22,20 @@ var external_cutouts: Array[Rect2] = []
 var external_operation := false
 var external_circles := false
 var external_owner := false
+var entrance_cutout_target: Node2D
 
 var _toast_tween: Tween = null
 var _modal_suppressed := false
 var _modal_hint_visible := false
 
 func _ready() -> void:
+	# 常驻提示属于场景信息，始终在业务弹窗及其暗幕下方。
+	var notices := CanvasLayer.new()
+	notices.name = "BackgroundNotices"
+	notices.layer = 1
+	add_child(notices)
+	hint_panel.reparent(notices, false)
+	toast_panel.reparent(notices, false)
 	add_to_group("tutorial_guide")
 	var cutout := ShaderMaterial.new()
 	cutout.shader = TASK_CUTOUT
@@ -196,6 +204,8 @@ func _sync_task_cutouts() -> void:
 	if dim.visible and is_instance_valid(tracker) and tracker.has_method("explanation_cutout_rects"):
 		rects = tracker.explanation_cutout_rects()
 	if external_owner: rects = external_cutouts
+	if dim.visible and is_instance_valid(entrance_cutout_target):
+		rects = [entrance_cutout_target.screen_cutout_rect()]
 	cutout.set_shader_parameter("overlay_size", dim.size)
 	cutout.set_shader_parameter("circle_cutouts", external_owner and external_circles)
 	for index in range(2):
@@ -238,6 +248,7 @@ func _hide_toast() -> void:
 	toast_panel.modulate.a = 1.0
 
 func finish_all() -> void:
+	entrance_cutout_target = null
 	_modal_suppressed = false
 	_modal_hint_visible = false
 	if _toast_tween != null and _toast_tween.is_valid():

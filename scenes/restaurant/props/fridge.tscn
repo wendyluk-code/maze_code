@@ -1,0 +1,28 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/restaurant/layout_prop.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/restaurant_layout/fridge_shadow.png" id="2"]
+
+[node name="Fridge" type="Node2D" groups=["restaurant_layout_props"]]
+y_sort_enabled = true
+script = ExtResource("1")
+display_name = "冰柜"
+interactive = true
+player_in_front_on_left = true
+ui_offset = Vector2(0, -362.18010752688167)
+metadata/_edit_group_ = true
+
+[node name="Art" type="Sprite2D" parent="."]
+texture = ExtResource("2")
+scale = Vector2(0.28319405756731664, 0.2826689022915154)
+offset = Vector2(35.5, -545.0332590636114)
+
+[node name="Body" type="StaticBody2D" parent="."]
+
+[node name="Collision" type="CollisionPolygon2D" parent="Body"]
+polygon = PackedVector2Array(-95, -230, -15, -250, 120, -35, 100, 15, -80, 15, -140, -175)
+
+[node name="InteractionArea" type="Polygon2D" parent="."]
+visible = false
+polygon = PackedVector2Array(-95, -230, -15, -250, 120, -35, 100, 15, -80, 15, -140, -175)
+

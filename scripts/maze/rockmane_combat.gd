@@ -1,4 +1,5 @@
 extends RefCounted
+const Balance = preload("res://scripts/maze/monster_balance.gd")
 const Config=preload("res://data/maze/salt_boss.gd")
 const Skills=preload("res://scripts/maze/team_attack.gd")
 static func initialize(a: Dictionary) -> void:
@@ -12,7 +13,7 @@ static func vec(p: Array) -> Vector2: return Vector2(p[0],p[1])
 static func pack(p: Vector2) -> Array: return [p.x,p.y]
 static func hurt(run: Dictionary,point: Vector2,source: Vector2) -> void:
 	var c: Dictionary=run.combat
-	c.hp=maxf(0,c.hp-Skills.incoming_damage(run,8))
+	if not Skills.receive_damage(run,Balance.STATS.rockmane.attack): return
 	c.last_attacker="rockmane"
 	var direction:=source.direction_to(point)
 	if direction.is_zero_approx(): direction=Vector2.DOWN
@@ -24,6 +25,10 @@ static func advance(run: Dictionary,point: Vector2,dt: float) -> void:
 	if c.get("region","")!="salt_pool" or not c.get("rock_encounter",false): return
 	c.rock_shake_left=maxf(0,float(c.get("rock_shake_left",0))-dt)
 	var a: Dictionary=c.actors[Config.ID]
+	if Skills.Trail.paralyzed(a):
+		a.velocity=[0.0,0.0]
+		return
+	if float(a.get("wind_left",0.0))>0: return
 	if run.monsters[Config.ID].status!="alive" or a.hp<=0 or c.hp<=0: return
 	var pos:=vec(a.position)
 	a.velocity=[0.0,0.0]
@@ -63,7 +68,7 @@ static func advance(run: Dictionary,point: Vector2,dt: float) -> void:
 			var aim:=pos.direction_to(point)
 			a.rock_aim=pack(Vector2.DOWN if aim.is_zero_approx() else aim)
 		else:
-			var next:=preload("res://scripts/maze/rockmane_path.gd").step(pos,point,70*dt)
+			var next:=preload("res://scripts/maze/rockmane_path.gd").step(pos,point,70*dt*Skills.Smoke.speed(c,pos)*Skills.Tide.speed(a))
 			a.position=pack(next)
 			a.velocity=pack((next-pos)/dt)
 

@@ -86,6 +86,7 @@ func _confirm() -> void:
 		return
 	_ready_for_input = false
 	_confirm_button.disabled = true
+	GameAudio.interaction()
 	confirmed.emit()
 
 func cancel() -> void:

@@ -36,7 +36,7 @@ func _food() -> void:
 	var before:=Run.snapshot(sm)
 	var old_food:=Progression.satiety_snapshot(sm)
 	_shot("slime_1"); Run.combat_tick(sm,Roads.SPAWN,0.05)
-	_check(Progression.record(sm,"yaya").level==5 and Progression.record(sm,"yaya").satiety_max==3 and Progression.satiety_snapshot(sm).values.yaya==old_food.values.yaya,"升级增加饱腹上限但不补余额")
+	_check(Progression.record(sm,"yaya").level==5 and Progression.record(sm,"yaya").satiety_max==6 and Progression.satiety_snapshot(sm).values.yaya==old_food.values.yaya,"升级增加饱腹上限但不补余额")
 	_check(Run.snapshot(sm).members==before.members and Run.snapshot(sm).combat.attack==before.combat.attack and Run.snapshot(sm).combat.max_hp==before.combat.max_hp,"突破门槛升级仍冻结战斗快照")
 
 func _ui() -> void:

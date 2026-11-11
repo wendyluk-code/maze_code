@@ -5,6 +5,8 @@ var direction := Vector2.RIGHT
 var _previous := Vector2.ZERO
 var _phase := 0.0
 var _moving := false
+var active_provider: Callable
+var match_reference_view := false
 
 func _ready() -> void:
 	get_parent().move_child(self, 0)
@@ -21,6 +23,11 @@ func _physics_process(_delta: float) -> void:
 func _process(delta: float) -> void:
 	var actor = get_parent()
 	var active: bool = _moving and Input.is_physical_key_pressed(KEY_SHIFT) and not actor.input_locked and actor.is_physics_processing()
+	if active_provider.is_valid():
+		active = _moving and bool(active_provider.call()) and not actor.input_locked and actor.is_physics_processing()
+	if match_reference_view:
+		var camera := get_viewport().get_camera_2d()
+		if is_instance_valid(camera): scale = Vector2.ONE * 0.85 / camera.zoom.y
 	strength = move_toward(strength, 1.0 if active else 0.0, delta * (12.0 if active else 7.0))
 	_phase += delta * 5.0
 	queue_redraw()

@@ -1,4 +1,5 @@
 extends RefCounted
+const Balance = preload("res://scripts/maze/monster_balance.gd")
 ## 纯状态推进；出场、落点、计时和水团随外层探索事务保存。
 const Config = preload("res://data/maze/fenshui_boss.gd")
 const Skills = preload("res://scripts/maze/team_attack.gd")
@@ -26,7 +27,7 @@ static func ordinary_busy(run: Dictionary) -> bool:
 
 static func hurt(run: Dictionary, point: Vector2, source: Vector2) -> void:
 	var c: Dictionary=run.combat
-	c.hp=maxf(0.0,c.hp-Skills.incoming_damage(run,6))
+	if not Skills.receive_damage(run,Balance.STATS.wind_frog.attack): return
 	c.last_attacker="wind_frog"
 	var direction := source.direction_to(point)
 	if direction.is_zero_approx(): direction=Vector2.DOWN
@@ -38,6 +39,11 @@ static func advance(run: Dictionary, point: Vector2, dt: float) -> void:
 	var c: Dictionary=run.combat
 	if c.get("region","")!="fenshui" or not c.get("frog_encounter",false): return
 	var a: Dictionary=c.actors[Config.ID]
+	if Skills.Trail.paralyzed(a):
+		a.velocity=[0.0,0.0]
+		advance_shots(run,point,dt)
+		return
+	if float(a.get("wind_left",0.0))>0: return
 	if run.monsters[Config.ID].status!="alive" or a.hp<=0:
 		a.frog_shots=[]
 		return
@@ -72,7 +78,7 @@ static func advance(run: Dictionary, point: Vector2, dt: float) -> void:
 			a.frog_phase="airborne"
 			a.frog_left=0.35
 	elif a.frog_phase=="airborne":
-		a.frog_left=maxf(0.0,a.frog_left-dt)
+		a.frog_left=maxf(0.0,a.frog_left-dt*Skills.Tide.speed(a))
 		var target:=vec(a.frog_target)
 		a.position=pack(vec(a.frog_origin).lerp(target,1.0-a.frog_left/0.35))
 		a.velocity=pack((vec(a.position)-pos)/dt)
@@ -101,7 +107,7 @@ static func advance(run: Dictionary, point: Vector2, dt: float) -> void:
 			a.frog_phase="dormant"
 			a.frog_left=0.0
 			a.mode="idle"
-			a.hp=96
+			a.hp=Balance.STATS.wind_frog.hp
 			a.frog_shots=[]
 		else:
 			a.mode="chase" if pursuing else "return"
@@ -111,6 +117,13 @@ static func advance(run: Dictionary, point: Vector2, dt: float) -> void:
 			a.frog_left=1.0
 			a.frog_origin=pack(pos)
 			a.frog_target=pack(destination)
+	advance_shots(run,point,dt)
+
+static func advance_shots(run: Dictionary,point: Vector2,dt: float) -> void:
+	var a: Dictionary=run.combat.actors[Config.ID]
+	if a.hp<=0 or run.monsters[Config.ID].status!="alive":
+		a.frog_shots=[]
+		return
 	var flying: Array=[]
 	for shot in a.frog_shots:
 		var old := vec(shot.position)

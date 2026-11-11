@@ -1,0 +1,50 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/ui/ganlu/tray.png" id="1"]
+[ext_resource type="Script" path="res://scripts/restaurant/freezer_layout.gd" id="2"]
+
+[node name="FreezerLayout" type="Node2D"]
+z_index = 2
+texture_filter = 2
+script = ExtResource("2")
+
+[node name="Tray" type="Polygon2D" parent="."]
+texture = ExtResource("1")
+polygon = PackedVector2Array(-81,-141,-5,-157,88,76,-1,103)
+uv = PackedVector2Array(14,60,242,20,506,680,252,736)
+[node name="Slot1" type="Marker2D" parent="."]
+position = Vector2(-29,-85)
+
+[node name="Selection" type="Polygon2D" parent="Slot1"]
+color = Color(0.65,0.95,1,0.18)
+polygon = PackedVector2Array(-43,-22,18,-36,38,17,-23,31)
+
+[node name="Thermometer" type="Marker2D" parent="Slot1"]
+position = Vector2(37,-46)
+
+[node name="Prompt" type="Marker2D" parent="Slot1"]
+position = Vector2(0,-77)
+[node name="Slot2" type="Marker2D" parent="."]
+position = Vector2(0,-6)
+
+[node name="Selection" type="Polygon2D" parent="Slot2"]
+color = Color(0.65,0.95,1,0.18)
+polygon = PackedVector2Array(-43,-22,18,-36,38,17,-23,31)
+
+[node name="Thermometer" type="Marker2D" parent="Slot2"]
+position = Vector2(37,-46)
+
+[node name="Prompt" type="Marker2D" parent="Slot2"]
+position = Vector2(0,-77)
+[node name="Slot3" type="Marker2D" parent="."]
+position = Vector2(30,73)
+
+[node name="Selection" type="Polygon2D" parent="Slot3"]
+color = Color(0.65,0.95,1,0.18)
+polygon = PackedVector2Array(-43,-22,18,-36,38,17,-23,31)
+
+[node name="Thermometer" type="Marker2D" parent="Slot3"]
+position = Vector2(37,-46)
+
+[node name="Prompt" type="Marker2D" parent="Slot3"]
+position = Vector2(0,-77)

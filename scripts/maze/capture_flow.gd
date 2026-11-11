@@ -89,8 +89,7 @@ func attach(owner_maze: Node2D) -> void:
 	maze._ui_root.add_child(character_details)
 	character_details._close_button.tooltip_text = "返回迷宫"
 	character_details.closed.connect(_close_character_details)
-	# 提示必须绘制在模态窗之上，零饱腹点击反馈才可读。
-	maze._ui_root.move_child(maze.toast_label.get_parent(),-1)
+	# 共用提示组件统一位于业务弹窗与暗幕下方。
 	maze.player.capture_flow = self
 	power_label = Label.new()
 	power_label.add_theme_font_override("font",Monster.STATS_FONT)
@@ -130,6 +129,9 @@ func attach(owner_maze: Node2D) -> void:
 	skill_bar.offset_bottom=-52
 	skill_bar.selected.connect(_select_skill)
 	skill_bar.details_requested.connect(_open_skill_details)
+	# 常驻战斗栏先绘制，所有后续业务弹窗与暗幕覆盖它们。
+	maze._ui_root.move_child(controls_hint, 0)
+	maze._ui_root.move_child(skill_bar, 0)
 	skill_visual=preload("res://scripts/maze/team_attack_visual.gd").new()
 	maze.add_child(skill_visual)
 	skill_visual.flow=self
@@ -158,6 +160,12 @@ func display_run() -> Dictionary:
 	var event := sparring()
 	return event.run if event!=null else Run.snapshot(SaveManager)
 
+func charge_active() -> bool:
+	return Run.Combat.Skills.Charge.active(display_run().get("combat",{}))
+
+func charge_speed() -> float:
+	return Run.Combat.Skills.Charge.speed(display_run().get("combat",{}))
+
 func sprint_charge() -> float:
 	return float(display_run().get("combat",{}).get("sprint",1.0))
 
@@ -176,22 +184,34 @@ func _unhandled_input(event: InputEvent) -> void:
 					break
 		if slot>=0:
 			get_viewport().set_input_as_handled()
+			var previous_slot: int = int(display_run().combat.get("selected",0))
 			_select_skill(slot)
+			if int(display_run().combat.get("selected",0)) != previous_slot:
+				GameAudio.play_cue(&"interact")
 		return
 	if not event is InputEventMouseButton or not event.pressed or event.button_index != MOUSE_BUTTON_LEFT: return
 	get_viewport().set_input_as_handled()
 	var aim: Vector2=preload("res://scripts/maze/auto_aim.gd").direction(display_run(),maze.player.position,maze.player.facing,sparring()!=null)
+	if Run.Combat.Skills.kind(display_run(),int(display_run().combat.get("selected",0))) in ["xiluomei","lanjiao"]:
+		var mouse_world: Vector2=maze.get_viewport().get_canvas_transform().affine_inverse()*event.position
+		aim=maze.player.position.direction_to(mouse_world)
 	if aim.is_zero_approx(): aim=maze.player.facing
 	if sparring()!=null:
 		sparring().attack(aim)
 		return
 	var result := Run.combat_attack(SaveManager,maze.player.position,aim)
+	if result.success and result.get("fired",false):
+		GameAudio.play_attack(event.get_instance_id())
 	if not result.success:
 		save_retry_delay=1.0
 		maze.show_toast("攻击保存失败，已恢复上次进度，请检查存档后重试")
 
 func _select_skill(slot: int) -> void:
 	if combat_paused(): return
+	var members: Array=display_run().get("members",[])
+	if slot>0 and slot<=members.size() and members[slot-1].id in ["ahong","chengyan"]:
+		maze.show_toast("阿轰为团队被动，战斗移动时自动留下雷印" if members[slot-1].id=="ahong" else "澄砚为团队被动，每趟首次致命伤自动保命")
+		return
 	if sparring()!=null:
 		Run.Combat.Skills.select(sparring().run,slot)
 		return
@@ -204,6 +224,7 @@ func _select_skill(slot: int) -> void:
 func _process(delta: float) -> void:
 	if not is_instance_valid(maze) or not maze._entry_ready: return
 	var run := display_run()
+	if sparring() == null: GameAudio.update_boss_music(run)
 	if (sparring()==null and not Run.valid(run)) or not run.get("active",false) or not run.has("combat"): return
 	var combat: Dictionary = run.combat
 	# 补算可以在同一帧耗尽模拟白闪；显示计时只按渲染帧推进。
@@ -245,8 +266,8 @@ func _process(delta: float) -> void:
 	if save_retry_delay>0.0 and window_focused and not busy and not maze._busy:
 		save_retry_delay=maxf(0.0,save_retry_delay-delta)
 	var paused: bool = combat_paused()
-	controls_hint.visible=not paused
-	skill_bar.visible=not paused
+	controls_hint.visible=maze._entry_ready
+	skill_bar.visible=maze._entry_ready
 	skill_bar.sync(run)
 	for monster in monsters.values(): monster.set_process(not paused)
 	if paused:
@@ -285,14 +306,18 @@ func _process(delta: float) -> void:
 		combat_time = maxf(0.0, combat_time - step)
 		var result := Run.combat_tick(SaveManager,maze.player.position,step,visible_world_rect(),maze.player.sprinting)
 		if result.success:
+			GameAudio.update_boss_music(Run.snapshot(SaveManager))
 			if is_instance_valid(crystal_visual): crystal_visual.feedback(result.get("mining_feedback",[]))
 			var updated: Dictionary = Run.snapshot(SaveManager).combat
+			if updated.hp < current_combat.hp:
+				GameAudio.play_cue(&"hero_hurt")
 			if updated.hp > 0 and updated.hp < current_combat.hp:
 				hero_flash_display_remaining = Run.Combat.FLASH_DURATION
 			maze.player.position=Run.Combat.vec(updated.hero)
 			_flash_body(maze.player.body, float(updated.get("flash_remaining", 0.0)))
 			for id in monsters:
 				if updated.actors[id].hp<current_combat.actors[id].hp:
+					GameAudio.play_hit()
 					monster_flash_display[monsters[id].body.get_instance_id()]=Run.Combat.FLASH_DURATION
 				monsters[id].position = Run.Combat.vec(updated.actors[id].position)
 				monsters[id].update_motion(Run.Combat.vec(updated.actors[id].velocity))
@@ -351,9 +376,7 @@ func _open_skill_details(slot: int) -> void:
 func _open_character_details(id: String) -> void:
 	if busy or maze._busy or maze.player.input_locked or not skill_bar.is_visible_in_tree(): return
 	_lock()
-	# 角色详情覆盖迷宫界面时隐藏右上角小地图，避免圆形地图与关闭叉号重叠。
-	if is_instance_valid(maze.map_ui) and is_instance_valid(maze.map_ui.mini_button):
-		maze.map_ui.mini_button.hide()
+	# 常驻小地图留在详情蒙层下方。
 	character_details.present(id)
 	maze._sync_task_access()
 
@@ -388,11 +411,11 @@ func _present(won: bool) -> void:
 	if won and run.monsters[current].has("attempt"):
 		_open_attempt()
 		if run.monsters[current].attempt.finished:
-			attempt.start()
+			attempt.start(0.0, false)
 			attempt.result_passed = run.monsters[current].attempt.passed
 			_finish_attempt(attempt.result_passed)
 		else:
-			attempt.start(maxf(0,Time.get_unix_time_from_system()-float(run.monsters[current].attempt.started_at)))
+			attempt.start(maxf(0,Time.get_unix_time_from_system()-float(run.monsters[current].attempt.started_at)), false)
 		return
 	dialog.present(won,row.kind,Run.payer_index(SaveManager, run)>=0,int(run.base_power)+int(run.absorbed),int(row.power),Run.capture_count(SaveManager,run))
 
@@ -473,6 +496,7 @@ func _finish_attempt(passed: bool) -> void:
 		reward._title_label.text = "捕获成功"
 		reward._body_label.text = ""
 		reward._body_label.hide()
+		GameAudio.play_cue(&"capture_success")
 	else:
 		dialog.present_capture_failure(Run.monster_for(Run.snapshot(SaveManager),current).get("kind","slime"))
 	resolving = false

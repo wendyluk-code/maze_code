@@ -7,14 +7,14 @@
 		"attack_growth": 2,
 		"health": 18,
 		"health_growth": 3,
-		"satiety": 3,
+		"satiety": 5,
 		"recovery": 0.02,
 		"recovery_growth": 0.001,
 		"portrait": "res://assets/characters/jiaopopo/face.tres",
 		"detail_portrait": "res://assets/characters/jiaopopo/portrait_v1.png",
 		"active_name": "呛锅",
 		"active_description": "抛出香料罐，留下造成持续伤害和减速的辣烟。",
-		"active_rules_text": "射程260像素，烟区半径65像素，持续3秒，每秒造成基准伤害的35%，减速20%。同一时间仅保留一片烟区。",
+		"active_rules_text": "射程260像素，烟区半径65像素，持续3秒，落地后每隔1秒造成基准伤害的35%，减速20%；离开立即解除减速。香料罐无额外爆炸伤害，同一时间仅保留一片烟区。\n烟伤不引爆叮当锁印，也不附带普通命中击退。切换角色保留烟区；到期、死亡、跨区或重新进入迷宫时清除。\n6星后，小型普通敌人连续停留2秒，向烟区外退避0.6秒，每个目标每片烟一次。石化蜥蜴、巨蛙与岩鬃兽不退避，仍受烟伤。",
 		"interval_start": 3.6,
 		"interval_end": 3,
 		"skills": [
@@ -40,10 +40,10 @@
 			],
 			[
 				"呛锅",
-				"小型普通敌人停留2秒后退避0.6秒，每片烟仅一次。"
+				"小型普通敌人连续停留2秒后退避0.6秒，每个目标每片烟仅一次；石化蜥蜴、巨蛙、岩鬃兽不退避。"
 			]
 		],
-		"implementation_status": "catalog_only",
+		"implementation_status": "implemented",
 		"skill_pending": false
 	},
 	"ahong": {
@@ -60,8 +60,8 @@
 		"portrait": "res://assets/characters/ahong/face.tres",
 		"detail_portrait": "res://assets/characters/ahong/portrait_v1.png",
 		"active_name": "雷鸣足迹",
-		"active_description": "入队后，团队在战斗状态中移动才留下麻痹雷印。",
-		"active_rules_text": "团队被动：阿轰入队且团队在战斗状态时，主角每移动48像素留下雷印，生成间隔至少0.6秒。印记半径24像素、持续3秒，最多6枚。怪物触碰麻痹0.4秒，同一目标3秒内不重复麻痹。落在水中时，同一连通水域带电1秒。退出战斗立即清除；不造成伤害、不改变移速。",
+		"active_description": "团队被动：战斗移动自动留下麻痹雷印，无需切换或攻击。",
+		"active_rules_text": "团队被动：阿轰入队且团队在战斗状态时，主角每移动48像素留下雷印，生成间隔至少0.6秒。印记半径24像素、持续3秒，最多6枚。怪物触碰麻痹0.4秒，同一目标3秒内不重复麻痹。落在水中时，同一连通水域带电1秒，结束后水中印记消失。麻痹暂停怪物移动、蓄力及动作计时，巨蛙腾空也暂停，解除后续接；已发射弹丸继续飞行。退出战斗立即清除；不造成伤害、不改变移速。",
 		"interval_start": 0,
 		"interval_end": 0,
 		"skills": [
@@ -90,7 +90,7 @@
 				"水域带电持续时间提高至2秒。"
 			]
 		],
-		"implementation_status": "catalog_only",
+		"implementation_status": "implemented",
 		"skill_pending": false
 	},
 	"xiluomei": {
@@ -101,14 +101,14 @@
 		"attack_growth": 3,
 		"health": 16,
 		"health_growth": 3,
-		"satiety": 2,
+		"satiety": 4,
 		"recovery": 0.015,
 		"recovery_growth": 0.0005,
 		"portrait": "res://assets/characters/xiluomei/face.tres",
 		"detail_portrait": "res://assets/characters/xiluomei/portrait_v1.png",
 		"active_name": "潮汐之网",
 		"active_description": "水网聚拢敌人，再次释放推离，不再释放则收网。",
-		"active_rules_text": "射程280像素，半径90像素。首段伤害50%，牵引小型普通敌人40像素。1.5秒内再按释放外潮，伤害70%并推离30像素；否则收网伤害90%，减速30%持续1秒。两段选择互斥，大型与精英不位移。",
+		"active_rules_text": "射程280像素，半径90像素。首段伤害50%，牵引小型普通敌人40像素。1.5秒内再按释放外潮，伤害70%并推离30像素；否则收网伤害90%，减速30%持续1秒。两段选择互斥，大型与精英不位移。鼠标方向最远280像素固定网心，实体障碍截断。首段开始冷却，外潮不重置冷却；切换角色后仍自动收网。",
 		"interval_start": 3.2,
 		"interval_end": 2.6,
 		"skills": [
@@ -137,7 +137,7 @@
 				"收网束缚小型普通敌人0.6秒；外潮推距45像素。"
 			]
 		],
-		"implementation_status": "catalog_only",
+		"implementation_status": "implemented",
 		"skill_pending": false
 	},
 	"chengyan": {
@@ -148,14 +148,14 @@
 		"attack_growth": 2,
 		"health": 14,
 		"health_growth": 2,
-		"satiety": 2,
+		"satiety": 1,
 		"recovery": 0.015,
 		"recovery_growth": 0.0005,
 		"portrait": "res://assets/characters/chengyan/face.tres",
 		"detail_portrait": "res://assets/characters/chengyan/portrait_v1.png",
 		"active_name": "归流护持",
 		"active_description": "每趟探索首次受到致命伤害时保命，并逐渐恢复生命。",
-		"active_rules_text": "团队被动：澄砚入队时，每趟探索首次受到致命伤害保留1点生命，获得1秒无敌，随后5秒内恢复团队最大生命的10%。六星恢复20%、无敌2秒。次数随本趟探索保存，读档与换队不重置，仅结束本趟探索后再次正式出发恢复。不改变移速，不要求攻击触发。2至5星依次提高恢复至12%、15%、无敌至1.5秒、恢复至18%。",
+		"active_rules_text": "团队被动：澄砚入队时，每趟探索首次受到致命伤害保留1点生命，获得1秒无敌，随后5秒内恢复团队最大生命的10%。六星恢复20%、无敌2秒。次数随本趟探索保存，读档与换队不重置，仅结束本趟探索后再次正式出发恢复。不改变移速，不要求攻击触发。2至5星依次提高恢复至12%、15%、无敌至1.5秒、恢复至18%。无敌期间免疫受击击退与闪红；无敌结束后开始5秒匀速回血。回血总量按触发时团队最大生命锁定并封顶当前最大生命，跨区、重入和读档保留剩余进度，暂停不计时。",
 		"interval_start": 0,
 		"interval_end": 0,
 		"skills": [
@@ -184,7 +184,7 @@
 				"生命恢复比例提高至20%，无敌持续时间提高至2秒。"
 			]
 		],
-		"implementation_status": "catalog_only",
+		"implementation_status": "implemented",
 		"skill_pending": false
 	},
 	"lanjiao": {
@@ -202,7 +202,7 @@
 		"detail_portrait": "res://assets/characters/lanjiao/portrait_v1.png",
 		"active_name": "顶风开路",
 		"active_description": "向前冲撞推开敌人，撞上实体障碍时追加伤害。",
-		"active_rules_text": "蓄势0.2秒，0.25秒内冲出100像素，基础伤害80%。推移小型普通敌人30像素，撞墙追加50%伤害，每目标一次。不穿墙、不无敌；大型敌人不位移。",
+		"active_rules_text": "鼠标方向锁定，原地蓄势0.2秒，0.25秒冲出100像素，基础伤害80%。推小型普通敌人30像素，仅敌人撞实体障碍追加50%伤害，每目标一次。大型敌人不位移。冷却从蓄势开始；不穿墙、不无敌、不耗冲刺槽，不叠加Shift，遇阻即停。冲撞中不能转向或切换技能，普通受伤不中断，死亡中止。\n2星基础90%，3星距离120，4星墙伤70%，5星结束后移速+15%持续1秒，6星基础100%、墙伤90%。",
 		"interval_start": 1.8,
 		"interval_end": 1.4,
 		"skills": [
@@ -231,7 +231,7 @@
 				"冲撞伤害100%，撞墙追加伤害90%。"
 			]
 		],
-		"implementation_status": "catalog_only",
+		"implementation_status": "implemented",
 		"skill_pending": false
 	}
 }

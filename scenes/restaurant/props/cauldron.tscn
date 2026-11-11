@@ -1,0 +1,28 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/restaurant/layout_prop.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/restaurant_layout/cauldron.png" id="2"]
+
+[node name="Cauldron" type="Node2D" groups=["restaurant_layout_props"]]
+y_sort_enabled = true
+script = ExtResource("1")
+display_name = "魔法汤锅"
+interactive = true
+player_in_front_on_left = true
+ui_offset = Vector2(0, -356.2380538662033)
+metadata/_edit_group_ = true
+
+[node name="Art" type="Sprite2D" parent="."]
+texture = ExtResource("2")
+scale = Vector2(0.3822762814943527, 0.3822762814943527)
+offset = Vector2(0, -340.0681818181818)
+
+[node name="Body" type="StaticBody2D" parent="."]
+
+[node name="Collision" type="CollisionPolygon2D" parent="Body"]
+polygon = PackedVector2Array(-185, -135, -140, -175, 90, -175, 185, -120, 190, -35, 120, 35, -110, 35, -190, -30)
+
+[node name="InteractionArea" type="Polygon2D" parent="."]
+visible = false
+polygon = PackedVector2Array(-185, -135, -140, -175, 90, -175, 185, -120, 190, -35, 120, 35, -110, 35, -190, -30)
+

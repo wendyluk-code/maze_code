@@ -38,6 +38,7 @@ const COOKING_GUIDE_KEY := "cooking_guide_seen"
 const TUTORIAL_CHECKPOINT_KEY := "tutorial_checkpoint"
 const PREPARED_DISHES_KEY := "prepared_dishes"
 const UNLOCKED_RECIPES_KEY := "unlocked_recipe_ids"
+const ServiceCycle := preload("res://scripts/restaurant/service_cycle.gd")
 const CustomerCatalog := preload("res://scripts/restaurant/customer_catalog.gd")
 const RecipeCatalog := preload("res://scripts/cooking/recipe_catalog.gd")
 const QuestRegistry := preload("res://scripts/quests/quest_registry.gd")
@@ -71,6 +72,7 @@ const RETIRED_WRAPUP_STEPS := {"offer": "no", "memory": "cooking",
 	"ingredients": "yaya_join", "stay_shallow": "agreement"}
 
 var data: Dictionary = _defaults()
+const MenuPortions := preload("res://scripts/restaurant/menu_portions.gd")
 ## 重播使用独立工作副本；公开 data 和正式文件在整个重播期间保持原样。
 var _replay_data: Dictionary = {}
 var _replaying := false
@@ -88,6 +90,7 @@ var _state: Dictionary:
 var migration_diagnostics: Array[String] = []
 
 func _ready() -> void:
+	add_child(preload("res://scripts/restaurant/preparation.gd").new())
 	_prologue_preview = "--replay-prologue" in OS.get_cmdline_user_args() or "--replay-prologue" in OS.get_cmdline_args()
 	load_data()
 	if _prologue_preview:
@@ -272,14 +275,22 @@ func claim_exploration_chest(id: String, point: Vector2) -> Dictionary:
 		var run_api=preload("res://scripts/maze/capture_run.gd")
 		var run: Dictionary=run_api.snapshot(self)
 		if not run_api.valid(run) or not run.get("active",false) or run.combat.hp<=0 or not run.pending.is_empty() or run_api.portal_combat_locked(self): return {"success":false,"reason":"in_combat"}
-	if not chest_reward_state_valid() or gold_balance() > 9007199254740991 - ChestCatalog.REWARD:
+	var reward := ChestCatalog.REWARD
+	var expedition := preload("res://scripts/maze/capture_run.gd").snapshot(self)
+	if expedition.get("active",false) and preload("res://scripts/maze/capture_run.gd").valid(expedition):
+		for member in expedition.members:
+			if member.id == "dingdang":
+				var rules := preload("res://scripts/maze/team_attack.gd").dingdang_rules(int(member.rank))
+				reward += floori(float(ChestCatalog.REWARD)*float(rules.get("chest_gold_bonus",0.0)))
+				break
+	if not chest_reward_state_valid() or gold_balance() > 9007199254740991 - reward:
 		return {"success": false, "reason": "invalid_reward_state"}
 	if is_chest_claimed(id):
 		return {"success": false, "reason": "already_claimed"}
 	var previous := _state.duplicate(true)
 	var claims: Array = _state.get(CLAIMED_CHESTS_KEY, []).duplicate()
 	claims.append(id)
-	_state[GOLD_KEY] = gold_balance() + ChestCatalog.REWARD
+	_state[GOLD_KEY] = gold_balance() + reward
 	_state[CLAIMED_CHESTS_KEY] = claims
 	var location := maze_exploration_state()
 	location.position = [point.x, point.y]
@@ -287,21 +298,23 @@ func claim_exploration_chest(id: String, point: Vector2) -> Dictionary:
 	if not save():
 		_state = previous
 		return {"success": false, "reason": "save_failed"}
-	return {"success": true, "amount": ChestCatalog.REWARD, "total": gold_balance()}
+	return {"success": true, "amount": reward, "total": gold_balance()}
 
 func yufeng_salia_record() -> Dictionary:
 	var raw: Variant = _state.get(YUFENG_SALIA_KEY, "unseen")
 	if raw is String:
-		return {"version":2,"phase":"intro" if raw in ["intro_pending","awaiting_battle"] else "unseen","line":0}
+		return preload("res://scripts/maze/yufeng_salia_story.gd").fresh("intro" if raw in ["intro_pending","awaiting_battle"] else ("done" if raw == "done" else "unseen"))
 	if _valid_yufeng_salia_record(raw):
-		return raw.duplicate(true)
+		return preload("res://scripts/maze/yufeng_salia_story.gd").migrate(raw)
 	_diagnose("御风与萨莉亚记录无效，回退未触发")
-	return {"version":2,"phase":"unseen","line":0}
+	return preload("res://scripts/maze/yufeng_salia_story.gd").fresh()
 
 func yufeng_salia_state() -> String:
 	return yufeng_salia_record().phase
 
 func _valid_yufeng_salia_record(record: Variant) -> bool:
+	if record is Dictionary and record.get("version") == 3:
+		return preload("res://scripts/maze/yufeng_salia_story.gd").valid(record)
 	if not record is Dictionary or record.get("version")!=2: return false
 	var limits := {"unseen":0,"intro":7,"eat":0,"question":0,"battle":0,"post":2,"gift_pending":0,"gift_reward":0,"bento_unlock":0,"bento_fly":0,"farewell":1,"fade":0,"done":0}
 	if not limits.has(record.get("phase")): return false
@@ -391,6 +404,12 @@ func record_maze_location(region: String, point: Vector2) -> Dictionary:
 		_state["stamina"] = energy
 		_state[TEAM_MEMORY_KEY] = _maze_entry_party.duplicate()
 	_state[MAZE_STATE_KEY] = next
+	if region == "salt_pool": preload("res://scripts/quests/salt_pool_progress.gd").mark(self,"arrived")
+	if region != "restaurant":
+		var explored: Array = preload("res://scripts/cooking/ingredient_sources.gd").explored(self)
+		if region not in explored: explored.append(region)
+		_state["restaurant_explored_regions"] = explored
+		_state["restaurant_last_region"] = region
 	if region == "maze_entry" and state.region == "restaurant" and (not restaurant_customer_order("restaurant_1").is_empty() or _state.get("restaurant_order_receipts", {}).has("restaurant_1")):
 		_state["customer_05_trip_started"] = true
 	if region == "restaurant" and state.region == "maze_entry" and _state.get("customer_05_trip_started", false):
@@ -766,6 +785,7 @@ func load_data() -> void:
 						var recovered_id := str(_state[COOKING_STATE_KEY].recipe_id)
 						_state[INVENTORY_KEY][recovered_id] = int(_state[INVENTORY_KEY].get(recovered_id, 0)) + 1
 						_state[PREPARED_DISHES_KEY][recovered_id]["1"] += 1
+						MenuPortions.finish(_state,recovered_id,1)
 						if not is_chapter_1_done() and not _has_followup_order():
 							_state[FIRST_ORDER_PROGRESS_KEY]["next_step"] = "deliver"
 						_diagnose("烹饪中断，按 1 星结果恢复")
@@ -1252,7 +1272,9 @@ func _quest_journal() -> Dictionary:
 	var elder = journal.instances.get(ELDER_QUEST_ID, {})
 	if elder is Dictionary and elder.get("status", "") in ["active", "archived"]:
 		journal.instances[ELDER_QUEST_ID] = {"status": elder.status, "unread": elder.get("unread", true) if elder.status == "active" else false}
-	for customer_order in restaurant_customers().get("seated", []):
+	var customers := restaurant_customers()
+	for customer_order in customers.get("seated", []) + customers.get("legacy_waiting", []):
+		if ServiceCycle.managed(customer_order) and customer_order.stage == "drink": continue
 		QuestRegistry.ensure_instance(journal, "customer_order:" + str(customer_order.id), customer_order.phase in ["eating", "farewell", "leaving"])
 	return journal
 
@@ -1473,6 +1495,7 @@ func deliver_elder_firewood(point: Vector2) -> Dictionary:
 	_state[INVENTORY_KEY]["wood"] = state.wood - ElderConfig.REQUIRED
 	for item in ElderConfig.REWARD_ITEMS:
 		warehouse[item.id] = int(warehouse.get(item.id, 0)) + item.quantity
+		preload("res://scripts/restaurant/restaurant_day.gd").record_task_loot(_state, {item.id: item.quantity})
 	_state["warehouse_stock"] = warehouse
 	_state["elder_ingredients_version"] = 2
 	journal.instances[ELDER_QUEST_ID] = {"status": "archived", "unread": false}
@@ -1523,11 +1546,12 @@ func warehouse_selection_complete(selection: Dictionary) -> bool:
 	return false
 
 func take_warehouse_items(selection: Dictionary) -> Dictionary:
+	if not MenuPortions.valid(_state.get("restaurant_day_v1",{})): return {"success":false,"reason":"invalid_state"}
 	if selection.is_empty():
 		return {"success": false, "reason": "empty_selection"}
 	if selection.size() > MAX_WAREHOUSE_KINDS:
 		return {"success": false, "reason": "too_many_kinds"}
-	if not carried_ingredients().is_empty():
+	if hands_occupied():
 		return {"success": false, "reason": "hands_full"}
 	if not warehouse_selection_complete(selection):
 		return {"success": false, "reason": "recipe_mismatch"}
@@ -1538,6 +1562,9 @@ func take_warehouse_items(selection: Dictionary) -> Dictionary:
 		if not _valid_count(quantity) or quantity <= 0 or not stock.has(item_id) or quantity > stock[item_id] or int(carried.get(item_id, 0)) + quantity > 999:
 			return {"success": false, "reason": "invalid_quantity"}
 	var previous := _state.duplicate(true)
+	if not MenuPortions.take(_state,selection):
+		_state = previous
+		return {"success":false,"reason":"reserved_for_menu"}
 	for item_id in selection:
 		stock[item_id] -= int(selection[item_id])
 		carried[item_id] = int(carried.get(item_id, 0)) + int(selection[item_id])
@@ -1557,6 +1584,10 @@ func unlocked_recipe_ids() -> Array[String]:
 				result.append(recipe_id)
 	for recipe_id in preload("res://scripts/maze/capture_recipes.gd").historical(_state):
 		if recipe_id not in result: result.append(recipe_id)
+	# 基础经营菜不能依赖先接订单解锁，否则先设置菜单的营业流程无菜可选。
+	if is_chapter_1_done() and elder_backpack_unlocked():
+		for recipe_id in ["slime_candy","brick_snail_sashimi","lizard_tail_skewer"]:
+			if recipe_id not in result: result.append(recipe_id)
 	return result
 
 func _unlock_first_recipe() -> void:
@@ -1585,6 +1616,13 @@ func _has_first_recipe_history() -> bool:
 		return is_canonical_first_order(order) and has_first_order_settlement()
 	return false
 
+func has_carried_drink() -> bool:
+	var drink = _state.get("ganlu_service_v1", {})
+	return drink is Dictionary and not drink.get("held", {}).is_empty()
+
+func hands_occupied() -> bool:
+	return not carried_ingredients().is_empty() or carried_dish_count() > 0 or has_carried_drink() or cooking_state().status == "active"
+
 func carried_ingredients() -> Dictionary:
 	var result := {}
 	var inventory := inventory_snapshot()
@@ -1608,6 +1646,7 @@ func can_discard_carried_food() -> bool:
 
 ## expected 是玩家实际确认的清单；清单改变时拒绝，避免丢弃未展示的新物品。
 func discard_carried_food(expected: Dictionary) -> Dictionary:
+	if not MenuPortions.valid(_state.get("restaurant_day_v1",{})): return {"success":false,"reason":"invalid_state"}
 	if not can_discard_carried_food():
 		return {"success": false, "reason": "chapter_locked"}
 	if cooking_state().status == "active":
@@ -1626,6 +1665,10 @@ func discard_carried_food(expected: Dictionary) -> Dictionary:
 			_state[PREPARED_DISHES_KEY].erase(item_id)
 	ledger.carried.clear()
 	_state[Freezer.KEY] = ledger
+	var raw_losses := MenuPortions.discarded_carried(_state,items)
+	preload("res://scripts/restaurant/restaurant_day.gd").record_dish_loss(_state,items)
+	preload("res://scripts/restaurant/restaurant_day.gd").record_dish_loss(_state,raw_losses)
+	MenuPortions.cancel_exhausted(_state)
 	if not save():
 		_state = previous
 		return {"success": false, "reason": "save_failed"}
@@ -1689,8 +1732,9 @@ func start_first_order_cooking() -> Dictionary:
 	return start_cooking(FIRST_ORDER_ITEM_ID)
 
 func start_cooking(recipe_id: String) -> Dictionary:
+	if not MenuPortions.valid(_state.get("restaurant_day_v1",{})): return {"success":false,"reason":"invalid_state"}
 	if not freezer_valid(): return {"success": false, "reason": "invalid_state"}
-	if is_chapter_1_done() and carried_dish_count() > 0:
+	if is_chapter_1_done() and (carried_dish_count() > 0 or has_carried_drink()):
 		return {"success": false, "reason": "hands_full"}
 	if not is_chapter_1_done() and not is_canonical_first_order(current_order()) and not _has_followup_order() and customer_orders_active().is_empty():
 		return {"success": false, "reason": "no_canonical_order"}
@@ -1712,6 +1756,9 @@ func start_cooking(recipe_id: String) -> Dictionary:
 		return {"success": false, "reason": "insufficient_ingredients"}
 	var previous := _state.duplicate(true)
 	var ingredients: Dictionary = RecipeCatalog.get_recipe(recipe_id).ingredients
+	if not MenuPortions.start(_state,recipe_id):
+		_state = previous
+		return {"success":false,"reason":"reserved_for_menu"}
 	var balances := {}
 	for item_id in ingredients:
 		inventory[item_id] -= int(ingredients[item_id])
@@ -1727,6 +1774,7 @@ func start_cooking(recipe_id: String) -> Dictionary:
 
 ## 锁定品质并保存成品；同名料理按星级分别计数。
 func finish_first_order_cooking(quality: int, pointer := 0.0) -> Dictionary:
+	if not MenuPortions.valid(_state.get("restaurant_day_v1",{})): return {"success":false,"reason":"invalid_state"}
 	if not is_chapter_1_done() and not is_canonical_first_order(current_order()) and not _has_followup_order() and customer_orders_active().is_empty():
 		return {"success": false, "reason": "no_canonical_order"}
 	var cooking := cooking_state()
@@ -1751,6 +1799,7 @@ func finish_first_order_cooking(quality: int, pointer := 0.0) -> Dictionary:
 	_state[FIRST_ORDER_PROGRESS_KEY] = progress
 	cooking.merge({"status": "idle" if is_chapter_1_done() else "locked", "recipe_id": cooked_id, "quality": stars, "pointer": clampf(float(pointer), -1.0, 1.0)}, true)
 	_state[COOKING_STATE_KEY] = cooking
+	MenuPortions.finish(_state,cooked_id,stars)
 	if not save():
 		_state = previous
 		return {"success": false, "reason": "save_failed"}
@@ -1919,8 +1968,8 @@ func deliver_first_order() -> Dictionary:
 ## DAY1-01：顾客、座位、订单同一份持久状态；离场完成才释放座位。
 func restaurant_customers() -> Dictionary:
 	var raw = _state.get("restaurant_customers", {"serial": 0, "front": {}, "seated": [], "queue": []})
-	if raw is Dictionary and _customers_valid(raw):
-		var result: Dictionary = raw.duplicate(true)
+	if raw is Dictionary and _customers_valid(raw, true):
+		var result: Dictionary = ServiceCycle.three_seat_snapshot(raw)
 		if not result.has("queue"): result.queue = [] # 旧档只补字段，不改已有订单。
 		if not result.has("daily_key"): result.daily_key = ""
 		if not result.has("daily_orders"): result.daily_orders = 0
@@ -1930,7 +1979,10 @@ func restaurant_customers() -> Dictionary:
 	return {"serial": 0, "front": {}, "seated": [], "invalid": true}
 
 func restaurant_customer_order(id: String) -> Dictionary:
-	for order in restaurant_customers().get("seated", []):
+	var front: Dictionary = restaurant_customers().get("front", {})
+	if front.get("id", "") == id: return front
+	var state := restaurant_customers()
+	for order in state.get("seated", []) + state.get("legacy_waiting", []):
 		if str(order.get("id", "")) == id: return order.duplicate(true)
 	return {}
 
@@ -1953,106 +2005,76 @@ func customer_review(id: String) -> String:
 	return {3: "真美味啊，下次还来！", 2: "吃着还凑合，至少填饱肚子了。", 1: "……怎么有股糊糊的味道，勉强能吃吧。"}.get(quality, "……怎么有股糊糊的味道，勉强能吃吧。")
 
 func ensure_restaurant_customer() -> Dictionary:
-	if not is_chapter_1_done() or chapter_1_outro_state() != "done" or maze_exploration_state().region != "restaurant":
-		return {"success": false, "reason": "arrival_locked"}
-	var state := restaurant_customers()
-	if not _customers_valid(state): return {"success": false, "reason": "invalid_state"}
-	# 旧版本通过取模生成重复客人；只撤下尚未接单的重复实例。
-	if not state.front.is_empty() and int(str(state.front.id).trim_prefix("restaurant_")) > CustomerCatalog.CUSTOMERS.size():
-		var before_cleanup := _state.duplicate(true)
-		state.front = {}
-		state.queue = []
-		state.arrival_notice = false
-		_state["restaurant_customers"] = state
-		if not save():
-			_state = before_cleanup
-			return {"success": false, "reason": "save_failed"}
-	var today := Time.get_date_string_from_system()
-	if str(state.daily_key) != today:
-		state.daily_key = today
-		state.daily_orders = 0
-		state.arrival_notice = false
-		_state["restaurant_customers"] = state
-	# 单客模式：未接单的前台顾客存在时不再预生成队列。
-	# 旧存档可能残留上一版队列，清除未接单候客后按新规则重新生成。
-	if not state.queue.is_empty():
-		state.queue = []
-		_state["restaurant_customers"] = state
-		if not save(): return {"success": false, "created": false, "reason": "save_failed"}
-	var waiting_count: int = 0 if state.front.is_empty() else 1
-	if not state.front.is_empty():
-		return {"success": true, "created": false, "reason": "waiting"}
-	if int(state.serial) >= CustomerCatalog.CUSTOMERS.size():
-		return {"success": false, "created": false, "reason": "orders_exhausted"}
-	if int(state.serial) == 0 and float(_state.get("customer_01_walk_seconds", 0.0)) < 2.0:
-		return {"success": false, "created": false, "reason": "waiting_for_walk"}
-	if int(state.serial) == 1 and not _state.get("customer_05_returned", false):
-		return {"success": false, "created": false, "reason": "waiting_for_maze_return"}
-	if int(state.serial) == 2 and (not _state.get("restaurant_order_receipts", {}).has("restaurant_2") or not restaurant_customer_order("restaurant_2").is_empty()):
-		return {"success": false, "created": false, "reason": "waiting_for_departure"}
-	if int(state.daily_orders) >= 10:
-		return {"success": not state.front.is_empty(), "created": false, "reason": "daily_limit"}
-	if state.seated.size() + waiting_count >= 3:
-		return {"success": not state.front.is_empty(), "created": false, "reason": "full"}
-	var previous := _state.duplicate(true)
-	var serial := int(state.serial) + 1
-	var config: Dictionary = CustomerCatalog.CUSTOMERS[serial - 1]
-	state.serial = serial
-	var order := {"id": "restaurant_%d" % serial, "customer_id": config.id, "item_id": config.recipe,
-		"item_name": RecipeCatalog.get_recipe(config.recipe).name, "quantity": 1, "phase": "queued", "seat": -1}
-	if state.front.is_empty():
-		order.phase = "front"
-		state.front = order
-	else: state.queue.append(order)
-	state.arrival_notice = true
-	_state["restaurant_customers"] = state
-	if not save():
-		_state = previous
-		return {"success": false, "reason": "save_failed"}
-	return {"success": true, "created": true, "order": state.front.duplicate(true)}
+	return ServiceCycle.arrive(self)
 
-func _customers_valid(state: Dictionary) -> bool:
+func _customers_valid(state: Dictionary, legacy_layout := false) -> bool:
 	if state.get("invalid", false): return false
-	if not _valid_count(state.get("serial")) or not state.get("front") is Dictionary or not state.get("seated") is Array or state.seated.size() > 3: return false
+	var capacity := 6 if legacy_layout and int(state.get("layout_revision",0)) != 3 else CustomerCatalog.SEATS.size()
+	if not _valid_count(state.get("serial")) or not state.get("front") is Dictionary or not state.get("seated") is Array or state.seated.size() > capacity: return false
 	var ids: Array = []
 	var seats: Array = []
 	var queue = state.get("queue", [])
-	if not queue is Array or queue.size() > 2 or state.seated.size() + queue.size() + (0 if state.front.is_empty() else 1) > 3: return false
+	var pending = state.get("legacy_waiting", [])
+	if not pending is Array or pending.size() > 3: return false
+	if not queue is Array or queue.size() > 2: return false
+	# 旧档可同时已有三位已接单客和一位未接单客；迁移不把前台客提前接单。
+	var total_limit := 6 if not pending.is_empty() or not queue.is_empty() else capacity + (0 if state.front.is_empty() else 1)
+	if state.seated.size() + queue.size() + (0 if state.front.is_empty() else 1) > total_limit: return false
+	if state.seated.size() + pending.size() + queue.size() + (0 if state.front.is_empty() else 1) > 6: return false
 	if not queue.is_empty() and state.front.is_empty(): return false
-	if not state.front.is_empty() and state.front.get("phase") != "front": return false
+	if not state.front.is_empty() and state.front.get("phase") not in ["arriving", "front", "leaving"]: return false
 	for waiting in queue:
 		if not waiting is Dictionary or waiting.get("phase") != "queued": return false
 	var entries: Array = state.seated.duplicate()
+	entries.append_array(pending)
 	entries.append_array(queue)
 	if not state.front.is_empty(): entries.append(state.front)
 	for entry in entries:
 		if not entry is Dictionary or not entry.get("id") is String or entry.id.is_empty() or entry.id in ids: return false
+		if not ServiceCycle.validate_order(entry): return false
+		if entry.has("drink_ice"):
+			if not _valid_count(entry.drink_ice) or entry.drink_ice > 3 or not entry.get("drink_done") is bool or not entry.get("food_done") is bool: return false
 		var config := CustomerCatalog.customer(str(entry.get("customer_id", "")))
-		if config.is_empty() or entry.get("item_id") != config.recipe: return false
-		if entry.get("phase") == "queued":
+		# 顾客形象不限制料理；订单可引用已登记的新食谱。
+		if config.is_empty() or RecipeCatalog.order_gold(str(entry.get("item_id", ""))) <= 0: return false
+		if entry in pending:
+			if entry.get("seat") != -1 or entry.get("phase") not in ["seating","waiting","eating","farewell","leaving"]: return false
+		elif entry.get("phase") == "queued":
 			if entry not in queue or entry.get("seat") != -1: return false
-		elif entry.get("phase") == "front":
+		elif entry == state.front:
 			if entry != state.front or entry.get("seat") != -1: return false
 		else:
-			if entry.get("phase") not in ["seating", "waiting", "eating", "farewell", "leaving"] or not _valid_count(entry.get("seat")) or entry.seat > 2 or entry.seat in seats: return false
+			if entry.get("phase") not in ["seating", "waiting", "eating", "farewell", "leaving"] or not _valid_count(entry.get("seat")) or entry.seat >= capacity or entry.seat in seats: return false
 			seats.append(entry.seat)
 		ids.append(entry.id)
 	return true
 
 func accept_restaurant_customer(expected_id: String) -> Dictionary:
+	if preload("res://scripts/restaurant/restaurant_day.gd").snapshot(self).get("status") == "closing": return {"success":false,"reason":"closed"}
 	var state := restaurant_customers()
 	if not _customers_valid(state): return {"success": false, "reason": "invalid_state"}
-	if state.seated.size() >= 3: return {"success": false, "reason": "full"}
+	if state.seated.size() >= CustomerCatalog.SEATS.size(): return {"success": false, "reason": "full"}
 	if state.front.get("id", "") != expected_id or expected_id.is_empty(): return {"success": false, "reason": "stale_customer"}
+	if state.front.get("phase") != "front": return {"success":false, "reason":"not_waiting"}
 	var previous := _state.duplicate(true)
 	var order: Dictionary = state.front.duplicate(true)
 	var occupied: Array = []
 	for entry in state.seated: occupied.append(int(entry.seat))
-	for seat in range(3):
+	for seat in range(CustomerCatalog.SEATS.size()):
 		if seat not in occupied:
 			order.seat = seat
 			break
 	order.phase = "seating"
+	if ServiceCycle.managed(order):
+		order.stage = "drink" if order.get("wants_drink", false) else "food"
+		order.remaining = ServiceCycle.DRINK_SECONDS if order.stage == "drink" else ServiceCycle.FOOD_SECONDS
+		# 每次成功接单重新等待2～5秒；与订单同次保存，失败回滚、读档保留。
+		if _state.get("restaurant_day_v1",{}).get("status")=="open":
+			_state["restaurant_day_v1"].arrival_left = randf_range(2.0,5.0)
+	else:
+		order.drink_ice = int(state.serial) % 2 if freezer_unlocked() else 0
+		order.drink_done = false
+		order.food_done = false
 	state.seated.append(order)
 	state.front = {}
 	state.daily_orders = int(state.daily_orders) + 1
@@ -2062,7 +2084,7 @@ func accept_restaurant_customer(expected_id: String) -> Dictionary:
 	if order.item_id not in recipes: recipes.append(order.item_id)
 	_state[UNLOCKED_RECIPES_KEY] = recipes
 	# 教学资格与真实接单原子保存；已有探索历史不补发。
-	if not _state.has("ch2_guide_01") and not _state.get("capture_first_visit_started", false) and not maze_exploration_state().chapter_2_started and int(state.daily_orders) == 1:
+	if not ServiceCycle.managed(order) and not _state.has("ch2_guide_01") and not _state.get("capture_first_visit_started", false) and not maze_exploration_state().chapter_2_started and int(state.daily_orders) == 1:
 		_state["ch2_guide_01"] = {"step":"recipe", "recipe":order.item_id, "seen":{}, "banked":{}}
 	if not save():
 		_state = previous
@@ -2077,17 +2099,28 @@ func consume_customer_arrival_notice() -> bool:
 	return true
 
 func advance_restaurant_customer(id: String, expected: String, next: String) -> Dictionary:
-	var transitions := {"seating": "waiting", "eating": "farewell", "farewell": "leaving", "leaving": "departed"}
+	var transitions := {"arriving":"front", "seating": "waiting", "eating": "farewell", "farewell": "leaving", "leaving": "departed"}
 	if transitions.get(expected) != next: return {"success": false, "reason": "invalid_transition"}
 	var state := restaurant_customers()
 	if not _customers_valid(state): return {"success": false, "reason": "invalid_state"}
+	if state.front.get("id", "") == id:
+		if state.front.phase != expected: return {"success":false, "reason":"stale_phase"}
+		if expected not in ["arriving", "leaving"]: return {"success":false, "reason":"invalid_transition"}
+		var previous := _state.duplicate(true)
+		if next == "departed": state.front = {}
+		else: state.front.phase = next
+		_state["restaurant_customers"] = state
+		return ServiceCycle.commit(self, previous)
 	for index in range(state.seated.size()):
 		var order: Dictionary = state.seated[index]
 		if order.id != id: continue
 		if order.phase != expected: return {"success": false, "reason": "stale_phase"}
 		var previous := _state.duplicate(true)
 		if next == "departed": state.seated.remove_at(index)
-		else: order.phase = next
+		else:
+			order.phase = order.get("resume_phase",next) if expected == "seating" else next
+			order.erase("resume_phase")
+			if expected == "seating": ServiceCycle.mark_drink_lesson_seated(self,order)
 		_state["restaurant_customers"] = state
 		if not save():
 			_state = previous
@@ -2096,6 +2129,8 @@ func advance_restaurant_customer(id: String, expected: String, next: String) -> 
 	return {"success": false, "reason": "no_customer"}
 
 func deliver_restaurant_customer(id: String) -> Dictionary:
+	if ServiceCycle.managed(restaurant_customer_order(id)):
+		return ServiceCycle.deliver_food(self, id)
 	var transaction_time := int(Time.get_unix_time_from_system())
 	var state := restaurant_customers()
 	if not _customers_valid(state): return {"success": false, "reason": "invalid_state"}
@@ -2119,7 +2154,8 @@ func deliver_restaurant_customer(id: String) -> Dictionary:
 		var reward := int(QUALITY_REPUTATION[quality])
 		var next_receipts: Dictionary = receipts.duplicate(true)
 		next_receipts[id] = {"quality": quality, "reputation_awarded": reward, "gold_awarded": gold_reward, "item_id": order.item_id}
-		order.phase = "eating"
+		order.food_done = true
+		if not order.has("drink_ice") or order.get("drink_done", false): order.phase = "eating"
 		_state["restaurant_customers"] = state
 		_state["restaurant_order_receipts"] = next_receipts
 		_state[INVENTORY_KEY] = inventory
@@ -2177,7 +2213,7 @@ func _consume_chilled_dish(recipe_id: String, quality: int, at_time: int) -> voi
 
 ## 存取、丢弃与旧库存星级同步提交；调用方仅在成功后刷新界面。
 func freezer_unlocked() -> bool:
-	return yufeng_salia_state() == "done"
+	return is_chapter_1_done() and chapter_1_outro_state() == "done" and _state.get("first_exploration_gate_v1", "") == "done"
 
 func freezer_notice_pending() -> bool:
 	return freezer_unlocked() and not bool(_state.get("freezer_unlock_notice_seen", false))
@@ -2191,6 +2227,7 @@ func acknowledge_freezer_notice() -> bool:
 	return false
 
 func freezer_action(action: String, unit_id := 0, recipe_id := "", quality := 1) -> Dictionary:
+	if not MenuPortions.valid(_state.get("restaurant_day_v1",{})): return {"success":false,"reason":"invalid_state"}
 	if not freezer_unlocked(): return {"success": false, "reason": "story_locked"}
 	if not can_discard_carried_food(): return {"success": false, "reason": "chapter_locked"}
 	if cooking_state().status == "active": return {"success": false, "reason": "busy"}
@@ -2199,6 +2236,10 @@ func freezer_action(action: String, unit_id := 0, recipe_id := "", quality := 1)
 	var prepared := prepared_dishes_snapshot()
 	var inventory := inventory_snapshot()
 	var now := int(Time.get_unix_time_from_system())
+	var discarded_dishes := {}
+	var moved_recipe := recipe_id
+	var moved_quality := quality
+	var new_id := unit_id
 	if action == "store" or action == "discard_carried":
 		var selected := {}
 		for option in freezer_carried_options():
@@ -2216,19 +2257,24 @@ func freezer_action(action: String, unit_id := 0, recipe_id := "", quality := 1)
 				ledger.next_id = int(ledger.next_id) + 1
 				unit.expires_at = now + Freezer.LIFETIME
 			ledger.stored.append(unit)
+			new_id = int(unit.id)
 		if unit_id > 0:
 			ledger.carried = ledger.carried.filter(func(unit): return int(unit.id) != unit_id)
 		inventory[recipe_id] -= 1
 		prepared[recipe_id][str(quality)] -= 1
+		if action == "discard_carried": discarded_dishes[recipe_id] = 1
 	elif action == "withdraw" or action == "discard":
 		var index := -1
 		for i in ledger.stored.size():
 			if int(ledger.stored[i].id) == unit_id: index = i
 		if index < 0: return {"success": false, "reason": "changed"}
 		var unit: Dictionary = ledger.stored[index]
+		moved_recipe = str(unit.recipe_id)
+		moved_quality = int(unit.quality)
+		if action == "discard": discarded_dishes[unit.recipe_id] = 1
 		if action == "withdraw":
 			if int(unit.expires_at) <= now: return {"success": false, "reason": "expired"}
-			if carried_dish_count() > 0: return {"success": false, "reason": "hands_full"}
+			if hands_occupied(): return {"success": false, "reason": "hands_full"}
 			ledger.carried.append(unit)
 			inventory[unit.recipe_id] = int(inventory.get(unit.recipe_id, 0)) + 1
 			prepared[unit.recipe_id][str(int(unit.quality))] += 1
@@ -2240,6 +2286,9 @@ func freezer_action(action: String, unit_id := 0, recipe_id := "", quality := 1)
 	_state[Freezer.KEY] = ledger
 	_state[INVENTORY_KEY] = inventory
 	_state[PREPARED_DISHES_KEY] = prepared
+	MenuPortions.freezer_move(_state,action,moved_recipe,moved_quality,unit_id,new_id)
+	MenuPortions.cancel_exhausted(_state)
+	preload("res://scripts/restaurant/restaurant_day.gd").record_dish_loss(_state,discarded_dishes)
 	if not save():
 		_state = previous
 		return {"success": false, "reason": "save_failed"}

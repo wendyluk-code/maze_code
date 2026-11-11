@@ -154,6 +154,8 @@ func _ready() -> void:
 		yf_encounter=preload("res://scripts/maze/yufeng_salia_encounter.gd").new()
 		add_child(yf_encounter)
 		yf_encounter.attach(self)
+		# 池底线索先于主角绘制；坐姿精灵沿用自身的独立层级。
+		move_child(yf_encounter,player.get_index())
 	if region_id == "maze_entry":
 		exploration_guide = preload("res://scripts/ch2_exploration_guide.gd").new()
 		exploration_guide.maze = self
@@ -239,6 +241,8 @@ func _build_ui() -> void:
 	preload("res://scripts/ui/components/entry_icon_shadow.gd").attach(backpack_entry,"BackpackShadow")
 	backpack_entry.hide()
 	backpack_entry.pressed.connect(_open_backpack)
+	# 全屏地图蒙层需覆盖随后创建的背包入口。
+	map_ui.overlay.reparent(root, false)
 	bento_entry = preload("res://scripts/ui/components/bento_modal.gd").make_entry(root)
 	bento_entry.pressed.connect(_open_bento)
 	bento_modal = preload("res://scripts/ui/components/bento_modal.gd").new()
@@ -354,6 +358,7 @@ func _open_loot(source: Node2D, is_dig: bool) -> void:
 	_update_chest_target()
 	if source != (dig_target if is_dig else chest_target):
 		return
+	GameAudio.interaction()
 	_loot_locked_before = player.input_locked
 	_loot_physics_before = player.is_physics_processing()
 	_busy = true
@@ -381,6 +386,7 @@ func _open_loot(source: Node2D, is_dig: bool) -> void:
 		loot_modal.show_items(items)
 	else:
 		loot_modal.show_reward(result.amount, result.total)
+	GameAudio.play_cue(&"capture_success")
 
 func show_mined_salt(amount: int) -> void:
 	# 奖励已由采矿事务保存；这里只复用采集弹窗及输入恢复。
@@ -438,11 +444,16 @@ func _update_prompts() -> void:
 		salt_moss_prompt.visible = target == ("青苔池" if region_id == "salt_pool" else "盐池")
 
 func _open_confirmation(destination: String) -> void:
+	if _block_unfinished_fenshui(): return
+	if destination=="餐厅" and preload("res://scripts/maze/first_exploration.gd").pending(SaveManager):
+		show_toast("请先完成当前探索")
+		return
 	if CaptureRun.portal_combat_locked(SaveManager):
 		show_toast("战斗中无法使用路标，请先脱离战斗")
 		return
 	if not _entry_ready or _busy or player.input_locked or confirmation.visible or _near_destination() != destination:
 		return
+	GameAudio.interaction()
 	_destination = destination
 	_locked_before = player.input_locked
 	_physics_before = player.is_physics_processing()
@@ -455,6 +466,7 @@ func _open_confirmation(destination: String) -> void:
 		confirmation.open_confirmation("携带本趟捕获食材返回餐厅？","带回食材","继续探索")
 	elif destination=="下一区域":
 		confirmation.open_region_choice("盐池" if region_id == "fenshui" else "分水庭")
+		confirmation.confirm_button.disabled = preload("res://scripts/maze/first_exploration.gd").pending(SaveManager)
 	elif destination in ["枯水渠","分水庭"]:
 		confirmation.open_region_choice(str(RegionRoutes.route(region_id).previous_name))
 	elif destination == "青苔池":
@@ -463,12 +475,15 @@ func _open_confirmation(destination: String) -> void:
 		confirmation.open_region_choice("盐池")
 	else:
 		confirmation.open_destination(destination)
+	if destination == "下一区域" and is_instance_valid(exploration_guide):
+		exploration_guide.show_return_choice(confirmation)
 	_update_prompts()
 
 func _close_confirmation() -> void:
 	if not confirmation.visible:
 		return
 	confirmation.hide()
+	if is_instance_valid(exploration_guide): exploration_guide.close_return_choice()
 	player.input_locked = _locked_before
 	player.set_physics_process(_physics_before)
 	_interact_armed = not Input.is_action_pressed("interact")
@@ -506,6 +521,8 @@ func _confirm_destination() -> void:
 		show_toast("当前区域未开放，以后再来探索吧~")
 
 func travel_region(destination_id: String, point: Vector2) -> void:
+	if _block_unfinished_fenshui(): return
+	if preload("res://scripts/maze/first_exploration.gd").pending(SaveManager): return
 	if CaptureRun.portal_combat_locked(SaveManager):
 		show_toast("战斗中无法使用路标，请先脱离战斗")
 		return
@@ -581,19 +598,15 @@ func _process(delta: float) -> void:
 
 func _sync_task_access() -> void:
 	var blocked: bool = _busy or not _entry_ready or confirmation.visible or map_ui.expanded or player.input_locked
-	var collecting: bool = false
-	backpack_entry.visible = _entry_ready and (not blocked or collecting)
+	backpack_entry.visible = _entry_ready
 	backpack_entry.disabled = blocked
 	# 解锁蒙层展示时尚不显示入口；确认后仅供飞入动画接收图标。
-	var bento_show: bool = is_instance_valid(yf_encounter) and yf_encounter.phase == "bento_fly"
-	bento_entry.visible = preload("res://scripts/restaurant/bento_store.gd").unlocked(SaveManager) and _entry_ready and (not blocked or bento_show)
+	bento_entry.visible = preload("res://scripts/restaurant/bento_store.gd").unlocked(SaveManager) and _entry_ready
 	bento_entry.disabled = blocked
 	if blocked == _tasks_blocked:
 		return
 	_tasks_blocked = blocked
-	if blocked:
-		task_tracker.collapse_details()
-	_task_host.visible = not blocked
+	_task_host.visible = true
 	task_tracker.set_process_input(not blocked)
 	task_tracker._task_button.disabled = blocked
 
@@ -623,6 +636,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	_interact_armed = false
 	get_viewport().set_input_as_handled()
+	if is_instance_valid(yf_encounter) and yf_encounter.try_interact():
+		return
 	if is_instance_valid(elder) and player.position.distance_to(elder.position) <= WhiteTigerElder.Config.INTERACT_RADIUS:
 		elder.interact()
 		return
@@ -649,6 +664,11 @@ func _save_position() -> bool:
 	return result.success
 
 func return_to_restaurant(bank: bool = false) -> void:
+	if _block_unfinished_fenshui(): return
+	var teaching_message := preload("res://scripts/maze/first_exploration.gd").return_message(SaveManager,bank)
+	if not teaching_message.is_empty():
+		show_toast(teaching_message)
+		return
 	if _busy or player.input_locked or (is_instance_valid(elder) and elder.is_busy()) or not _entry_ready or Transition.is_active(get_tree()):
 		return
 	var destination := load(SaveManager.RESTAURANT_SCENE) as PackedScene
@@ -672,6 +692,11 @@ func return_to_restaurant(bank: bool = false) -> void:
 		SaveManager.save()
 		show_toast("餐厅加载失败，请重试")
 
+func _block_unfinished_fenshui() -> bool:
+	if region_id != "fenshui" or SaveManager.yufeng_salia_state() == "done": return false
+	show_toast("请先与御风和萨莉亚交谈，接取并完成委托后再离开" if SaveManager.yufeng_salia_state() in ["unseen","intro"] else "请先完成御风和萨莉亚的委托，再离开分水庭")
+	return true
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST and is_instance_valid(player):
 		if not _entry_ready or _save_position():
@@ -688,7 +713,7 @@ func _open_backpack() -> void:
 	player.input_locked = true
 	player.set_physics_process(false)
 	toast_label.dismiss()
-	backpack_warehouse.open_backpack(CaptureRun.snapshot(SaveManager).bag, true)
+	backpack_warehouse.open_exploration_backpack(preload("res://scripts/maze/backpack_contents.gd").rows(SaveManager.get("_state")))
 
 func _close_backpack() -> void:
 	player.input_locked = _backpack_locked_before

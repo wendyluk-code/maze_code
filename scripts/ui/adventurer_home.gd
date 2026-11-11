@@ -37,6 +37,7 @@ var _closing := false
 static func open_page(tree: SceneTree) -> void:
 	if is_instance_valid(tree.get_first_node_in_group("adventurer_home")):
 		return
+	tree.root.get_node("GameAudio").set_world_music(&"home")
 	var page: CanvasLayer = load("res://scenes/adventurer_home.tscn").instantiate()
 	page._restaurant = tree.current_scene
 	tree.root.add_child(page)
@@ -248,6 +249,7 @@ func close_page() -> void:
 	if _closing:
 		return
 	_closing = true
+	GameAudio.set_world_music(&"restaurant")
 	back_button.disabled = true
 	# 下一帧才恢复餐厅，避免本次返回按键/鼠标释放透传到原场景。
 	call_deferred("queue_free")
@@ -260,6 +262,8 @@ func _unhandled_input(event: InputEvent) -> void:
 func _exit_tree() -> void:
 	if is_instance_valid(_restaurant):
 		_restaurant.process_mode = _previous_process_mode
+		if not _closing and _restaurant == get_tree().current_scene:
+			GameAudio.set_world_music(&"restaurant")
 
 func _refresh_collection() -> void:
 	for child in collection_grid.get_children():

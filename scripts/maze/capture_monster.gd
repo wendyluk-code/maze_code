@@ -8,6 +8,7 @@ var health_bar: ProgressBar
 var hp_label: Label
 var frames: Array[Texture2D] = []
 var elapsed := 0.0
+var ahong_paralyzed := false
 var combat_label_offset := 0.0
 var shadow: Sprite2D
 var ground_contacts: Array[Vector2] = []
@@ -127,6 +128,7 @@ func update_motion(velocity: Vector2) -> void:
 	_draw_frame(frame_index())
 
 func _process(delta: float) -> void:
+	if ahong_paralyzed: delta=0.0
 	elapsed += delta
 	action_time += delta
 	if config.kind in ["silverfish","thunder_eel"]:
@@ -185,6 +187,12 @@ func frame_index() -> int:
 	return int(action_time/0.18)%4 if not action_sheets.is_empty() else int(elapsed/0.18)%4
 
 func sync_action(actor: Dictionary) -> void:
+	ahong_paralyzed=preload("res://scripts/maze/ahong_trail.gd").paralyzed(actor)
+	if ahong_paralyzed:
+		if config.kind=="wind_frog": frog_state=actor
+		if config.kind=="rockmane": rock_state=actor
+		queue_redraw()
+		return
 	if action_sheets.is_empty(): return
 	if config.kind=="wind_frog":
 		frog_state=actor

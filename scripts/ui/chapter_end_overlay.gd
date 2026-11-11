@@ -112,6 +112,7 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed and _ready_for_input:
 			_armed = false
+			GameAudio.interaction()
 			continue_requested.emit()
 		return
 	if not event is InputEventKey or (event.keycode != KEY_E and event.physical_keycode != KEY_E): return
@@ -124,6 +125,7 @@ func _input(event: InputEvent) -> void:
 	_e_held = true
 	if _ready_for_input and _armed and not was_held:
 		_armed = false
+		GameAudio.interaction()
 		continue_requested.emit()
 
 func show_error(message: String) -> void:

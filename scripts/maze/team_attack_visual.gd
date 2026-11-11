@@ -8,12 +8,49 @@ var pool: Array[Sprite2D]=[]
 var slime_sprites: Dictionary={}
 var beams: Array=[]
 var beam_layer: Node2D
+var smoke_sprite: Sprite2D
+var smoke_ground: Node2D
+var smoke_radius: float=0.0
+var smoke_layer: Node2D
+var tide_layer: Node2D
+var trail_layer: Node2D
+
+func _exit_tree() -> void:
+	if is_instance_valid(tide_layer) and tide_layer.get_parent()!=self: tide_layer.queue_free()
+	if is_instance_valid(trail_layer) and trail_layer.get_parent()!=self: trail_layer.queue_free()
+	if is_instance_valid(smoke_layer) and smoke_layer.get_parent()!=self:
+		smoke_layer.queue_free()
 
 func _ready() -> void:
 	process_priority=50
 	for id in ["throw","light","axe","slime","light_orb","slime_orb"]:
 		textures[id]=load("res://assets/combat/team_skills/"+id+".png")
 	textures.hero=load("res://assets/combat/spatula_projectile_v1.png")
+	for id in ["yufeng","salia","dingdang"]:
+		textures[id]=preload("res://scripts/ui/components/bag_icon_display.gd").texture(load("res://assets/ui/combat_skills/"+id+".png"))
+	if ResourceLoader.exists("res://assets/ui/combat_skills/jiaopopo.png"):
+		textures.jiaopopo=preload("res://scripts/ui/components/bag_icon_display.gd").texture(load("res://assets/ui/combat_skills/jiaopopo.png"))
+	tide_layer=preload("res://scripts/maze/xiluomei_visual.gd").new()
+	add_child(tide_layer)
+	trail_layer=preload("res://scripts/maze/ahong_visual.gd").new()
+	add_child(trail_layer)
+	smoke_layer=Node2D.new()
+	add_child(smoke_layer)
+	smoke_sprite=Sprite2D.new()
+	smoke_sprite.modulate.a=0.75
+	smoke_sprite.visible=false
+	if ResourceLoader.exists("res://assets/combat/jiaopopo/smoke.png"):
+		smoke_sprite.texture=load("res://assets/combat/jiaopopo/smoke.png")
+		smoke_sprite.hframes=4
+		smoke_sprite.vframes=2
+	smoke_layer.add_child(smoke_sprite)
+	smoke_ground=Node2D.new()
+	smoke_layer.add_child(smoke_ground)
+	smoke_layer.move_child(smoke_ground,0)
+	smoke_ground.draw.connect(func():
+		if smoke_radius>0:
+			smoke_ground.draw_circle(Vector2.ZERO,smoke_radius,Color(0.9,0.35,0.1,0.10))
+			smoke_ground.draw_arc(Vector2.ZERO,smoke_radius,0,TAU,80,Color(0.85,0.35,0.1,0.4),1.2,true))
 	textures.light_orb=preload("res://scripts/ui/components/bag_icon_display.gd").texture(load("res://assets/ui/combat_skills/yaya.png"))
 	beam_layer=Node2D.new()
 	beam_layer.z_index=3
@@ -33,16 +70,39 @@ func frame(id: String, index: int) -> AtlasTexture:
 
 func _process(_delta: float) -> void:
 	if not is_instance_valid(flow) or not is_instance_valid(flow.maze): return
+	if smoke_layer.get_parent()==self:
+		# 背景是迷宫第一个节点；烟层位于背景之后、所有实体及血条之前。
+		smoke_layer.reparent(flow.maze)
+		flow.maze.move_child(smoke_layer,1)
 	var run: Dictionary = flow.display_run()
 	if not run.has("combat"): return
 	var c: Dictionary=run.combat
+	if trail_layer.get_parent()==self:
+		trail_layer.reparent(flow.maze)
+		flow.maze.move_child(trail_layer,2)
+	trail_layer.sync(c)
+	if tide_layer.get_parent()==self:
+		tide_layer.reparent(flow.maze)
+		flow.maze.move_child(tide_layer,3)
+	tide_layer.sync(c)
+	var smoke: Dictionary=c.get("jiaopopo_smoke",{})
+	smoke_sprite.visible=not smoke.is_empty() and smoke_sprite.texture!=null
+	smoke_radius=0.0
+	if smoke_sprite.visible:
+		var radius: float=Run.Combat.Skills.Smoke.rules(int(smoke.rank)).radius
+		smoke_radius=radius
+		smoke_sprite.position=Run.Combat.vec(smoke.position)
+		smoke_ground.position=smoke_sprite.position
+		smoke_sprite.frame=int(float(smoke.elapsed)*8.0)%8
+		smoke_sprite.scale=Vector2.ONE*(radius*2.0/240.0)
+	smoke_ground.queue_redraw()
 	var player: Node2D=flow.maze.player
 	var action: String=c.get("action","")
 	var remaining: float=c.get("action_left",0.0)
 	hero.visible=remaining>0
 	player.body.visible=not hero.visible
 	if hero.visible:
-		var id: String={"hero":"throw","yaya":"light","tieshan":"axe"}.get(action,"throw")
+		var id: String={"hero":"throw","yaya":"light","tieshan":"axe","yufeng":"throw","salia":"light"}.get(action,"throw")
 		var total := 0.48 if action=="tieshan" else 0.30
 		var aim: Vector2=Run.Combat.vec(c.get("aim",[1.0,0.0]))
 		var index := clampi(int((1.0-remaining/total)*8),0,7)
@@ -55,16 +115,22 @@ func _process(_delta: float) -> void:
 	var draws: Array=[]
 	beams.clear()
 	var camera_zoom: float=player.get_viewport().get_camera_2d().zoom.y
+	for key in c.actors:
+		var actor: Dictionary=c.actors[key]
+		if float(actor.get("lock_mark",{}).get("left",0.0))>0 and Run.Catalog.targetable(c,str(key)):
+			draws.append({"texture":textures.dingdang,"position":Run.Combat.vec(actor.position)+Vector2(0,-65),"size":18.0/camera_zoom,"angle":0.0})
 	for shot in c.shots:
 		var kind: String=shot.get("kind","hero")
 		var progress: float=shot.time/float(shot.get("flight",Run.Combat.FLIGHT))
 		var point := Run.Combat.vec(shot.position)+Vector2(0,-30)
-		if kind=="hero": point.y-=28*sin(progress*PI)
+		if kind in ["hero","jiaopopo"]: point.y-=28*sin(progress*PI)
 		var direction := Run.Combat.vec(shot.origin).direction_to(Run.Combat.vec(shot.target))
 		if kind=="yaya":
 			beams.append({"head":point,"direction":direction,"length":minf(140.0/camera_zoom,Run.Combat.vec(shot.origin).distance_to(Run.Combat.vec(shot.position))),"zoom":camera_zoom})
-		draws.append({"texture":textures.hero if kind=="hero" else textures.light_orb,"position":point,"size":28 if kind=="hero" else 24.0/camera_zoom,"angle":progress*TAU if kind=="hero" else direction.angle()+PI/4})
+		draws.append({"texture":textures.get(kind,textures.light_orb),"position":point,"size":28 if kind=="hero" else 24.0/camera_zoom,"angle":progress*TAU if kind=="hero" else direction.angle()+PI/4})
 	beam_layer.queue_redraw()
+	for chain in c.get("lightning_chains",[]):
+		beams.append({"lightning":true,"from":Run.Combat.vec(chain.from)+Vector2(0,-30),"to":Run.Combat.vec(chain.to)+Vector2(0,-30)})
 	for shot in c.get("enemy_shots",[]):
 		if flow.sparring()!=null: continue
 		draws.append({"texture":textures.slime_orb,"position":Run.Combat.vec(shot.position)+Vector2(0,-30),"size":20,"angle":Run.Combat.vec(shot.direction).angle()})
@@ -108,6 +174,10 @@ func _process(_delta: float) -> void:
 func _draw_beams() -> void:
 	# 束线仅由仍存活的投射物派生，无独立碰撞或伤害；暂停时原位冻结。
 	for beam in beams:
+		if beam.get("lightning",false):
+			beam_layer.draw_line(beam.from,beam.to,Color(0.65,0.45,1.0),5,true)
+			beam_layer.draw_line(beam.from,beam.to,Color(1,0.95,0.65),2,true)
+			continue
 		for i in 28:
 			var u := float(i)/28.0
 			var p: Vector2=beam.head-beam.direction*beam.length*(1-u)

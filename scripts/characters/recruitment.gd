@@ -4,6 +4,7 @@ const Growth = preload("res://scripts/characters/character_progression.gd")
 const KEY := "recruitment_v1"
 const OWNED_KEY := "owned_characters_v1"
 const MAX_BALANCE := 9007199254740991
+const ACTIVE_POOL := ["salia", "yufeng", "yaya", "tieshan"]
 
 static func owned(sm: Node) -> Dictionary:
 	var state: Dictionary = sm.get("_state")
@@ -13,6 +14,10 @@ static func owned(sm: Node) -> Dictionary:
 	for id in raw:
 		if not id is String or not Growth.CHARACTERS.has(id) or ids.has(id): return {"valid": false, "ids": []}
 		ids.append(id)
+	# 已完成旧相遇的存档不重演、不重发食材；收藏资格只读兼容。
+	if sm.yufeng_salia_state() == "done":
+		for id in ["yufeng","salia"]:
+			if id not in ids: ids.append(id)
 	return {"valid": true, "ids": ids}
 
 static func balance(sm: Node) -> int:
@@ -23,7 +28,7 @@ static func balance(sm: Node) -> int:
 static func pick(rarity_roll: float, member_roll: float, force_ssr := false) -> String:
 	var rarity := "SSR" if force_ssr or rarity_roll < 0.10 else ("SR" if rarity_roll < 0.40 else "R")
 	var pool: Array = []
-	for id in Growth.CHARACTERS:
+	for id in ACTIVE_POOL:
 		if Growth.CHARACTERS[id].rarity == rarity: pool.append(id)
 	return str(pool[mini(pool.size() - 1, int(clampf(member_roll, 0.0, 1.0) * pool.size()))]) if not pool.is_empty() else ""
 

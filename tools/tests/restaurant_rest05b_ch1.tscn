@@ -1,0 +1,4 @@
+[gd_scene load_steps=2 format=3]
+[ext_resource type="Script" path="res://tools/tests/restaurant_rest05b_ch1.gd" id="1"]
+[node name="RestaurantREST05BChapter1" type="Node"]
+script = ExtResource("1")

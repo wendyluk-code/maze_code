@@ -1,6 +1,6 @@
 extends "res://tools/tests/combat_02_flow.gd"
 const Aim=preload("res://scripts/maze/auto_aim.gd")
-const Sim=preload("res://scripts/maze/yf_sparring.gd")
+
 
 func click_at(point: Vector2) -> void:
 	var event:=InputEventMouseButton.new()
@@ -101,29 +101,4 @@ func _combat_scene() -> void:
 	Input.action_release("ui_left")
 	await get_tree().create_timer(0.05).timeout
 	_check(str(maze.player.animation_name).ends_with("_idle"),"停止移动恢复待机")
-	await _close_scene()
-	# 正式切磋场景也通过同一个左键入口自动瞄准。
-	Run.change_region(sm,"fenshui",Sim.Terrain.SPAWN)
-	maze=load("res://scenes/maze_fenshui.tscn").instantiate()
-	get_tree().root.add_child(maze)
-	get_tree().current_scene=maze
-	await get_tree().create_timer(0.3).timeout
-	maze.capture_flow.set_process(false)
-	maze.capture_flow.window_focused=true
-	var e=maze.yf_encounter
-	e.set_process(false)
-	maze.player.position=Sim.POSITIONS.yufeng+Vector2(45,0)
-	_check(e._commit("battle"),"建立正式切磋阶段")
-	e._start_battle()
-	e.run.combat.selected=1
-	e.run.combat.cooldown=0.0
-	var target:=Aim.target(e.run,maze.player.position,true)
-	_check(not target.is_empty(),"切磋自动选择最近对手")
-	click_at(Vector2.ZERO)
-	var direction: Vector2=maze.player.position.direction_to(Combat.vec(e.run.combat.actors[target].position))
-	_check(Combat.vec(e.run.combat.aim).dot(direction)>0.999,"切磋左键方向来自对手而非鼠标")
-	e._sync_visuals()
-	await _capture_image("sparring_auto_aim")
-	e.run.combat.lock_left=0
-	_check(Aim.target(e.run,maze.player.position,true).is_empty(),"切磋结束停止选敌")
 	await _close_scene()

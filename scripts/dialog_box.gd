@@ -15,11 +15,40 @@ const CHARS_PER_SEC := 30.0
 var _lines: Array = []
 var _line_idx := 0
 var _shown := 0.0
+var _typing_audio: AudioStreamPlayer
+var _audio_focused := true
 
 func _ready() -> void:
 	# 让对话框根节点接收鼠标，内部纯展示节点不抢走点击。
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_set_children_mouse_ignored(self)
+	_typing_audio = AudioStreamPlayer.new()
+	_typing_audio.name = "DialogueTypingAudio"
+	_typing_audio.stream = preload("res://assets/audio/sfx/dialogue_typing.ogg")
+	_typing_audio.stream.loop = true
+	_typing_audio.volume_db = 2.0
+	add_child(_typing_audio)
+	GameAudio.bind_volume(_typing_audio, &"dialogue_typing")
+	visibility_changed.connect(_sync_typing_audio)
+
+func _sync_typing_audio() -> void:
+	if not is_instance_valid(_typing_audio): return
+	var typing := _audio_focused and is_visible_in_tree() and _line_idx < _lines.size() and _shown < str(_lines[_line_idx]).length()
+	if typing:
+		if not _typing_audio.playing: _typing_audio.play()
+	else:
+		_typing_audio.stop()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		_audio_focused = false
+		_sync_typing_audio()
+	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
+		_audio_focused = true
+		_sync_typing_audio()
+
+func _exit_tree() -> void:
+	if is_instance_valid(_typing_audio): _typing_audio.stop()
 
 func _set_children_mouse_ignored(node: Node) -> void:
 	for child in node.get_children():
@@ -28,6 +57,7 @@ func _set_children_mouse_ignored(node: Node) -> void:
 			_set_children_mouse_ignored(child)
 
 func start(speaker: String, lines: Array, ptex: Texture2D = null) -> void:
+	_typing_audio.stop()
 	visible = true
 	_lines = lines.duplicate()
 	_line_idx = 0
@@ -42,9 +72,11 @@ func start(speaker: String, lines: Array, ptex: Texture2D = null) -> void:
 	portrait.visible = ptex != null
 	if ptex == null and not speaker.is_empty():
 		push_warning("DialogBox: 对话头像缺失 speaker=%s" % speaker)
+	_sync_typing_audio()
 
 func _process(delta: float) -> void:
-	if not visible or _lines.is_empty() or _line_idx >= _lines.size():
+	if not is_visible_in_tree() or _lines.is_empty() or _line_idx >= _lines.size():
+		_sync_typing_audio()
 		return
 	var full := str(_lines[_line_idx])
 	if _shown < full.length():
@@ -54,6 +86,7 @@ func _process(delta: float) -> void:
 		next_icon.visible = false
 	else:
 		next_icon.visible = true
+	_sync_typing_audio()
 
 func _input(event: InputEvent) -> void:
 	# 在 GUI 控件消费事件前接收空白点击；专属教学关闭通用输入后由其父弹窗处理。
@@ -88,14 +121,16 @@ func _is_advance_event(event: InputEvent) -> bool:
 			or event.is_action_pressed("interact") or event.is_action_pressed("ui_accept")
 	return event.is_action_pressed("interact") or event.is_action_pressed("ui_accept")
 
-func _advance() -> void:
+func _advance(play_interaction := true) -> void:
 	if _line_idx >= _lines.size():
 		visible = false
 		return
+	if play_interaction: GameAudio.interaction()
 	var full := str(_lines[_line_idx])
 	if _shown < full.length():
 		_shown = full.length()
 		dialog_text.text = full
+		_sync_typing_audio()
 		return
 	_line_idx += 1
 	if _line_idx < _lines.size():
@@ -105,6 +140,7 @@ func _advance() -> void:
 	else:
 		visible = false
 		finished.emit()
+	_sync_typing_audio()
 
 func hide_box() -> void:
 	visible = false

@@ -22,6 +22,8 @@ var _salt_slot: SproutItemSlot
 var _dish_slot: SproutItemSlot
 var _selection_label: Label
 var _message: Label
+var _source_legend: VBoxContainer
+var _source_slots: Array[Control] = []
 var _empty_label: Label
 var _cancel_button: SproutButton
 var _claim_button: SproutButton
@@ -48,6 +50,12 @@ var _selected_rows := {}
 var _selection_area: PanelContainer
 var _hidden_guide: Control
 var _guide_was_visible := false
+var _quick_panel: PanelContainer
+var _quick_row: HBoxContainer
+var _quick_ids: Array[String] = []
+var _quick_buttons: Array[Button] = []
+var _quick_visual_state: Array = []
+var _quick_lesson: CanvasLayer
 var _catalog := [
 	{"id": "rockmane_meat", "name": "岩鬃肉", "icon": 0},
 	{"id": "rock_salt", "name": "岩盐", "icon": 1},
@@ -89,6 +97,11 @@ func _process(_delta: float) -> void:
 	if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		_grid_scrollbar_dragging = false
 	_update_grid_scrollbar()
+	_refresh_quick_selection()
+	if _quick_panel.visible and not SaveManager._state.get("warehouse_quick_lesson_seen",false) and not is_instance_valid(_quick_lesson):
+		_quick_lesson = preload("res://scripts/ui/components/warehouse_quick_lesson.gd").new()
+		_quick_lesson.warehouse = self
+		add_child(_quick_lesson)
 
 func _update_grid_scrollbar() -> void:
 	# 保留轨道宽度，仅控制显示，避免显隐改变五列网格布局。
@@ -172,6 +185,20 @@ func _build() -> void:
 	_build_catalog()
 	_slots_grid.resized.connect(_fit_square_slots)
 	call_deferred("_fit_square_slots")
+	_quick_panel = PanelContainer.new()
+	_quick_panel.name = "QuickSelection"
+	_quick_panel.add_theme_stylebox_override("panel", _box(Color("#f5e5c6"), Color("#d4b986"), 1, 6))
+	outer.add_child(_quick_panel)
+	_quick_row = HBoxContainer.new()
+	_quick_row.add_theme_constant_override("separation", 8)
+	_quick_panel.add_child(_quick_row)
+	var quick_title := Label.new()
+	quick_title.text = "快速选择"
+	quick_title.add_theme_font_size_override("font_size", 18)
+	quick_title.add_theme_color_override("font_color", SproutTheme.INK)
+	quick_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_quick_row.add_child(quick_title)
+	_quick_panel.hide()
 
 	_empty_label = Label.new()
 	_empty_label.text = "仓库暂无材料"
@@ -452,7 +479,7 @@ func _on_slot_selected(item_id: String) -> void:
 func _on_slot_quantity_changed(item_id: String, quantity: int) -> void:
 	if not _open or _empty_stock or _backpack_view:
 		return
-	if quantity > 0 and not SaveManager.carried_ingredients().is_empty():
+	if quantity > 0 and SaveManager.hands_occupied():
 		var blocked_slot: SproutItemSlot = _slot_by_id.get(item_id)
 		if is_instance_valid(blocked_slot): blocked_slot.set_selected_quantity(int(_selected.get(item_id, 0)))
 		return
@@ -487,6 +514,75 @@ func _update_selection() -> void:
 	_claim_button.disabled = _claim_button.disabled or not SaveManager.carried_ingredients().is_empty()
 	_update_recipe_slots()
 	_rebuild_selected_list()
+	_refresh_quick_selection()
+
+func _quick_candidates() -> Array[String]:
+	var result: Array[String] = []
+	if not _open or not _general_stock or _backpack_view or _empty_stock: return result
+	var recipes := preload("res://scripts/cooking/recipe_catalog.gd")
+	var stock := SaveManager.warehouse_snapshot()
+	var unlocked := SaveManager.unlocked_recipe_ids()
+	for order in SaveManager.customer_orders_active():
+		var id := str(order.get("item_id", ""))
+		if order.get("stage", "") != "food" or id in result or id not in unlocked: continue
+		var ingredients: Dictionary = recipes.get_recipe(id).get("ingredients", {})
+		if ingredients.is_empty() or ingredients.size() > SaveManager.MAX_WAREHOUSE_KINDS: continue
+		if not recipes.can_cook(id, stock): continue
+		result.append(id)
+		if result.size() == 3: break
+	return result
+
+func _refresh_quick_selection() -> void:
+	if not is_instance_valid(_quick_panel): return
+	var ids := _quick_candidates()
+	var layout_changed := _quick_panel.visible != not ids.is_empty()
+	_quick_panel.visible = not ids.is_empty()
+	var visual_state: Array = [ids, _selected.duplicate(), SaveManager.hands_occupied()]
+	if visual_state == _quick_visual_state and not layout_changed: return
+	_quick_visual_state = visual_state.duplicate(true)
+	if ids != _quick_ids:
+		for button in _quick_buttons:
+			_quick_row.remove_child(button)
+			button.queue_free()
+		_quick_buttons.clear()
+		_quick_ids = ids
+		var recipes := preload("res://scripts/cooking/recipe_catalog.gd")
+		for id in ids:
+			var button := Button.new()
+			button.custom_minimum_size = Vector2(56,56)
+			button.tooltip_text = recipes.get_recipe(id).name
+			button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+			var art := TextureRect.new()
+			art.texture = preload("res://scripts/ui/components/bag_icon_display.gd").texture(recipes.item_texture(id))
+			art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			button.add_child(art)
+			art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			art.offset_left = 8
+			art.offset_top = 8
+			art.offset_right = -8
+			art.offset_bottom = -8
+			button.pressed.connect(_select_quick_recipe.bind(id))
+			_quick_row.add_child(button)
+			_quick_buttons.append(button)
+	for index in _quick_ids.size():
+		var button := _quick_buttons[index]
+		button.disabled = SaveManager.hands_occupied()
+		var selected: bool = _selected == preload("res://scripts/cooking/recipe_catalog.gd").get_recipe(_quick_ids[index]).ingredients
+		for state in ["normal","disabled","hover","pressed","focus"]:
+			button.add_theme_stylebox_override(state,_box(Color("#dbe4b1") if selected else Color("#e1c99e"),Color("#809358") if selected or state in ["hover","focus"] else Color("#b5996d"),2 if selected else 1,6))
+	if layout_changed: call_deferred("_layout_modal")
+
+func _select_quick_recipe(id: String) -> void:
+	# 快捷只替换当前配料选择；扣库存和保存仍由原取料按钮执行。
+	if SaveManager.hands_occupied() or id not in _quick_candidates():
+		_refresh_quick_selection()
+		return
+	_selected = preload("res://scripts/cooking/recipe_catalog.gd").get_recipe(id).ingredients.duplicate()
+	for item_id in _slot_by_id:
+		_slot_by_id[item_id].set_selected_quantity(int(_selected.get(item_id,0)))
+	_update_selection()
 
 func _can_add_material(item_id: String, quantity: int) -> bool:
 	var proposed := _selected.duplicate()
@@ -498,13 +594,19 @@ func _can_add_material(item_id: String, quantity: int) -> bool:
 func _update_recipe_slots() -> void:
 	if _backpack_view or _empty_stock:
 		return
-	var hands_full := not SaveManager.carried_ingredients().is_empty()
+	var hands_full := SaveManager.hands_occupied()
 	for item_id in _slot_by_id:
 		var slot: SproutItemSlot = _slot_by_id[item_id]
 		var quantity := int(_selected.get(item_id, 0))
 		slot.disabled = hands_full or quantity >= slot._quantity or not _can_add_material(item_id, quantity + 1)
 		# 只在仓库取料模式灰显不相容材料，保留已选格的绿色及背包原样式。
 		slot.modulate = Color(0.48, 0.48, 0.48, 0.65) if slot.disabled and quantity == 0 and slot._quantity > 0 else Color.WHITE
+		if _general_stock and SaveManager.is_chapter_1_done():
+			var suggested := false
+			for order in SaveManager.customer_orders_active():
+				if order.get("stage", "") == "food" and preload("res://scripts/cooking/recipe_catalog.gd").get_recipe(order.item_id).ingredients.has(item_id): suggested = true
+			slot.tooltip_text = "当前料理订单需要" if suggested else ""
+
 
 func _rebuild_selected_list() -> void:
 	if not is_instance_valid(_selected_list):
@@ -708,6 +810,13 @@ func open_backpack(temporary_items: Dictionary = {}, temporary: bool = false) ->
 	_scroll.scroll_vertical = 0
 
 func _restore_slot_order() -> void:
+	if is_instance_valid(_source_legend):
+		_source_legend.get_parent().remove_child(_source_legend)
+		_source_legend.queue_free()
+	for slot in _source_slots:
+		_slots_grid.remove_child(slot)
+		slot.queue_free()
+	_source_slots.clear()
 	for index in _backpack_slot_order.size():
 		if is_instance_valid(_backpack_slot_order[index]):
 			_slots_grid.move_child(_backpack_slot_order[index], index)
@@ -765,3 +874,47 @@ func _input(event: InputEvent) -> void:
 					_scroll.scroll_vertical = 0
 				KEY_END:
 					_scroll.scroll_vertical = int(_scroll.get_v_scroll_bar().max_value)
+
+## 探索专用只读背包：同来源合并数量，异来源分格，顺序由获得记录提供。
+func open_exploration_backpack(entries: Array) -> void:
+	open_backpack({}, true)
+	_tabs.hide()
+	_message.hide()
+	_source_legend = VBoxContainer.new()
+	_source_legend.add_theme_constant_override("separation", 6)
+	var outer := _message.get_parent()
+	outer.add_child(_source_legend)
+	outer.move_child(_source_legend, _message.get_index())
+	for index in 2:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		_source_legend.add_child(row)
+		var swatch := PanelContainer.new()
+		swatch.custom_minimum_size = Vector2(30,16)
+		swatch.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		swatch.add_theme_stylebox_override("panel", SproutTheme.thin_panel_style(Color("d9eaf1") if index == 0 else Color("dfead3")))
+		row.add_child(swatch)
+		var label := Label.new()
+		label.text = "捕获食材：捕获魔物获得的食材，\n放弃探索或战败将失去" if index == 0 else "任务食材：完成任务获得的食材，\n离开迷宫时将自动带回餐厅"
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		label.add_theme_font_size_override("font_size",15)
+		label.add_theme_color_override("font_color",SproutTheme.INK_MUTED)
+		row.add_child(label)
+	for index in entries.size():
+		var entry: Dictionary = entries[index]
+		var info := preload("res://scripts/cooking/recipe_catalog.gd").get_ingredient(entry.id)
+		var slot := _create_slot(entry.id, str(info.get("name",entry.id)),0)
+		_slots_grid.add_child(slot)
+		_source_slots.append(slot)
+		_slots_grid.move_child(slot,index)
+		slot.source_background = Color("dfead3") if entry.source == "task" else Color("d9eaf1")
+		_set_slot(slot,int(entry.quantity),true,true)
+		var style := SproutTheme.thin_panel_style(Color("dfead3") if entry.source == "task" else Color("d9eaf1"))
+		for state in ["normal","disabled","hover","pressed"]:
+			slot._icon_button.add_theme_stylebox_override(state,style)
+	# 保留原背包的空格和滚动容器，最少显示原有容量。
+	var blanks := maxi(0,20-entries.size())
+	for slot in _slot_by_id.values():
+		slot.visible = blanks > 0
+		blanks -= 1
+	_backpack_slot_order.clear()

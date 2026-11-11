@@ -30,7 +30,7 @@ static func swim(run: Dictionary, row: Dictionary, origin: Vector2, direction: V
 		if next.distance_to(origin)>0.01 and clear(run,row.id,next): return next
 	return origin
 
-static func patrol(run: Dictionary, row: Dictionary, dt: float) -> void:
+static func patrol(run: Dictionary, row: Dictionary, dt: float, speed_multiplier: float = 1.0) -> void:
 	var a: Dictionary=run.combat.actors[row.id]
 	var pos:=Vector2(a.position[0],a.position[1])
 	a.swim_left=maxf(0.0,float(a.get("swim_left",0.0))-dt)
@@ -40,7 +40,7 @@ static func patrol(run: Dictionary, row: Dictionary, dt: float) -> void:
 		var seed_value:int=absi(str(row.id).hash()+int(run.combat.elapsed*11.0))
 		direction=direction.rotated(float(seed_value%181-90)*PI/180.0)
 		a.swim_left=2.0+float(seed_value%150)/100.0
-	var next:=swim(run,row,pos,direction,(24.0 if row.kind=="silverfish" else 20.0)*dt)
+	var next:=swim(run,row,pos,direction,(24.0 if row.kind=="silverfish" else 20.0)*dt*speed_multiplier)
 	if next.distance_to(pos)>0.01: direction=pos.direction_to(next)
 	else: a.swim_left=0.0
 	a.swim_heading=[direction.x,direction.y]

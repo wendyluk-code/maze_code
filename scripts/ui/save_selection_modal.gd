@@ -68,6 +68,8 @@ func _ready() -> void:
 	_name_edit = LineEdit.new()
 	_name_edit.placeholder_text = "输入存档名称（最多 40 字）"
 	_name_edit.max_length = 40
+	_name_edit.keep_editing_on_text_submit = true
+	_name_edit.focus_entered.connect(_activate_name_ime.call_deferred)
 	_name_edit.custom_minimum_size.y = 48
 	var edit_outer := _edit_modal._body_label.get_parent()
 	edit_outer.add_child(_name_edit)
@@ -218,6 +220,7 @@ func _confirm_edit() -> void:
 	if not result.success:
 		set_busy(false)
 		_edit_modal._body_label.text = result.message
+		if _mode == "rename": _focus_name_edit.call_deferred()
 		return
 	var action := _mode
 	var retained := _selected if _mode == "rename" else ""
@@ -258,6 +261,7 @@ func _begin_edit(mode: String) -> void:
 		_name_edit.text = label
 		_name_edit.grab_focus()
 		_name_edit.select_all()
+		_focus_name_edit.call_deferred()
 	else:
 		_edit_modal._cancel_button.grab_focus()
 
@@ -288,5 +292,23 @@ func _on_close_pressed() -> void:
 func _input(event: InputEvent) -> void:
 	# LineEdit 会消费 Esc；在 GUI 分发之前统一处理编辑取消。
 	if visible and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+		# 中文组词时，Esc 先交给输入法取消候选，不能关闭重命名弹窗。
+		if _name_edit.has_focus() and (_name_edit.has_ime_text() or not DisplayServer.ime_get_text().is_empty()): return
 		get_viewport().set_input_as_handled()
 		_on_cancel_pressed()
+
+func _focus_name_edit() -> void:
+	if _mode != "rename" or not _edit_modal.visible or _busy: return
+	_name_edit.grab_focus()
+	_activate_name_ime()
+
+func _activate_name_ime() -> void:
+	if not is_instance_valid(_name_edit) or not _name_edit.is_visible_in_tree() or not _name_edit.has_focus() or not _name_edit.editable: return
+	# 抓取焦点不等于重新激活系统输入法，尤其在校验失败或切回窗口后。
+	_name_edit.edit()
+	if DisplayServer.has_feature(DisplayServer.FEATURE_IME):
+		DisplayServer.window_set_ime_active(true, get_window().get_window_id())
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_IN and is_instance_valid(_name_edit) and _name_edit.has_focus():
+		_activate_name_ime.call_deferred()

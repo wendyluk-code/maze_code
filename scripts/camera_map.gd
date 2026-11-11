@@ -24,4 +24,8 @@ func _process(delta: float) -> void:
 	var t := get_node_or_null(target_path) as Node2D
 	if t == null or paused:
 		return
-	global_position = global_position.lerp(t.global_position, 1.0 - exp(-smooth * delta))
+	var focus := t.global_position
+	# 仅章后经营：在吧台服务时留出顾客头顶气泡空间，首章镜头仍走原分支。
+	if SaveManager.is_chapter_1_done() and focus.y < 550:
+		focus.y -= 120
+	global_position = global_position.lerp(focus, 1.0 - exp(-smooth * delta))

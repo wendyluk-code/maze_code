@@ -6,18 +6,8 @@ const Rock = preload("res://scripts/maze/rockmane_combat.gd")
 const Crystals = preload("res://scripts/maze/salt_crystals.gd")
 const Frog = preload("res://scripts/maze/wind_frog_combat.gd")
 const WaterSpacing = preload("res://scripts/maze/water_spacing.gd")
-const STATS = {
-	"rockmane":{"attack":8,"hp":120,"windup":0.7},
-	"mimic_crab":{"attack":5,"hp":28,"interval":2.0,"windup":0.65,"speed":80.0,"trigger":100.0,"leash":145.0,"home_limit":75.0,"reach":34.0},
-	"blind_scorpion":{"attack":4,"hp":22,"interval":1.8,"windup":0.6,"speed":90.0,"trigger":100.0,"leash":145.0,"home_limit":75.0,"reach":42.0},
-	"wind_frog":{"attack":6,"hp":96},
-	"silverfish":{"attack":4,"hp":20,"interval":1.8,"windup":0.55,"speed":65.0,"trigger":110.0,"leash":150.0,"home_limit":85.0,"reach":35.0},
-	"thunder_eel":{"attack":5,"hp":30,"interval":2.2,"windup":0.8,"speed":55.0,"trigger":110.0,"leash":150.0,"home_limit":85.0,"reach":70.0},
-	"slime":{"attack":3,"hp":14,"interval":1.8,"windup":0.45,"speed":85.0,"trigger":150.0,"leash":420.0,"home_limit":600.0,"reach":32.0},
-	"snail":{"attack":5,"hp":28,"interval":2.0,"windup":0.6,"speed":65.0,"trigger":140.0,"leash":380.0,"home_limit":520.0,"reach":32.0},
-	"beetle":{"attack":4,"hp":21,"interval":1.3,"windup":0.35,"speed":145.0,"trigger":190.0,"leash":500.0,"home_limit":750.0,"reach":32.0},
-	"lizard":{"attack":8,"hp":84,"interval":2.2,"windup":0.7,"speed":100.0,"trigger":200.0,"leash":550.0,"home_limit":700.0,"reach":40.0}
-}
+const Balance = preload("res://scripts/maze/monster_balance.gd")
+const STATS = Balance.STATS
 const INTERVAL = 0.9
 const RANGE = 180.0
 const FLIGHT = 0.35
@@ -173,33 +163,79 @@ static func next_waypoint(origin: Vector2, target: Vector2) -> Vector2:
 	return origin
 
 static func advance(run: Dictionary, point: Vector2, dt: float, sprinting: bool = false) -> void:
+	# 烟区和投罐使用固定上限小步，避免跨越落地/每秒伤害/退避端点。
+	var smoke_active: bool=Skills.Charge.active(run.combat) or run.combat.has("lanjiao_boost") or Skills.Guard.rank_for(run)>0 or Skills.Guard.protected(run.combat) or run.combat.has("xiluomei_net") or run.combat.has("xiluomei_feedback") or run.combat.has("jiaopopo_smoke") or Skills.Trail.rank_for(run)>0
+	for shot in run.combat.shots:
+		if shot.get("kind","")=="jiaopopo": smoke_active=true
+	for a in run.combat.actors.values():
+		if a.has("tide_slow") or a.has("tide_root"): smoke_active=true
+	if not smoke_active:
+		_advance_step(run,point,dt,sprinting)
+		return
+	var left:=dt
+	var start:=vec(run.combat.hero)
+	var destination:=point
+	while left>0.0000001:
+		var used:=minf(left,1.0/120.0)
+		if Skills.Trail.rank_for(run)>0 and not Skills.Charge.active(run.combat): point=vec(run.combat.hero)+(destination-start)*(used/dt)
+		_advance_step(run,point,used,sprinting)
+		point=vec(run.combat.hero)
+		left-=used
+		if run.combat.hp<=0: break
+
+static func _advance_step(run: Dictionary, point: Vector2, dt: float, sprinting: bool = false) -> void:
 	var c: Dictionary = run.combat
+	Skills.Guard.advance(c,dt)
+	Skills.Trail.begin_step(run,point,dt)
 	c.hero=pack(point)
+	advance_wind_control(run,dt)
+	var chains: Array=[]
+	for chain in c.get("lightning_chains",[]):
+		chain.left=maxf(0.0,float(chain.left)-dt)
+		if chain.left>0: chains.append(chain)
+	c.lightning_chains=chains
 	Rock.advance(run, point, dt)
 	Frog.advance(run, point, dt)
 	Skills.advance(run, point, dt)
 	# 旧档缺字段按满条初始化；只保存资源与恢复时钟，不保存按键。
 	c.sprint = clampf(float(c.get("sprint",1.0)),0.0,1.0)
 	c.sprint_rest = float(c.get("sprint_rest",0.0))
-	if sprinting and c.sprint>0.0:
+	if sprinting and not Skills.Charge.active(c) and c.sprint>0.0:
 		c.sprint=maxf(0.0,c.sprint-dt/5.0)
 		c.sprint_rest=0.0
 	else:
 		var recovery := maxf(0.0,c.sprint_rest+dt-1.0)-maxf(0.0,c.sprint_rest-1.0)
 		c.sprint_rest=minf(1.0,c.sprint_rest+dt)
 		c.sprint=minf(1.0,c.sprint+recovery/8.0)
-	point = advance_hit(c, point, dt, str(c.get("region","maze_entry")))
+	var recoil_point := advance_hit(c, point, dt, str(c.get("region","maze_entry")))
+	if not Skills.Charge.active(c): point = recoil_point
 	c.hero = pack(point)
 	c.elapsed += dt
 	# 近战先于投射物结算：同一推进中主角归零优先失败。
 	for row in Catalog.rows(c):
 		var a: Dictionary = c.actors[row.id]
 		if run.monsters[row.id].status!="alive" or a.hp<=0: continue
+		if Skills.Trail.paralyzed(a):
+			a.velocity=[0.0,0.0]
+			continue
+		if float(a.get("wind_left",0.0))>0:
+			# 与御风同时控制时仍消耗退避时长，不把0.6秒延长。
+			Skills.Smoke.retreat_step(c,row.id,dt,0.0)
+			continue
 		if row.kind in ["wind_frog","rockmane"]:
 			a.flash_remaining=maxf(0.0,float(a.get("flash_remaining",0.0))-dt)
 			continue
 		var s: Dictionary = STATS[row.kind]
 		var pos := vec(a.position)
+		if Skills.Smoke.retreating(c,row.id):
+			var displacement:=Skills.Smoke.retreat_step(c,row.id,dt,0.0 if Skills.Tide.rooted(a) else float(s.speed)*Skills.Tide.speed(a))
+			var moved:=move_actor(row,pos,displacement)
+			if row.get("region","")=="fenshui" and not WaterSpacing.line_clear(run,row.id,pos,moved): moved=pos
+			if row.get("region","") not in ["fenshui","salt_pool"] and not Catalog.clear_of_props(moved): moved=pos
+			a.position=pack(moved)
+			a.velocity=pack((moved-pos)/dt)
+			continue
+		var speed:=float(s.speed)*Skills.Smoke.speed(c,pos)*Skills.Tide.speed(a)
 		var recoiling := float(a.get("hit_remaining", 0.0)) > 0.0
 		var hit_position := advance_hit(a, pos, dt, str(c.get("region","maze_entry")),row.position if row.get("region","") in ["fenshui","salt_pool"] else Vector2.INF)
 		if row.get("region","")=="fenshui" and not WaterSpacing.clear(run,row.id,hit_position): hit_position=pos
@@ -219,6 +255,7 @@ static func advance(run: Dictionary, point: Vector2, dt: float, sprinting: bool 
 				a.mode="return"
 				a.windup=0.0
 		if a.mode=="return":
+			a.erase("lock_mark")
 			clear_hit(a)
 			if row.get("region","")=="fenshui":
 				a.mode="idle"
@@ -227,7 +264,7 @@ static func advance(run: Dictionary, point: Vector2, dt: float, sprinting: bool 
 				a.velocity=[0.0,0.0]
 				continue
 			var destination: Vector2 = row.position if row.get("region","") in ["fenshui","salt_pool"] else next_waypoint(pos,row.position)
-			var moved := move_actor(row,pos,pos.direction_to(destination)*minf(s.speed*dt,pos.distance_to(destination))) if row.get("region","") in ["fenshui","salt_pool"] else move_monster(pos,destination,s.speed*dt)
+			var moved := move_actor(row,pos,pos.direction_to(destination)*minf(speed*dt,pos.distance_to(destination))) if row.get("region","") in ["fenshui","salt_pool"] else move_monster(pos,destination,speed*dt)
 			a.position=pack(moved)
 			if moved.distance_to(row.position)<=2.0:
 				a.position=pack(row.position if row.get("region","") in ["fenshui","salt_pool"] else Catalog.nearest_clear_point(row.position))
@@ -239,9 +276,9 @@ static func advance(run: Dictionary, point: Vector2, dt: float, sprinting: bool 
 			a.windup=maxf(0.0,a.windup-dt)
 			if a.windup<=0.00001:
 				if c.hp>0 and attack_distance<=s.reach and attack_line(row,pos,point) and aimed_hit(a,row,pos,point):
-					c.hp=maxf(0,c.hp-Skills.incoming_damage(run, int(s.attack)))
-					c.last_attacker=row.kind
-					hit(c, point, pos, 18.0)
+					if Skills.receive_damage(run,int(s.attack)):
+						c.last_attacker=row.kind
+						hit(c, point, pos, 18.0)
 				a.mode="chase"
 		elif a.mode=="chase":
 			if attack_distance<=s.reach and attack_line(row,pos,point):
@@ -252,28 +289,72 @@ static func advance(run: Dictionary, point: Vector2, dt: float, sprinting: bool 
 						var aim := pos.direction_to(point)
 						a["attack_aim"]=pack(Vector2.DOWN if aim.is_zero_approx() else aim)
 					a.cooldown=s.interval
-			elif float(a.get("cast",0.0)) <= 0.0 and not recoiling:
+			elif float(a.get("cast",0.0)) <= 0.0 and not recoiling and not Skills.Tide.rooted(a):
 				var destination: Vector2 = point if row.get("region","") in ["fenshui","salt_pool"] else next_waypoint(pos,point)
-				a.position=pack(move_actor(row,pos,pos.direction_to(destination)*minf(s.speed*dt,pos.distance_to(destination))) if row.get("region","") in ["fenshui","salt_pool"] else move_monster(pos,destination,s.speed*dt))
-				if row.get("region","")=="fenshui": a.position=pack(WaterSpacing.swim(run,row,pos,pos.direction_to(destination),minf(s.speed*dt,pos.distance_to(destination))))
-		elif a.mode=="idle" and row.get("region","")=="fenshui" and not recoiling:
-			WaterSpacing.patrol(run,row,dt)
+				a.position=pack(move_actor(row,pos,pos.direction_to(destination)*minf(speed*dt,pos.distance_to(destination))) if row.get("region","") in ["fenshui","salt_pool"] else move_monster(pos,destination,speed*dt))
+				if row.get("region","")=="fenshui": a.position=pack(WaterSpacing.swim(run,row,pos,pos.direction_to(destination),minf(speed*dt,pos.distance_to(destination))))
+		elif a.mode=="idle" and row.get("region","")=="fenshui" and not recoiling and not Skills.Tide.rooted(a):
+			WaterSpacing.patrol(run,row,dt,Skills.Smoke.speed(c,pos)*Skills.Tide.speed(a))
 		a.velocity=pack((vec(a.position)-pos)/dt)
 	if c.hp<=0:
 		clear_hit(c)
 		for actor in c.actors.values(): clear_hit(actor)
+		Skills.clear_marks(c)
+		Skills.Smoke.clear(c)
+		Skills.Trail.clear(c)
+		Skills.Tide.clear(c)
+		Skills.Charge.clear(c)
 		c.shots.clear()
 		c.enemy_shots.clear()
 		c.action_left=0.0
 		c.axe_pending=false
 		return
+	for event in Skills.Charge.advance(run,dt):
+		Skills.direct_damage(run,event.id,event.damage,false)
+		if event.wall>0 and c.actors[event.id].hp>0: Skills.damage(run,event.id,event.wall,false)
+	point=vec(c.hero)
+	Skills.Tide.advance_controls(run,dt)
+	# 首段伤害先落账，再筛选外潮/收网目标，避免同帧双击再次移动已死目标。
+	for event in Skills.Tide.initial_hits(run):
+		if run.combat.actors[event.id].hp>0: Skills.direct_damage(run,event.id,event.damage,false)
+	for event in Skills.Tide.advance(run,dt):
+		if run.combat.actors[event.id].hp>0: Skills.direct_damage(run,event.id,event.damage,false)
+	for event in Skills.Smoke.advance(run,dt):
+		Skills.damage(run,event.id,event.damage,false)
 	var flying: Array = []
 	for shot in c.shots:
 		if not shot.has("lives"): shot.lives = life_ids(run)
 		var old := vec(shot.position)
+		if shot.get("kind","")=="jiaopopo":
+			var flight_time:=float(shot.flight)
+			shot.time=minf(flight_time,float(shot.time)+dt)
+			var destination:=vec(shot.origin).lerp(vec(shot.target),float(shot.time)/flight_time)
+			var landing:=old
+			var blocked:=false
+			var count:=maxi(1,ceili(old.distance_to(destination)/2.0))
+			for i in range(1,count+1):
+				var candidate:=old.lerp(destination,float(i)/count)
+				if not projectile_clear(candidate,str(c.get("region","maze_entry"))):
+					blocked=true
+					break
+				landing=candidate
+			shot.position=pack(landing)
+			if blocked or float(shot.time)>=flight_time-0.0000001:
+				Skills.Smoke.land(c,landing,int(shot.rank),int(shot.damage))
+			else: flying.append(shot)
+			continue
+		if shot.get("kind","") == "salia":
+			if not shot.has("tracking_id"): shot.tracking_id = lightning_target(run,vec(shot.origin))
+			var target_id: String = shot.tracking_id
+			if not valid_skill_target(run,target_id,shot): continue
+			shot.origin = pack(old)
+			shot.target = c.actors[target_id].position.duplicate()
+			shot["distance"] = float(shot.get("distance",0.0)) + 600.0*dt
+			if shot.distance > 360.0: continue
 		var flight: float = shot.get("flight", FLIGHT)
 		shot.time=minf(flight,shot.time+dt)
 		var next := vec(shot.origin).lerp(vec(shot.target),shot.time/flight)
+		if shot.get("kind","") == "salia": next = old.move_toward(vec(shot.target),600.0*dt)
 		var used := false
 		# 沿轨迹细分检测，最近命中单体后立即终止，障碍先阻挡。
 		var steps := maxi(1,ceili(old.distance_to(next)/2.0))
@@ -287,20 +368,111 @@ static func advance(run: Dictionary, point: Vector2, dt: float, sprinting: bool 
 				break
 			for row in Catalog.rows(c):
 				var a: Dictionary=c.actors[row.id]
+				if row.id in shot.get("hit_ids",[]): continue
 				if run.monsters[row.id].status!="alive" or a.hp<=0 or a.mode=="return" or not Catalog.targetable(c,row.id): continue
 				if int(shot.lives.get(row.id,-1)) != int(run.monsters[row.id].get("refresh_count",0)): continue
 				if p.distance_to(vec(a.position))<=14.0:
-					Skills.damage(run, row.id, int(shot.get("damage", c.attack)))
-					if a.hp > 0: hit(a, vec(a.position), vec(shot.origin), 12.0)
+					var skill_kind: String = shot.get("kind","")
+					var amount := skill_damage(run,shot,row)
+					if skill_kind == "dingdang":
+						Skills.damage(run,row.id,amount)
+						Skills.apply_mark(run,row.id,int(shot.get("rank",1)))
+					else:
+						Skills.direct_damage(run, row.id, amount)
+					if skill_kind == "salia": lightning_chain(run,shot,row.id,amount)
+					if skill_kind == "yufeng": apply_wind(run,shot,row)
+					elif a.hp > 0: hit(a, vec(a.position), vec(shot.origin), 12.0)
 					else: clear_hit(a)
 					if a.mode=="idle": a.mode="chase"
 					used=true
+					if skill_kind == "yufeng":
+						shot.hit_ids.append(row.id)
+						if int(shot.get("rank",1))>=6 and shot.hit_ids.size()==1:
+							shot.damage = roundi(float(shot.damage)*0.6)
+							used=false
 					break
 			if used: break
 		shot.position=pack(next)
-		if not used and shot.time<flight: flying.append(shot)
+		if not used and (shot.get("kind","")=="salia" or shot.time<flight): flying.append(shot)
 	c.shots=flying
+	Skills.Trail.end_step(run,dt)
 	c.cooldown=maxf(0.0,c.cooldown-dt)
+
+static func valid_skill_target(run: Dictionary, id: String, shot: Dictionary) -> bool:
+	return run.combat.actors.has(id) and run.monsters.has(id) and run.monsters[id].status == "alive" and run.combat.actors[id].hp>0 and run.combat.actors[id].mode!="return" and Catalog.targetable(run.combat,id) and int(shot.lives.get(id,-1)) == int(run.monsters[id].get("refresh_count",0))
+
+static func lightning_target(run: Dictionary, origin: Vector2) -> String:
+	var best := ""
+	var distance := 360.01
+	for row in Catalog.rows(run.combat):
+		if not valid_skill_target(run,row.id,{"lives":life_ids(run)}): continue
+		var at := vec(run.combat.actors[row.id].position)
+		var d := origin.distance_to(at)
+		if d<distance:
+			best=row.id
+			distance=d
+	return best
+
+static func skill_damage(run: Dictionary, shot: Dictionary, row: Dictionary) -> int:
+	var rank := int(shot.get("rank",1))
+	var multiplier := 1.0
+	var kind: String = shot.get("kind","")
+	if kind=="yufeng":
+		if run.combat.actors[row.id].hp == STATS[row.kind].hp:
+			multiplier += 0.2 if rank>=4 else (0.15 if rank>=2 else 0.1)
+		if rank>=5: multiplier += 0.1
+	if kind=="salia" and str(row.get("element",""))=="water":
+		multiplier += 0.2 if rank>=4 else (0.15 if rank>=2 else 0.1)
+	return roundi(float(shot.get("damage",run.combat.attack))*multiplier)
+
+static func lightning_chain(run: Dictionary, shot: Dictionary, first: String, amount: int) -> void:
+	if run.combat.get("region","")!="fenshui": return
+	var at := vec(run.combat.actors[first].position)
+	if not Catalog.Fenshui.water(at,0.0): return
+	var rank := int(shot.get("rank",1))
+	var visited := [first]
+	for hop in (4 if rank>=6 else 3):
+		var best := ""
+		var distance := 150.01 if rank>=5 else 120.01
+		for row in Catalog.rows(run.combat):
+			if row.id in visited or not valid_skill_target(run,row.id,shot): continue
+			var to := vec(run.combat.actors[row.id].position)
+			if at.distance_to(to)<distance and water_line(at,to):
+				best=row.id
+				distance=at.distance_to(to)
+		if best.is_empty(): break
+		Skills.damage(run,best,roundi(amount*(0.7 if rank>=3 else 0.6)))
+		if not run.combat.has("lightning_chains"): run.combat.lightning_chains=[]
+		run.combat.lightning_chains.append({"from":pack(at),"to":run.combat.actors[best].position.duplicate(),"left":0.18})
+		visited.append(best)
+		at=vec(run.combat.actors[best].position)
+
+static func apply_wind(run: Dictionary, shot: Dictionary, row: Dictionary) -> void:
+	var a: Dictionary=run.combat.actors[row.id]
+	a.hit_remaining=0.0
+	a.hit_velocity=[0.0,0.0]
+	if a.hp<=0 or float(a.get("wind_immune",0.0))>0: return
+	a.wind_left=0.3
+	a.wind_immune=2.0
+	a.wind_steps=0
+	a.wind_direction=pack(vec(shot.origin).direction_to(vec(a.position)))
+	a.hit_remaining=0.0
+	a.flash_remaining=0.1
+
+static func advance_wind_control(run: Dictionary, dt: float) -> void:
+	for row in Catalog.rows(run.combat):
+		var a: Dictionary=run.combat.actors[row.id]
+		a.wind_immune=maxf(0.0,float(a.get("wind_immune",0.0))-dt)
+		if Skills.Trail.paralyzed(a): continue
+		var left := float(a.get("wind_left",0.0))
+		if left<=0: continue
+		a.wind_left=maxf(0.0,left-dt)
+		var steps := mini(3,int(floor((0.3-a.wind_left+0.00001)/0.1)))
+		while int(a.wind_steps)<steps:
+			a.position=pack(move_actor(row,vec(a.position),vec(a.wind_direction)*12.0))
+			a.wind_steps+=1
+		a.flash_remaining=0.1
+		a.velocity=[0.0,0.0]
 
 static func select_target(run: Dictionary, point: Vector2) -> String:
 	var c: Dictionary=run.combat

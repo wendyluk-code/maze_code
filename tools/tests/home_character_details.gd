@@ -53,7 +53,7 @@ func _service_checks() -> void:
 		_put("tieshan", level, 6)
 		var yaya := Progression.record(sm, "yaya")
 		var tieshan := Progression.record(sm, "tieshan")
-		_check(yaya.valid and tieshan.valid and yaya.attack == level and tieshan.attack == level * 2 and yaya.satiety_max == 2 + floori(level / 5.0) and tieshan.satiety_max == 1 + floori(level / 5.0) and tieshan.recovery_percent < yaya.recovery_percent, "等级%d基础成长和阶位独立" % level)
+		_check(yaya.valid and tieshan.valid and yaya.attack == level and tieshan.attack == level * 2 and yaya.satiety_max == Progression.satiety_limit("yaya",level) and tieshan.satiety_max == Progression.satiety_limit("tieshan",level) and tieshan.recovery_percent < yaya.recovery_percent, "等级%d基础成长和阶位独立" % level)
 	for bad in [null, [], "bad", {"level": 1, "rank": 7, "exp": 0, "breakthroughs": 0}, {"level": 5, "rank": 1, "exp": 1, "breakthroughs": 0}]:
 		sm.data[Progression.KEY]["yaya"] = bad
 		_check(not Progression.record(sm, "yaya").valid and not Progression.breakthrough(sm, "yaya").success, "坏记录禁止展示奖励和突破")

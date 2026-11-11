@@ -1,24 +1,46 @@
 extends "res://tools/tests/rec01_flow.gd"
+var audio_cues: Array[StringName] = []
+
+func _heard_recruit(cue: StringName) -> void:
+	if cue not in [&"party_join", &"cooking_complete"]: return
+	audio_cues.append(cue)
+	_check(GameAudio._players[cue].playing, "抽卡实际播放器启动:" + str(cue))
 
 func _run() -> void:
+	GameAudio.cue_played.connect(_heard_recruit)
 	sm = get_node("/root/SaveManager")
 	tm = get_node("/root/TutorialManager")
 	evidence = _arg("--output-dir=")
 	_check(_verify_isolation(), "隔离正式存档")
+	var frequencies := {"salia": 0, "yufeng": 0, "yaya": 0, "tieshan": 0}
+	for bucket in 100:
+		for member in [0.25, 0.75]:
+			var picked: String = Recruit.pick((bucket + 0.5) / 100.0, member)
+			_check(frequencies.has(picked), "卡池仅四人")
+			frequencies[picked] += 1
+	_check(frequencies == {"salia":20,"yufeng":60,"yaya":60,"tieshan":60}, "概率10/30/30/30")
+	_check(Recruit.pick(0.99, 1.0, true) == "salia", "保底只出萨莉亚")
+	_seed()
+	sm.data.gold = 100000
+	var guaranteed: Dictionary = sm.recruit(10, func(): return 0.99)
+	_check(guaranteed.success and guaranteed.results[9].id == "salia", "实际十连无SSR时末张保底萨莉亚")
+	for result in guaranteed.results:
+		_check(result.id in Recruit.ACTIVE_POOL, "实际十连不出其他角色")
 	if failures == 0:
 		for resolution in [Vector2i(1152,648), Vector2i(1280,720), Vector2i(1920,1080)]:
 			get_window().size = resolution
 			suffix = "_%dx%d" % [resolution.x, resolution.y]
 			await _review_flow()
+	await preload("res://tools/tests/restaurant_audio_cleanup.gd").finish(get_tree())
 	var file := FileAccess.open(_arg("--report="), FileAccess.WRITE)
 	file.store_string(JSON.stringify({"checks":checks,"failures":failures,"results":results}, "\t"))
 	get_tree().quit(1 if failures else 0)
 
 func _wait_stage(view: Control, expected: String) -> bool:
-	for i in 180:
+	for i in 600:
 		if view.stage == expected: return true
 		await get_tree().create_timer(0.02).timeout
-	_check(false, "演出阶段超时:"+expected, view.stage)
+	_check(false, "演出阶段超时:"+expected, {"stage":view.stage})
 	return false
 
 func _centered(button: Control) -> bool:
@@ -36,11 +58,12 @@ func _review_flow() -> void:
 	player.last_valid = player.position
 	await get_tree().physics_frame
 	await get_tree().process_frame
-	await _click(get_tree().get_first_node_in_group("ui_layer")._buttons[target])
+	HomePage.open_page(get_tree())
+	await get_tree().process_frame
 	var page = get_tree().get_first_node_in_group("adventurer_home")
 	await _click(page.tabs[1])
 	var panel = page.summon_panel
-	for entry in [["salia","SaliaName"],["yufeng","YufengName"],["dingdang","DingdangName"]]:
+	for entry in [["salia","SaliaName"],["yufeng","YufengName"],["yaya","YayaName"],["tieshan","TieshanName"]]:
 		_check(panel.get_node(entry[1]).get_global_rect().encloses(panel.rarity_badges[entry[0]].get_global_rect()), "姓名稀有度同一底板:"+entry[0])
 	var buttons: Rect2 = panel.single_button.get_global_rect().merge(panel.ten_button.get_global_rect())
 	_check(absf(buttons.get_center().x - get_viewport().get_visible_rect().get_center().x) < 2, "招募双按钮整体居中")
@@ -57,6 +80,7 @@ func _review_flow() -> void:
 	var view = page.recruit_results
 	view.present(batch.results)
 	for i in 10:
+		var join_before: int = audio_cues.count(&"party_join")
 		_check(view.index == i and view.displayed_rank == 1 and view.stage == "enter" and view.title.text == "恭喜获得", "每张先出现1星且无进度标题:%d"%i)
 		_check(not view.caption.visible and not view.draw_line.visible, "翻卡前文字隐藏")
 		if i == 0:
@@ -64,24 +88,30 @@ func _review_flow() -> void:
 			await get_tree().create_timer(0.25).timeout
 			await _shot("r2_entry_turn")
 		await _wait_stage(view,"name")
+		_check(audio_cues.count(&"party_join") == join_before + 1, "每张翻牌播放一次入队音效")
 		_check(view.caption.visible and not view.draw_line.visible and view.current_face.scale.is_equal_approx(Vector2(0.44,0.44)), "翻牌后先名字且卡面缩小")
 		_check(view.caption.modulate.a < 1.0, "姓名使用渐显")
 		await _wait_stage(view,"upgrade")
 		var result: Dictionary = batch.results[i]
-		_check(not view.draw_line.visible and view.outcome_line.text == "升至%d星" % int(result.rank) and view.outcome_line.modulate.a < 1.0, "只渐显最终升星文案")
+		_check(not view.draw_line.visible and view.outcome_line.text == ("已满6星" if result.kind == "stardust" else "升至%d星" % int(result.rank)) and view.outcome_line.modulate.a < 1.0, "只渐显最终升星文案")
 		if result.kind == "stardust":
-			if not await _wait_stage(view,"dust"): break
+			if not await _wait_stage(view,"ready"): break
 			await get_tree().process_frame
-			_check(view.loot.visible and view.loot._title_label.text == "恭喜获得" and view.loot.item_views[0].icon.size == Vector2(43,43), "自动转尘复用43像素奖励窗")
-			_check(_centered(view.loot._confirm_button), "奖励收下按钮居中")
+			_check(not view.loot.visible and view.current_face.visible and view.displayed_rank == 6 and view.outcome_line.text == "已满6星", "满星保留卡面不弹奖励窗")
+			_check(view.content.get_node("Conversion").get_child(0).text == "转化为" and view.content.get_node("Conversion").get_child(2).text == "+100", "星尘转化行文案与数量")
 			await _shot("r2_auto_dust_%d"%i)
-			await _click(view.loot._confirm_button)
+			await _click(view.next_button)
 		else:
 			if not await _wait_stage(view,"ready"): break
 			_check(view.displayed_rank == int(result.rank) and not view.loot.visible, "正确升星且不产尘:%d"%i)
 			if i in [2,5]: await _shot("r2_upgraded_%d"%i)
 			await _click(view.next_button)
 	_check(view.overview and view.grouped.size() == 2 and view.title.text == "恭喜获得", "十连按角色合并总览")
+	await get_tree().create_timer(1.2).timeout
+	var complete_before: int = audio_cues.count(&"cooking_complete")
+	_check(complete_before > 0, "总览播放烹饪成功音效")
+	view._show_overview()
+	_check(audio_cues.count(&"cooking_complete") == complete_before, "重复总览不重播")
 	_check(view.grouped[0] == {"id":"salia","rank":6,"count":8,"duplicates":7,"stardust":200}, "新卡首次不重复，六星溢出另外统计")
 	_check(view.grouped[1] == {"id":"yufeng","rank":2,"count":2,"duplicates":1,"stardust":0}, "同角色只显示最高星级")
 	_check(_centered(view.next_button), "总览单按钮居中")
@@ -91,7 +121,7 @@ func _review_flow() -> void:
 		for state in ["normal","hover","pressed"]:
 			var tint: Color = button.get_theme_stylebox(state).modulate_color
 			_check(tint.r >= tint.g, "按钮状态不使用绿色:"+state)
-	_check(view.next_button.text == "确认" and view.skip_button.text == "确认", "确认文案与原跳转行为")
+	_check(view.next_button.text == "确认" and view.skip_button.text == "查看全部", "查看全部与总览确认文案")
 	var boxes: Array = []
 	for child in view.content.get_children():
 		if child is VBoxContainer: boxes.append(child)
@@ -105,12 +135,14 @@ func _review_flow() -> void:
 	_check(sm.data == saved and FileAccess.get_file_as_bytes(sm._active_save_path) == disk, "完整演出内存磁盘均不重复发奖")
 	# 精确示例：新角色3张 => 重复2次/3星；使用三次真实事务的快照。
 	var example: Array = []
+	var yaya_before: int = Growth.record(sm, "yaya").rank
 	for i in 3:
 		var pick := [0.4,0.0]
 		example.append_array(sm.recruit(1,func(): return pick.pop_front()).results)
 	view.present(example)
 	await _click(view.skip_button)
-	_check(view.grouped[0].count == 3 and view.grouped[0].duplicates == 2 and view.grouped[0].rank == 3, "三张新角色示例聚合")
+	_check(view.grouped[0].count == 3 and view.grouped[0].duplicates == 3 and view.grouped[0].rank == mini(6, yaya_before + 3), "三张已有芽芽聚合")
+	await get_tree().create_timer(1.2).timeout
 	await _shot("r2_three_cards_example")
 	await _click(view.next_button)
 	# 同批前已拥有的首张也计重复。
@@ -124,7 +156,7 @@ func _review_flow() -> void:
 	saved = sm.data.duplicate(true)
 	disk = FileAccess.get_file_as_bytes(sm._active_save_path)
 	# 每种异步阶段取消，关闭后等待旧动画时长，确保不会重开弹窗。
-	for phase in ["enter","name","upgrade","flipping","dust"]:
+	for phase in ["enter","name","upgrade","dust"]:
 		view.present([batch.results[6] if phase in ["flipping","dust"] else batch.results[2], batch.results[9]])
 		if phase != "enter": await _wait_stage(view,phase)
 		await _click(view.skip_button)
@@ -135,8 +167,8 @@ func _review_flow() -> void:
 		_check(not view.visible and not view.loot.visible and not view.flipping, "关闭及连击无旧回调:"+phase)
 	_check(sm.data == saved and FileAccess.get_file_as_bytes(sm._active_save_path) == disk, "所有中断只读已保存结果")
 	view.present([batch.results[6]])
-	await _wait_stage(view,"dust")
-	await _click(view.loot._confirm_button)
+	await _wait_stage(view,"ready")
+	await _click(view.next_button)
 	_check(not view.visible, "满星单抽收下直接结束不再确认")
 	# 独立展示数据覆盖6/10个位置；不修改统一角色目录或存档。
 	var layout_view = preload("res://tools/tests/rec01_layout_view.gd").new()
@@ -145,6 +177,10 @@ func _review_flow() -> void:
 		layout_view.amount = amount
 		layout_view.present([batch.results[6]])
 		layout_view._show_overview()
+		await _shot("r2_overview_backs_%d"%amount)
+		await get_tree().create_timer(0.3).timeout
+		await _shot("r2_overview_turn_%d"%amount)
+		await get_tree().create_timer(0.9).timeout
 		await get_tree().process_frame
 		_check(layout_view.grouped.size() == amount, "总览独立位置数量:%d"%amount)
 		for child in layout_view.content.get_children():

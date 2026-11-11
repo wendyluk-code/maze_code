@@ -81,6 +81,7 @@ func _input(event: InputEvent) -> void:
 
 func close() -> void:
 	if _closing or not visible or not is_instance_valid(_target): return
+	GameAudio.interaction()
 	_closing = true
 	_flying = TextureRect.new()
 	_flying.texture = entry_texture()
