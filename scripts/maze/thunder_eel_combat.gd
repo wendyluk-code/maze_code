@@ -176,12 +176,12 @@ static func discharge(run: Dictionary, row: Dictionary, hero: Vector2, amount: i
  c.electric_serial=int(c.get("electric_serial",0))+1
  if c.hp>0 and Area.contains(shape,hero):
   var hp_before:=float(c.hp)
-  c.hp=maxf(0,c.hp-skills.incoming_damage(run,amount))
-  preload("res://scripts/maze/player_hurt_event.gd").record(c,hp_before,"electric",hero,center,hurt_feedback)
-  c.last_attacker=row.kind
-  c.hit_velocity=pack(center.direction_to(hero)*150.0)
-  c.hit_remaining=0.12
-  c.flash_remaining=0.1
+  if skills.receive_damage(run,amount):
+   preload("res://scripts/maze/player_hurt_event.gd").record(c,hp_before,"electric",hero,center,hurt_feedback)
+   c.last_attacker=row.kind
+   c.hit_velocity=pack(center.direction_to(hero)*150.0)
+   c.hit_remaining=0.12
+   c.flash_remaining=0.1
  for id in c.actors:
   var frog: bool=preload("res://scripts/maze/wind_frog_counter.gd").enabled(c,id)
   if (not id.begins_with("fenshui_silverfish_") and not frog) or run.monsters[id].status!="alive": continue

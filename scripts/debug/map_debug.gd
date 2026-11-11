@@ -60,7 +60,7 @@ func prepare(sm: Node, region: String, point_id := "entrance", restart := false)
 	sm.cancel_maze_entry()
 	var result := {"success":true}
 	if restart and run.get("active",false):
-		result = Run.finish(sm,false,Roads.SPAWN)
+		result = Run.finish(sm,false,Roads.SPAWN,true)
 		run = Run.snapshot(sm)
 	if result.success and not run.get("active",false):
 		result = Run.begin(sm,Roads.SPAWN)

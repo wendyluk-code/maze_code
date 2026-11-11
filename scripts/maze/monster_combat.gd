@@ -43,7 +43,7 @@ static func protected_rockmane(run: Dictionary, id: String) -> bool:
  return actor.get("rock_phase","active") not in ["rest","stunned"]
 
 ## 保留原直接伤害入口：调用方已确认命中；不生成显示或局部时钟。
-static func damage(run: Dictionary, id: String, amount: int=-1) -> void:
+static func damage(run: Dictionary, id: String, amount: int=-1, knockback: bool=true) -> void:
  var c: Dictionary=run.combat
  if not Catalog.targetable(c,id) or protected_rockmane(run,id): return
  var a: Dictionary=c.actors[id]
@@ -56,10 +56,15 @@ static func damage(run: Dictionary, id: String, amount: int=-1) -> void:
  # 近战沿用原标量运算顺序，避免迁移时改变已保存向量的精度。
  var direction:=_vec(c.hero).direction_to(_vec(a.position))
  if direction.is_zero_approx(): direction=Vector2.DOWN
- a.hit_velocity=[direction.x*100.0,direction.y*100.0]
- a.hit_remaining=HIT_DURATION
+ if knockback:
+  a.hit_velocity=[direction.x*100.0,direction.y*100.0]
+  a.hit_remaining=HIT_DURATION
  a.flash_remaining=FLASH_DURATION
  if id==Catalog.Frog.ID and a.hp<=0: a.frog_shots.clear()
+ if a.hp<=0:
+  a.erase("lock_mark")
+  a.erase("tide_slow")
+  a.erase("tide_root")
  c.hits+=1
  var lesson: Dictionary=c.get("slime_lesson",{})
  if lesson.get("enabled",false) and lesson.get("attack_read",false) and not lesson.get("switch_read",false):

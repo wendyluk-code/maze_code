@@ -4,6 +4,9 @@ const Growth = preload("res://scripts/characters/character_progression.gd")
 const Run = preload("res://scripts/maze/capture_run.gd")
 const Transition = preload("res://scripts/ui/components/scene_transition.gd")
 var map_session = preload("res://scripts/debug/map_debug.gd").new()
+const Recipes = preload("res://scripts/cooking/recipe_catalog.gd")
+var ingredient_rows: Dictionary = {}
+var ingredient_submit: Button
 var buffer := ""
 var last_digit := 0
 var down: Dictionary = {}
@@ -19,6 +22,7 @@ var point_select: OptionButton
 var runtime_label: Label
 var resource_page: VBoxContainer
 var map_page: VBoxContainer
+var ingredient_page: VBoxContainer
 var notification: Label
 var started_at := ""
 var code_stamp := ""
@@ -117,6 +121,7 @@ func _build() -> void:
 	tabs.name = "DebugTabs"
 	tabs.add_tab("资源与生命")
 	tabs.add_tab("地图跳转")
+	tabs.add_tab("补充食材")
 	rows.add_child(tabs)
 	resource_page = VBoxContainer.new()
 	resource_page.custom_minimum_size.y = 220
@@ -173,11 +178,14 @@ func _build() -> void:
 	_action_button(actions,"重载当前地图（保留进度）","MapReload",func(): _map_action("reload"))
 	_action_button(actions,"重新开始本趟试玩","MapRestart",func(): _map_action("restart"))
 	_action_button(actions,"退出试玩，返回原进度","MapLeave",func(): _map_action("leave"))
+	_build_ingredients()
 	tabs.tab_changed.connect(func(index):
 		resource_page.visible = index == 0
 		map_page.visible = index == 1
+		ingredient_page.visible = index == 2
 	)
 	map_page.hide()
+	ingredient_page.hide()
 	status = Label.new()
 	status.text = ""
 	status.add_theme_font_size_override("font_size",14)
@@ -254,9 +262,103 @@ func open_panel() -> void:
 	_block_inputs(get_tree().root)
 	panel.show()
 	_refresh_runtime()
+	_refresh_ingredients()
 	status.text = "金币 %d　星尘 %d" % [SaveManager.gold_balance(), SaveManager.stardust_balance()]
 	if tabs.current_tab == 0: amount.get_line_edit().grab_focus()
-	else: region_select.grab_focus()
+	elif tabs.current_tab == 1: region_select.grab_focus()
+	else: ingredient_submit.grab_focus()
+
+func recipe_ingredient_ids() -> Array[String]:
+	var ids: Array[String] = []
+	for recipe_id in Recipes.recipe_ids():
+		for id in Recipes.get_recipe(recipe_id).ingredients:
+			if id not in ids: ids.append(id)
+	return ids
+
+func _build_ingredients() -> void:
+	var page := VBoxContainer.new()
+	ingredient_page = page
+	page.name = "补充食材"
+	tabs.get_parent().add_child(page)
+	var hint := Label.new()
+	hint.text = "勾选食材并分别填写数量；每种库存上限 999"
+	page.add_child(hint)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(490, 240)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	page.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	for id in recipe_ingredient_ids():
+		var row := HBoxContainer.new()
+		list.add_child(row)
+		var selected := CheckBox.new()
+		selected.text = Recipes.get_ingredient(id).get("name", id)
+		selected.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(selected)
+		var stock := Label.new()
+		stock.custom_minimum_size.x = 90
+		row.add_child(stock)
+		var quantity := LineEdit.new()
+		quantity.text = "1"
+		quantity.custom_minimum_size.x = 90
+		quantity.max_length = 6
+		quantity.editable = false
+		quantity.tooltip_text = "本次补充数量（正整数）"
+		selected.toggled.connect(func(checked: bool): quantity.editable = checked)
+		row.add_child(quantity)
+		ingredient_rows[id] = {"selected": selected, "quantity": quantity, "stock": stock}
+	ingredient_submit = SproutButton.new()
+	ingredient_submit.configure("补充所选食材到仓库")
+	ingredient_submit.set_icon_visible(false)
+	ingredient_submit.pressed.connect(_submit_ingredients)
+	page.add_child(ingredient_submit)
+
+func _refresh_ingredients() -> void:
+	var stock := SaveManager.warehouse_snapshot()
+	for id in ingredient_rows:
+		ingredient_rows[id].stock.text = "库存 %d" % int(stock.get(id, 0))
+
+func _submit_ingredients() -> void:
+	var selection := {}
+	for id in ingredient_rows:
+		var row: Dictionary = ingredient_rows[id]
+		if not row.selected.button_pressed: continue
+		var value: String = row.quantity.text.strip_edges()
+		if value.is_empty() or not value.is_valid_int():
+			status.text = "请为所选食材填写正整数；本次未补充"
+			return
+		selection[id] = int(value)
+	var result := grant_ingredients(selection)
+	status.text = result.message
+	_refresh_ingredients()
+	if result.success:
+		for row in ingredient_rows.values(): row.selected.button_pressed = false
+
+func grant_ingredients(selection: Dictionary) -> Dictionary:
+	if not OS.is_debug_build(): return {"success": false, "message": "仅调试构建可用"}
+	if selection.is_empty(): return {"success": false, "message": "请先勾选要补充的食材"}
+	var sm := get_node("/root/SaveManager")
+	if sm._replaying or sm._prologue_preview: return {"success": false, "message": "重播预览中不能修改存档"}
+	var allowed := recipe_ingredient_ids()
+	var raw = sm.data.get("warehouse_stock", {})
+	if not raw is Dictionary: return {"success": false, "message": "仓库记录无效"}
+	var stock: Dictionary = raw.duplicate(true)
+	var current: Dictionary = sm.warehouse_snapshot()
+	for id in selection:
+		if id not in allowed or not Growth._integer(selection[id], 1, 999):
+			return {"success": false, "message": "食材或数量无效；本次未补充"}
+		var existing = raw.get(id, current.get(id, 0))
+		if not Growth._integer(existing, 0, 999 - int(selection[id])):
+			return {"success": false, "message": "%s库存无效或补充后超过999；本次未补充" % Recipes.get_ingredient(id).get("name", id)}
+		stock[id] = int(existing) + int(selection[id])
+	var before: Dictionary = sm.data.duplicate(true)
+	sm.data["warehouse_stock"] = stock
+	if not sm.save():
+		sm.data = before
+		return {"success": false, "message": "保存失败，整批补充已撤回"}
+	return {"success": true, "message": "已补充%d种食材到仓库并保存" % selection.size()}
 
 func close_panel() -> void:
 	if not is_instance_valid(panel) or not panel.visible: return

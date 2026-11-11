@@ -212,6 +212,8 @@ func present(won: bool, kind: String, enough_food: bool, current_power: int = 0,
 		illustration.texture=illustration_frames[0]
 	_layout(460,390 if won else 430)
 	show()
+	if won: GameAudio.play_cue(&"capture_success")
+	else: GameAudio.play_cue(&"failure")
 	if won and not tutorial_only_yes: _cancel_button.grab_focus()
 	else: _confirm_button.grab_focus()
 	await flip_in()
@@ -241,6 +243,7 @@ func present_capture_failure(kind: String = "slime") -> void:
 	_confirm_button.modulate = Color.WHITE
 	_layout(460,360)
 	show()
+	GameAudio.play_cue(&"capture_failure")
 	_confirm_button.grab_focus()
 	await flip_in()
 

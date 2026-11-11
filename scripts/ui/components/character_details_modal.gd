@@ -33,11 +33,10 @@ var active_icon: TextureRect
 var active_title: Label
 var active_description: Label
 var active_interval: Label
+var active_interval_title: Label
 var active_damage: Label
 var defense_value: Label
 var rarity_badge: TextureRect
-var active_rules_button: Button
-var active_rules_modal: SproutModal
 
 func _build() -> void:
 	theme = SproutTheme.make_theme()
@@ -128,17 +127,10 @@ func _build() -> void:
 	active_title = _label(active_skill, "", Rect2(96, 15, 620, 30), 28)
 	active_description = _label(active_skill, "", Rect2(96, 47, 626, 26), 21)
 	active_description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	active_rules_button = Button.new()
-	active_rules_button.text = "完整说明"
-	active_rules_button.position = Vector2(506, 5)
-	active_rules_button.size = Vector2(216, 38)
-	active_rules_button.add_theme_font_size_override("font_size", 22)
-	active_rules_button.pressed.connect(_open_active_rules)
-	active_skill.add_child(active_rules_button)
 	_label(active_skill, "伤害", Rect2(96, 88, 200, 50), 28)
 	active_damage = _label(active_skill, "队伍攻击力 ×100%", Rect2(340, 88, 382, 50), 28)
 	active_damage.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_label(active_skill, "攻击间隔", Rect2(96, 145, 250, 50), 28)
+	active_interval_title = _label(active_skill, "攻击间隔", Rect2(96, 145, 250, 50), 28)
 	active_interval = _label(active_skill, "", Rect2(434, 145, 288, 50), 28)
 	active_interval.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	for boundary in [88, 145]:
@@ -185,18 +177,6 @@ func _build() -> void:
 		skill_bodies.append(body)
 	error_label = _label(design, "角色数据异常，无法展示培养进度", Rect2(490, 180, 700, 100), 25)
 	error_label.hide()
-	active_rules_modal = SproutModal.new()
-	design.add_child(active_rules_modal)
-	active_rules_modal._panel.custom_minimum_size = Vector2(780, 500)
-	active_rules_modal._panel.size = Vector2(780, 500)
-	active_rules_modal._panel.offset_left = -390
-	active_rules_modal._panel.offset_top = -250
-	active_rules_modal._panel.offset_right = 390
-	active_rules_modal._panel.offset_bottom = 250
-	active_rules_modal._body_label.add_theme_font_size_override("font_size", 26)
-	active_rules_modal._title_label.add_theme_font_size_override("font_size", 30)
-	active_rules_modal._cancel_button.hide()
-	active_rules_modal.closed.connect(func(): active_rules_button.grab_focus())
 	_toast = Toast.attach_to(self)
 	resized.connect(_layout)
 	_layout()
@@ -309,9 +289,9 @@ func refresh() -> void:
 	var active_config: Dictionary = Progression.CHARACTERS[character_id]
 	active_title.text = "技能 · " + str(active_config.active_name)
 	active_description.text = str(active_config.active_description)
-	active_rules_button.visible = active_config.has("active_rules_text")
 	var active := Progression.active_skill(character_id, int(_record.level))
 	active_interval.text = ("%.2f" % active.interval).trim_suffix("0").trim_suffix(".") + " 秒"
+	active_damage.add_theme_font_size_override("font_size",20 if character_id in ["xiluomei","lanjiao"] else 28)
 	active_damage.text = "队伍攻击力 ×%s%%" % (("%.1f" % (active.multiplier * 100.0)).trim_suffix("0").trim_suffix("."))
 	if character_id == "yaya":
 		var tuning=preload("res://scripts/maze/combat_tuning.gd")
@@ -322,11 +302,26 @@ func refresh() -> void:
 		active_interval.text=("%.2f" % cooldown).trim_suffix("0").trim_suffix(".")+" 秒"
 		var percent: float=active.multiplier*tuning.effect("yaya","damage_scale",100.0)*tuning.effect("yaya","burst_damage_scale",25.0)/100.0
 		active_damage.text="单枚倍率 ×%s%%（取整）" % (("%.1f" % percent).trim_suffix("0").trim_suffix("."))
+	if character_id in ["xiluomei","lanjiao"]:
+		active_damage.text="基础倍率 ×%s%% · 分段见规则" % (("%.1f" % (active.multiplier*100.0)).trim_suffix("0").trim_suffix("."))
 	if active_config.get("implementation_status", "") == "catalog_only":
 		active_title.text = "技能设计 · " + str(active_config.active_name)
 		active_damage.text = "实战效果尚未接入"
 		if float(active_config.interval_start) <= 0.0:
 			active_interval.text = "团队被动"
+	active_interval_title.text="触发条件" if character_id in ["ahong","chengyan"] else "攻击间隔"
+	if character_id=="ahong":
+		active_title.text="团队被动 · 雷鸣足迹"
+		active_damage.text="不造成伤害"
+		active_interval.text="移动48像素 / 至少0.6秒"
+		active_interval.add_theme_font_size_override("font_size",20)
+	elif character_id=="chengyan":
+		active_title.text="团队被动 · 归流护持"
+		active_damage.text="保命与恢复生命"
+		active_interval.text="每趟首次致命伤"
+		active_interval.add_theme_font_size_override("font_size",20)
+	else:
+		active_interval.add_theme_font_size_override("font_size",28)
 	defense_value.text = str(_record.defense)
 	_refresh_satiety()
 	var recovery := "%.4f" % _record.recovery_percent
@@ -393,14 +388,7 @@ func _breakthrough() -> void:
 		var messages := {"insufficient_gold": "金币不足", "save_failed": "保存失败，金币未扣除", "preview": "演示中无法突破", "not_eligible": "当前无需突破", "invalid_record": "角色数据异常", "not_restaurant": "请返回餐厅后突破"}
 		_toast.show_message(messages.get(result.reason, "暂时无法突破"))
 
-func _open_active_rules() -> void:
-	var config: Dictionary = Progression.CHARACTERS[character_id]
-	active_rules_modal.show_modal(str(config.active_name) + " · 完整说明", str(config.active_rules_text), "返回属性")
-
 func close_modal() -> void:
-	if active_rules_modal.visible:
-		active_rules_modal.close_modal()
-		return
 	_toast.dismiss()
 	super.close_modal()
 

@@ -15,6 +15,9 @@ static func change_scene(tree: SceneTree, destination: PackedScene) -> Error:
 		return ERR_BUSY
 	if destination == null:
 		return ERR_INVALID_PARAMETER
+	# 调用方已提交进入/返回事务，此刻先切音乐，再开始遮罩与换图。
+	var audio := tree.root.get_node_or_null("GameAudio")
+	if audio != null: audio.music_for_destination(destination.resource_path)
 	var overlay = load("res://scripts/ui/components/scene_transition.gd").new()
 	tree.root.add_child(overlay)
 	return await overlay._switch(destination)
@@ -38,6 +41,9 @@ func _switch(destination: PackedScene) -> Error:
 	# 先完整绘制一帧遮罩，再换图；包括无头模式也不依赖渲染信号。
 	await get_tree().process_frame
 	var error := get_tree().change_scene_to_packed(destination)
+	if error != OK:
+		var audio := get_tree().root.get_node_or_null("GameAudio")
+		if audio != null: audio._sync_maze_music()
 	if error == OK:
 		await get_tree().scene_changed
 		_lock_players()

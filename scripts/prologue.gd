@@ -101,6 +101,7 @@ func _input(event: InputEvent) -> void:
 	_e_held = true
 	if playback_state == "awaiting_continue" and _continue_armed and not was_held:
 		_continue_armed = false
+		GameAudio.interaction()
 		request_exit("end_card_continue")
 
 func _on_finished() -> void:

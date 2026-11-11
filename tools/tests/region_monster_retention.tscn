@@ -1,0 +1,4 @@
+[gd_scene load_steps=2 format=3]
+[ext_resource type="Script" path="res://tools/tests/region_monster_retention.gd" id="1"]
+[node name="RegionMonsterRetention" type="Node"]
+script = ExtResource("1")

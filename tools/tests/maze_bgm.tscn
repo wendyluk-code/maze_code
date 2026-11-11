@@ -1,0 +1,4 @@
+[gd_scene load_steps=2 format=3]
+[ext_resource type="Script" path="res://tools/tests/maze_bgm.gd" id="1"]
+[node name="MazeBGMTest" type="Node"]
+script = ExtResource("1")

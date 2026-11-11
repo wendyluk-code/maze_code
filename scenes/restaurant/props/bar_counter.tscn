@@ -1,0 +1,57 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/restaurant/layout_prop.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/restaurant_layout/bar_counter_shadow.png" id="2"]
+
+[ext_resource type="PackedScene" path="res://scenes/restaurant/props/stool_right.tscn" id="StoolRight"]
+
+[ext_resource type="PackedScene" path="res://scenes/restaurant/props/stool_middle.tscn" id="StoolMiddle"]
+
+[ext_resource type="PackedScene" path="res://scenes/restaurant/props/stool_left.tscn" id="StoolLeft"]
+
+[node name="BarCounter" type="Node2D" groups=["restaurant_layout_props"]]
+y_sort_enabled = true
+script = ExtResource("1")
+display_name = "吧台"
+interactive = true
+ui_offset = Vector2(0, -238.44063545150502)
+metadata/_edit_group_ = true
+
+[node name="Art" type="Sprite2D" parent="."]
+texture = ExtResource("2")
+scale = Vector2(0.33053221288515405, 0.32948305049754323)
+offset = Vector2(25.5, -243.4798865879257)
+
+[node name="Body" type="StaticBody2D" parent="."]
+
+[node name="Collision" type="CollisionPolygon2D" parent="Body"]
+polygon = PackedVector2Array(-280, -35, 270, -160, 285, -85, -265, 45, -285, 0)
+
+[node name="InteractionArea" type="Polygon2D" parent="."]
+visible = false
+polygon = PackedVector2Array(-280, -35, 270, -160, 285, -85, -265, 45, -285, 0)
+
+[node name="StoolRight" parent="." instance=ExtResource("StoolRight")]
+z_index = -3
+z_as_relative = false
+position = Vector2(21, -134)
+
+[node name="Seat0" type="Marker2D" parent="StoolRight" groups=["restaurant_layout_anchors"]]
+position = Vector2(0, -15)
+
+[node name="StoolMiddle" parent="." instance=ExtResource("StoolMiddle")]
+z_index = -3
+z_as_relative = false
+position = Vector2(-53, -121)
+
+[node name="Seat1" type="Marker2D" parent="StoolMiddle" groups=["restaurant_layout_anchors"]]
+position = Vector2(0, -15)
+
+[node name="StoolLeft" parent="." instance=ExtResource("StoolLeft")]
+z_index = -3
+z_as_relative = false
+position = Vector2(-129, -107)
+
+[node name="Seat2" type="Marker2D" parent="StoolLeft" groups=["restaurant_layout_anchors"]]
+position = Vector2(0, -15)
+

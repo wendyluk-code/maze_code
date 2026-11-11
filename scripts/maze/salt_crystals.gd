@@ -96,6 +96,7 @@ static func apply(state: Dictionary,run: Dictionary,today: int) -> Dictionary:
 			continue
 		row.used+=1
 		ledger[id]=row
+		preload("res://scripts/maze/backpack_contents.gd").record(state, "rock_salt", "capture")
 		run.bag.rock_salt=int(run.bag.get("rock_salt",0))+1
 		changed=true
 		feedback.append("salt")

@@ -4,6 +4,41 @@ const GOLD: Texture2D = preload("res://assets/ui/hud_currency/gold.png")
 const REPUTATION: Texture2D = preload("res://assets/ui/hud_currency/reputation.png")
 var icon: TextureRect
 var value_label: Label
+var delta_queue: Array[int] = []
+var delta_active := false
+
+func show_delta(amount: int) -> void:
+	if amount == 0: return
+	delta_queue.append(amount)
+	if not delta_active: _play_delta()
+
+func _play_delta() -> void:
+	if delta_queue.is_empty():
+		delta_active = false
+		return
+	delta_active = true
+	var amount: int = delta_queue.pop_front()
+	await get_tree().process_frame
+	var label := Label.new()
+	label.name = "BalanceDelta"
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.text = "%+d" % amount
+	label.add_theme_font_size_override("font_size",14)
+	label.add_theme_color_override("font_color",Color("e9f5b2") if amount>0 else Color("f4a49a"))
+	label.add_theme_color_override("font_outline_color",SproutTheme.INK)
+	label.add_theme_constant_override("outline_size",2)
+	value_label.add_child(label)
+	label.position = Vector2(value_label.size.x-7,-14)
+	label.modulate.a = 0
+	var motion := create_tween().set_parallel(true)
+	motion.tween_property(label,"modulate:a",1.0,0.18)
+	motion.tween_property(label,"position:y",-17.0,0.35)
+	motion.chain().tween_interval(0.45)
+	motion.chain().tween_property(label,"modulate:a",0.0,0.45)
+	motion.parallel().tween_property(label,"position:y",-21.0,0.45)
+	await motion.finished
+	label.queue_free()
+	_play_delta()
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE

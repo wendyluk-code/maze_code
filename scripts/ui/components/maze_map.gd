@@ -189,7 +189,7 @@ func open_map() -> void:
 	_focus_before = get_viewport().gui_get_focus_owner()
 	_hide_exploration_hud()
 	expanded = true
-	mini_button.hide()
+	mini_button.show()
 	maze.player.input_locked = true
 	maze.player.set_physics_process(false)
 	maze.toast_label.dismiss()
@@ -224,12 +224,8 @@ func close_map() -> void:
 		get_viewport().gui_release_focus()
 
 func _hide_exploration_hud() -> void:
-	var nodes: Array = [get_parent().get_node_or_null("StaminaCounter")]
-	var flow = maze.get("capture_flow")
-	if is_instance_valid(flow):
-		nodes.append(flow.get("skill_bar"))
-		nodes.append(flow.get("controls_hint"))
-	_hud_visibility.suppress(nodes)
+	# 常驻信息位于地图暗幕下，保持数值刷新。
+	pass
 
 func _exit_tree() -> void:
 	_hud_visibility.restore()

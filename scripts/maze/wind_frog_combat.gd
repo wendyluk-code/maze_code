@@ -35,7 +35,7 @@ static func ordinary_busy(run: Dictionary) -> bool:
 static func hurt(run: Dictionary, point: Vector2, source: Vector2, hurt_feedback: Array=[], kind: String="slam") -> void:
 	var c: Dictionary=run.combat
 	var hp_before:=float(c.hp)
-	c.hp=maxf(0.0,c.hp-Skills.incoming_damage(run,int(Tuning.effect(kind,"damage",preload("res://scripts/maze/monster_editor.gd").attack("wind_frog",6)))))
+	if not Skills.receive_damage(run,int(Tuning.effect(kind,"damage",preload("res://scripts/maze/monster_editor.gd").attack("wind_frog",6)))): return
 	preload("res://scripts/maze/player_hurt_event.gd").record(c,hp_before,kind,point,source,hurt_feedback)
 	c.last_attacker="wind_frog"
 	var direction := source.direction_to(point)
@@ -52,6 +52,11 @@ static func advance(run: Dictionary, point: Vector2, dt: float, held: float = 0.
 	var c: Dictionary=run.combat
 	if c.get("region","")!="fenshui" or not c.get("frog_encounter",false): return
 	var a: Dictionary=c.actors[Config.ID]
+	if Skills.Trail.paralyzed(a):
+		a.velocity=[0.0,0.0]
+		advance_projectiles(run,point,dt,hurt_feedback)
+		return
+	if float(a.get("wind_left",0.0))>0: return
 	if run.monsters[Config.ID].status!="alive" or a.hp<=0:
 		a.frog_shots=[]
 		return
@@ -108,7 +113,7 @@ static func advance(run: Dictionary, point: Vector2, dt: float, held: float = 0.
 			a.frog_air_duration=Counter.AIR_TIME if Counter.enabled(c,Config.ID) else 0.35
 			a.frog_left=a.frog_air_duration
 	elif a.frog_phase=="airborne":
-		a.frog_left=maxf(0.0,a.frog_left-dt)
+		a.frog_left=maxf(0.0,a.frog_left-dt*Skills.Tide.speed(a))
 		var target:=vec(a.frog_target)
 		a.position=pack(vec(a.frog_origin).lerp(target,1.0-a.frog_left/Counter.flight_time(a)))
 		a.velocity=pack((vec(a.position)-pos)/dt)
@@ -211,7 +216,9 @@ static func advance_projectiles(run: Dictionary, point: Vector2, dt: float, hurt
 	var c: Dictionary=run.combat
 	if c.get("region","")!="fenshui" or not c.get("frog_encounter",false): return
 	var a: Dictionary=c.actors[Config.ID]
-	if run.monsters[Config.ID].status!="alive" or a.hp<=0: return
+	if run.monsters[Config.ID].status!="alive" or a.hp<=0:
+		a.frog_shots=[]
+		return
 	var flying: Array=[]
 	for shot in a.frog_shots:
 		var old := vec(shot.position)

@@ -12,9 +12,16 @@ var motes := PackedVector2Array()
 var background: Sprite2D
 var elapsed := 0.0
 var strength := 1.0
+var cutout_bounds := Rect2(1217.091, 738.7273, 224.8485, 238.7879)
+
+func screen_cutout_rect() -> Rect2:
+	if not is_instance_valid(background):
+		return Rect2()
+	return background.get_global_transform_with_canvas() * cutout_bounds
 
 func configure_entrance(which: String) -> void:
 	if which == "maze":
+		cutout_bounds = Rect2(21.81818, 688.4243, 233.3333, 224.2424)
 		outline = PackedVector2Array([
 			Vector2(65, 875), Vector2(62, 790), Vector2(66, 759),
 			Vector2(78, 735), Vector2(97, 717), Vector2(118, 711),

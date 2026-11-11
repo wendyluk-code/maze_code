@@ -1,0 +1,20 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/restaurant/layout_prop.gd" id="1"]
+
+[node name="Decoration" type="Node2D" groups=["restaurant_layout_props"]]
+script = ExtResource("1")
+metadata/_edit_group_ = true
+
+[node name="Art" type="Sprite2D" parent="."]
+position = Vector2(0, -40)
+
+[node name="Body" type="StaticBody2D" parent="."]
+
+[node name="Collision" type="CollisionPolygon2D" parent="Body"]
+disabled = true
+polygon = PackedVector2Array(-24, -12, 24, -12, 24, 0, -24, 0)
+
+[node name="InteractionArea" type="Polygon2D" parent="."]
+visible = false
+polygon = PackedVector2Array(-24, -12, 24, -12, 24, 0, -24, 0)

@@ -1,0 +1,23 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/restaurant/layout_prop.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/props/trash/trash_bin.png" id="2"]
+
+[node name="TrashBin" type="Node2D" groups=["restaurant_layout_props"]]
+script = ExtResource("1")
+display_name = "垃圾桶"
+interactive = true
+ui_offset = Vector2(0, -150)
+metadata/_edit_group_ = true
+
+[node name="Art" type="Sprite2D" parent="."]
+texture = ExtResource("2")
+region_enabled = true
+region_rect = Rect2(250, 150, 820, 960)
+scale = Vector2(0.125, 0.125)
+offset = Vector2(0, -480)
+
+[node name="Body" type="StaticBody2D" parent="."]
+
+[node name="Collision" type="CollisionPolygon2D" parent="Body"]
+polygon = PackedVector2Array(-40, -35, 40, -35, 40, 5, -40, 5)

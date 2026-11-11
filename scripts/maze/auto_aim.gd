@@ -8,7 +8,7 @@ static func target(run: Dictionary, point: Vector2, sparring: bool=false) -> Str
 	var c: Dictionary=run.get("combat",{})
 	if c.is_empty() or float(c.get("hp",0))<=0: return ""
 	var kind:=Combat.Skills.kind(run,int(c.get("selected",0)))
-	var reach: float=Combat.Skills.AXE_RADIUS if kind=="tieshan" else float(Combat.Skills.LENGTH.get(kind,0))
+	var reach: float=Combat.Skills.reach(run,kind)
 	var nearest:=""
 	var distance:=reach+0.001
 	var ids: Array=[]

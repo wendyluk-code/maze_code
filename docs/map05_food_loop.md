@@ -1,3 +1,5 @@
+> 2026-10-29 更新：本文便当、探索料理与食用增益部分已废止；现行规则见[统一餐厅料理](restaurant_recipes_unified.md)。其余内容作为历史记录保留。
+
 # MAP-05 采挖、宝箱与料理闭环
 
 独立工作树 `C:/Users/KSG/.codex/worktrees/75ee/maze_code`，分支 `codex/region-food-loop`，基线 `0ab444f2261b3a4534e05085f6d055eca5be5519`（`codex/region-map05-base-20261026`）。目标游戏工作区为 `F:/maze_code`，由来源主任务审查、增量合入及集成验收；本文不是主区完成声明。

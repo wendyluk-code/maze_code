@@ -1,4 +1,5 @@
 extends RefCounted
+const Balance = preload("res://scripts/maze/monster_balance.gd")
 const Config=preload("res://data/maze/salt_boss.gd")
 const Skills=preload("res://scripts/maze/team_attack.gd")
 const RoarArea=preload("res://scripts/maze/rockmane_roar_area.gd")
@@ -158,7 +159,7 @@ static func pack(p: Vector2) -> Array: return [p.x,p.y]
 static func hurt(run: Dictionary,point: Vector2,source: Vector2,hurt_feedback: Array=[]) -> void:
 	var c: Dictionary=run.combat
 	var hp_before: float=c.hp
-	c.hp=maxf(0,c.hp-Skills.incoming_damage(run,int(Tuning.number("rock.lunge" if c.actors[Config.ID].rock_phase=="lunge" else "rock.roar","damage",preload("res://scripts/maze/monster_editor.gd").attack("rockmane",8)))))
+	if not Skills.receive_damage(run,int(Tuning.number("rock.lunge" if c.actors[Config.ID].rock_phase=="lunge" else "rock.roar","damage",preload("res://scripts/maze/monster_editor.gd").attack("rockmane",8)))): return
 	c.last_attacker="rockmane"
 	var direction:=source.direction_to(point)
 	if direction.is_zero_approx(): direction=Vector2.DOWN
@@ -171,7 +172,7 @@ static func lunge_hurt(run: Dictionary,point: Vector2,source: Vector2,aim: Vecto
 	var c: Dictionary=run.combat
 	if float(c.get("rock_launch_guard",0.0))>0.0 or float(c.get("rock_stun_left",0.0))>0.0: return
 	hurt(run,point,source,hurt_feedback)
-	if c.hp<=0 or not Skills.PlayerHurt.enabled(c): return
+	if c.hp<=0 or Skills.Guard.protected(c) or not Skills.PlayerHurt.enabled(c): return
 	c.hurt_recovery_left=0.3
 	c.rock_stun_left=0.0
 	c.rock_launch_guard=1.0
@@ -189,6 +190,10 @@ static func advance(run: Dictionary,point: Vector2,dt: float,held: float=0.0,hur
 	dt=maxf(0.0,dt-held)
 	if dt<=0.000001: return
 	var a: Dictionary=c.actors[Config.ID]
+	if Skills.Trail.paralyzed(a):
+		a.velocity=[0.0,0.0]
+		return
+	if float(a.get("wind_left",0.0))>0: return
 	if run.monsters[Config.ID].status!="alive" or a.hp<=0 or c.hp<=0: return
 	var pos:=vec(a.position)
 	a.velocity=[0.0,0.0]
@@ -298,7 +303,7 @@ static func advance(run: Dictionary,point: Vector2,dt: float,held: float=0.0,hur
 				a.position=pack(next)
 				a.velocity=pack((next-pos)/dt)
 		else:
-			var next:=Bodies.move(run,Config.ID,pos,preload("res://scripts/maze/rockmane_path.gd").step(pos,point,70*dt))
+			var next:=Bodies.move(run,Config.ID,pos,preload("res://scripts/maze/rockmane_path.gd").step(pos,point,70*dt*Skills.Smoke.speed(c,pos)*Skills.Tide.speed(a)))
 			a.position=pack(next)
 			a.velocity=pack((next-pos)/dt)
 

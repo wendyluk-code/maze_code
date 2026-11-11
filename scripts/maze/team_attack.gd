@@ -9,12 +9,55 @@ const PlayerHurt=preload("res://scripts/maze/player_hurt_event.gd")
 const PlayerCombatRules=preload("res://scripts/maze/player_combat_rules.gd")
 const Monster=preload("res://scripts/maze/monster_combat.gd")
 const Tuning=preload("res://scripts/maze/combat_tuning.gd")
+const Charge=preload("res://scripts/maze/lanjiao_charge.gd")
+const Trail=preload("res://scripts/maze/ahong_trail.gd")
+const Guard=preload("res://scripts/maze/chengyan_guard.gd")
+const Tide=preload("res://scripts/maze/xiluomei_net.gd")
+const Smoke=preload("res://scripts/maze/jiaopopo_smoke.gd")
 const AXE_RADIUS := 66.0
-const NAMES := {"hero":"锅铲","yaya":"芽芽","tieshan":"铁山"}
+const NAMES := {"hero":"锅铲","yaya":"芽芽","tieshan":"铁山","yufeng":"御风","salia":"萨莉亚","dingdang":"叮当","jiaopopo":"椒婆婆","xiluomei":"汐罗美","lanjiao":"岚角"}
 const PERIOD := {"hero":0.65,"yaya":0.42,"tieshan":0.8}
-const LENGTH := {"hero":210.0,"yaya":310.0}
+const LENGTH := {"hero":210.0,"yaya":310.0,"yufeng":320.0,"salia":360.0}
+
+static func rank_for(run: Dictionary, id: String) -> int:
+	for member in run.members:
+		if member.id == id: return int(member.rank)
+	return 1
+
+static func reach(run: Dictionary, id: String) -> float:
+	if id == "xiluomei": return 280.0
+	if id == "jiaopopo": return float(Smoke.rules(rank_for(run,id)).range)
+	if id == "dingdang": return float(dingdang_rules(rank_for(run,id)).range)
+	return float(LENGTH.get(id,AXE_RADIUS)) + (40.0 if id == "yufeng" and rank_for(run,id)>=3 else 0.0)
 
 const Growth = preload("res://scripts/characters/character_progression.gd")
+
+static func dingdang_rules(rank: int) -> Dictionary:
+	var rules: Dictionary = Growth.CHARACTERS.dingdang.active_rules.duplicate(true)
+	for i in clampi(rank,0,6):
+		rules.merge(Growth.CHARACTERS.dingdang.star_effects[i],true)
+	return rules
+
+static func clear_marks(c: Dictionary) -> bool:
+	var changed := false
+	for actor in c.get("actors",{}).values():
+		changed = actor.erase("lock_mark") or changed
+	return changed
+
+static func apply_mark(run: Dictionary, id: String, rank: int) -> void:
+	if not Catalog.targetable(run.combat,id) or run.combat.actors[id].hp<=0: return
+	var rules := dingdang_rules(rank)
+	run.combat.actors[id]["lock_mark"]={"left":float(rules.mark_seconds),"bonus":float(rules.mark_damage_bonus)}
+
+## 仅主动直接命中调用；雷链继续调用 damage，不消费或传播锁印。
+static func direct_damage(run: Dictionary, id: String, amount: int, knockback: bool = true) -> void:
+	if not Catalog.targetable(run.combat,id): return
+	var actor: Dictionary = run.combat.actors[id]
+	var mark: Dictionary = actor.get("lock_mark",{})
+	if float(mark.get("left",0.0))>0:
+		amount = roundi(float(amount)*(1.0+float(mark.bonus)))
+		actor.erase("lock_mark")
+	damage(run,id,amount,knockback)
 
 static func level_for(run: Dictionary, id: String) -> int:
 	for member in run.members:
@@ -27,7 +70,13 @@ static func defense(run: Dictionary) -> int:
 	return total + int(run.get("bento",{}).get("defense",0))
 
 static func incoming_damage(run: Dictionary, power: int) -> int:
-	return maxi(0, power - defense(run))
+	if power <= 0: return 0
+	# 比例减伤最高75%；有效命中保留至少1点伤害。
+	var multiplier := maxf(0.25, 20.0 / (20.0 + maxi(0, defense(run))))
+	return maxi(1, ceili(float(power) * multiplier))
+
+static func receive_damage(run: Dictionary, power: int) -> bool:
+	return Guard.damage(run,incoming_damage(run,power))
 
 static func sync_levels(run: Dictionary, sm: Node) -> void:
 	var levels := {}
@@ -56,7 +105,7 @@ static func kind(run: Dictionary, slot: int) -> String:
 	return id if NAMES.has(id) else ""
 
 static func select(run: Dictionary, slot: int) -> bool:
-	if kind(run,slot).is_empty(): return false
+	if Charge.active(run.combat) or kind(run,slot).is_empty(): return false
 	ensure(run.combat)
 	run.combat.selected=slot
 	run.combat.seed_remaining=0
@@ -66,7 +115,12 @@ static func select(run: Dictionary, slot: int) -> bool:
 static func attack(run: Dictionary, point: Vector2, direction: Vector2) -> bool:
 	var c: Dictionary=run.combat
 	ensure(c)
-	if c.hp<=0 or c.cooldown>0.00001 or c.action_left>0 or PlayerHurt.recovering(c): return false
+	if c.hp<=0 or Charge.active(c) or PlayerHurt.recovering(c): return false
+	if kind(run,int(c.selected))=="xiluomei" and c.has("xiluomei_net"):
+		if c.xiluomei_net.left<=0.0000001 or c.xiluomei_net.outward: return false
+		c.xiluomei_net.outward=true
+		return true
+	if c.cooldown>0.00001 or c.action_left>0: return false
 	if not direction.is_finite() or direction.is_zero_approx(): return false
 	var id := kind(run,int(c.selected))
 	if id.is_empty(): return false
@@ -81,7 +135,11 @@ static func attack(run: Dictionary, point: Vector2, direction: Vector2) -> bool:
 	var element := Growth.element(id)
 	c["basic_element"]=element
 	c["basic_serial"]=int(c.throws)
-	if id=="tieshan":
+	if id=="lanjiao":
+		Charge.begin(c,rank_for(run,id),amount,aim)
+	elif id=="xiluomei":
+		Tide.open(run,Tide.center_for(point,aim,str(c.get("region","maze_entry"))),rank_for(run,id),amount,aim)
+	elif id=="tieshan":
 		c.axe_pending=true
 		c["axe_damage"]=amount
 	else:
@@ -99,10 +157,10 @@ static func _projectile(run: Dictionary, origin: Vector2, aim: Vector2, id: Stri
 	var c: Dictionary=run.combat
 	var lives := {}
 	for key in run.monsters: lives[key]=int(run.monsters[key].get("refresh_count",0))
-	var distance: float=Tuning.effect(id,"distance",LENGTH[id])
-	var default_speed: float=310.0 if id=="yaya" else LENGTH[id]/0.5
+	var distance: float=Tuning.effect(id,"distance",reach(run,id))
+	var default_speed: float=310.0 if id=="yaya" else distance/(0.5 if id=="hero" else 0.6)
 	var flight: float=distance/Tuning.effect(id,"speed",default_speed)
-	c.shots.append({"origin":pack(origin),"target":pack(origin+aim*distance),"position":pack(origin),"time":0.0,"flight":flight,"kind":id,"lives":lives,"damage":amount,"basic":true,"element":element,"attack_serial":int(c.throws)})
+	c.shots.append({"origin":pack(origin),"target":pack(origin+aim*distance),"position":pack(origin),"time":0.0,"flight":flight,"kind":id,"lives":lives,"damage":amount,"basic":true,"element":element,"attack_serial":int(c.throws),"rank":rank_for(run,id),"hit_ids":[]})
 
 static func action_duration(id: String) -> float:
 	if id=="yaya": return maxf(burst_span()+0.05,0.30*Tuning.effect(id,"action_scale",100.0)/100.0)
@@ -137,16 +195,27 @@ static func sync_lesson(run: Dictionary, guide: Dictionary) -> void:
 static func protected_slime(run: Dictionary, id: String) -> bool:
 	return Monster.protected_slime(run,id)
 
-static func damage(run: Dictionary, id: String, amount: int = -1) -> void:
-	Monster.damage(run,id,amount)
+static func damage(run: Dictionary, id: String, amount: int = -1, knockback: bool = true) -> void:
+	Monster.damage(run,id,amount,knockback)
 
 static func impact(run: Dictionary, id: String, amount: int, weapon: String, contact: Vector2, direction: Vector2, feedback: Array, clock: Dictionary={}, source: Vector2=Vector2.INF) -> void:
+	if Monster.eligible(run,id) and not Monster.protected_rockmane(run,id):
+		var actor: Dictionary=run.combat.actors[id]
+		var mark: Dictionary=actor.get("lock_mark",{})
+		if float(mark.get("left",0.0))>0:
+			amount=roundi(float(amount)*(1.0+float(mark.bonus)))
+			actor.erase("lock_mark")
 	Monster.impact(run,id,amount,weapon,contact,direction,feedback,clock,source)
 
 static func advance(run: Dictionary, point: Vector2, dt: float, axe_clock: Dictionary={}, feedback: Array=[], hurt_feedback: Array=[]) -> void:
 	var c: Dictionary=run.combat
 	ensure(c)
 	if kind(run,int(c.selected)).is_empty(): c.selected=0
+	for key in c.actors:
+		var actor: Dictionary = c.actors[key]
+		if not actor.has("lock_mark"): continue
+		actor.lock_mark.left=maxf(0.0,float(actor.lock_mark.left)-dt)
+		if actor.lock_mark.left<=0 or actor.hp<=0 or actor.mode=="return" or not Catalog.active(c,str(key)) or run.monsters[key].status!="alive": actor.erase("lock_mark")
 	if c.hp<=0 or PlayerHurt.recovering(c) or c.action!="yaya" or kind(run,int(c.selected))!="yaya":
 		c.seed_remaining=0
 		c.seed_wait=0.0
@@ -176,6 +245,8 @@ static func advance(run: Dictionary, point: Vector2, dt: float, axe_clock: Dicti
 		if not Catalog.active(c,str(key)): continue
 		if not str(key).begins_with("slime_"): continue
 		var a: Dictionary=c.actors[key]
+		if Smoke.retreating(c,str(key)) or Trail.paralyzed(a): continue
+		if float(a.get("wind_left",0.0))>0: continue
 		var protected := protected_slime(run, str(key))
 		var lesson: Dictionary = c.get("slime_lesson", {})
 		a.skill_reuse=maxf(0.0,float(a.get("skill_reuse",1.5))-dt)
@@ -218,11 +289,11 @@ static func advance(run: Dictionary, point: Vector2, dt: float, axe_clock: Dicti
 				break
 			if pos.distance_to(point)<=Tuning.number("slime.spit","hit_radius",20.0):
 				var hp_before: float=c.hp
-				c.hp=maxf(0,c.hp-incoming_damage(run,int(Tuning.number("slime.spit","damage",preload("res://scripts/maze/monster_editor.gd").attack("slime",3)))))
-				c.last_attacker="slime"
-				c.flash_remaining=0.1
-				PlayerHurt.record(c,hp_before,"physical",point,old,hurt_feedback)
-				if c.hp>0: c.hurt_recovery_left=Tuning.number("melee.slime","hurt",600.0)/1000.0
+				if receive_damage(run,int(Tuning.number("slime.spit","damage",preload("res://scripts/maze/monster_editor.gd").attack("slime",3)))):
+					c.last_attacker="slime"
+					c.flash_remaining=0.1
+					PlayerHurt.record(c,hp_before,"physical",point,old,hurt_feedback)
+					if c.hp>0: c.hurt_recovery_left=Tuning.number("melee.slime","hurt",600.0)/1000.0
 				used=true
 				break
 		shot.position=pack(next)
@@ -244,6 +315,11 @@ static func valid(c: Dictionary) -> bool:
 	if c.has("seed_remaining") and not Growth._integer(c.seed_remaining,0,11): return false
 	if c.has("seed_wait") and not number(c.seed_wait,0.3): return false
 	if c.has("seed_damage") and not Growth._integer(c.seed_damage,0,9007199254740991): return false
+	if not Charge.valid(c): return false
+	if not Guard.valid(c): return false
+	if not Tide.valid(c): return false
+	if not Trail.valid(c): return false
+	if not Smoke.valid(c): return false
 	if c.has("salt_attack_receipts"):
 		if not c.salt_attack_receipts is Array or c.salt_attack_receipts.size()>33: return false
 		var receipts: Dictionary={}
@@ -263,6 +339,11 @@ static func valid(c: Dictionary) -> bool:
 	if c.has("axe_damage") and not Growth._integer(c.axe_damage, 0, 9007199254740991): return false
 	if not c.get("shots", []) is Array: return false
 	for shot in c.get("shots", []):
+		if shot is Dictionary:
+			if shot.has("rank") and not Growth._integer(shot.rank,1,6): return false
+			if shot.has("hit_ids") and (not shot.hit_ids is Array or shot.hit_ids.size()>2): return false
+			if shot.has("tracking_id") and not shot.tracking_id is String: return false
+			if shot.has("distance") and not number(shot.distance,360.0): return false
 		if shot is Dictionary and shot.has("damage") and not Growth._integer(shot.damage, 0, 9007199254740991): return false
 	if not c.get("actors",{}) is Dictionary: return false
 	if c.has("slime_lesson"):
@@ -277,7 +358,7 @@ static func valid(c: Dictionary) -> bool:
 	if c.has("selected") and (not number(c.selected,4) or float(c.selected)!=int(c.selected)): return false
 	for key in ["aim"]:
 		if c.has(key) and (not point(c[key]) or absf(vec(c[key]).length()-1.0)>0.001): return false
-	if c.has("action") and c.action not in ["","hero","yaya","tieshan"]: return false
+	if c.has("action") and c.action != "" and not NAMES.has(c.action): return false
 	if c.has("axe_pending") and not c.axe_pending is bool: return false
 	for key in ["enemy_shots"]:
 		if not c.get(key,[]) is Array or c.get(key,[]).size()>32: return false
@@ -287,6 +368,9 @@ static func valid(c: Dictionary) -> bool:
 			if key=="enemy_shots" and (not number(row.get("distance"),maxf(400.0,Tuning.number("slime.spit","distance",320.0))) or not row.get("source") is String): return false
 	for a in c.get("actors",{}).values():
 		if not a is Dictionary: return false
+		if a.has("lock_mark"):
+			if not a.lock_mark is Dictionary or not number(a.lock_mark.get("left"),5.0): return false
+			if a.lock_mark.get("bonus") not in [0.15,0.25]: return false
 		for key in ["cast","skill_reuse","spit_left"]:
 			if a.has(key) and not number(a[key],3.0): return false
 		if float(a.get("cast",0.0))>0 and not a.has("cast_aim"): return false

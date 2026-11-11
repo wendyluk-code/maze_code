@@ -65,7 +65,7 @@ func _independent_sources() -> void:
   for i in 32: Run.combat_tick(sm,point,0.01,Rect2(),false,timing)
   var after: Dictionary=Run.snapshot(sm).combat
   _check(not timing.paused(id) and after.actors[id].hit_remaining<=0.0 and after.actors[id].rock_left<hit.actors[id].rock_left and after.hits==hit.hits,"岩鬃兽卡肉后原速恢复且不重复伤害")
- var point:=_rock_reset(0)
+ var point:=_rock_reset(0,"charge")
  var c: Dictionary=sm.data[Run.KEY].combat
  c.actors[Run.Catalog.Rock.ID].rock_left=0.01
  var before: Dictionary=sm.data.duplicate(true)
@@ -85,7 +85,11 @@ func _independent_sources() -> void:
  _slime_source(false)
  _slime_cast_clock()
 
-func _rock_reset(slot: int) -> Vector2:
+func _rock_reset(slot: int, phase: String="rest") -> Vector2:
+ # 本组只验证单次命中时钟；多发连发另由 yaya_burst_flow 验证。
+ var tuning=Run.Combat.Skills.Tuning
+ if not tuning.values.has("effect.yaya"): tuning.values["effect.yaya"]={}
+ tuning.values["effect.yaya"]["burst_count"]=1
  sm.data=baseline.duplicate(true)
  sm.data.ch2_guide_01={"step":"done","seen":{},"banked":{},"recipe":"","revision":2}
  var run: Dictionary=sm.data[Run.KEY]
@@ -104,7 +108,7 @@ func _rock_reset(slot: int) -> Vector2:
  run.combat.action_left=0.0
  var a: Dictionary=run.combat.actors[Run.Catalog.Rock.ID]
  a.mode="chase"
- a.rock_phase="charge"
+ a.rock_phase=phase
  a.rock_left=1.1
  a.rock_aim=Run.Combat.pack(Run.Catalog.Rock.HOME.direction_to(point))
  _check(sm.record_maze_location("salt_pool",point).success and Run.valid(Run.snapshot(sm)),"岩鬃兽检查点通过原探索校验")
@@ -119,7 +123,7 @@ func _slime_source(guarded: bool) -> void:
  sm.data.ch2_guide_01={"step":"done","seen":{},"banked":{},"recipe":"","revision":2}
  var run: Dictionary=sm.data[Run.KEY]
  Run.ensure_region(run,"maze_entry")
- # 原双人防御恰好抵消3点吐弹；保留零伤对照，再用现有单芽芽队伍验证实际扣血。
+ # 分别覆盖原双人及单芽芽队伍；快照的比例防御不再把正攻击抵消为零。
  if not guarded:
   run.members=[run.members[0]]
   run.food_cursor=0
@@ -146,7 +150,8 @@ func _slime_source(guarded: bool) -> void:
  if not guarded:
   slime_checkpoint=sm.data.duplicate(true)
   slime_point=point
- _check((Run.Combat.Skills.incoming_damage(run,3)==0)==guarded,"吐弹对照沿原队伍防御，不更改怪物伤害")
+ var expected_damage:=maxi(1,ceili(3.0*maxf(0.25,20.0/(20.0+Run.Combat.Skills.defense(run)))))
+ _check(Run.Combat.Skills.incoming_damage(run,3)==expected_damage,"吐弹对照采用快照比例防御，不更改怪物伤害")
  var events: Array=[]
  for i in 60:
   var result:=Run.combat_tick(sm,point,0.01)
@@ -154,10 +159,7 @@ func _slime_source(guarded: bool) -> void:
   events.append_array(result.get("player_hurt_feedback",[]))
   if not events.is_empty(): break
  var c: Dictionary=Run.snapshot(sm).combat
- if guarded:
-  _check(c.hp==hp and events.is_empty() and c.get("hurt_recovery_left",0.0)==0.0,"原防御抵消吐弹时不伪造受击或硬直")
- else:
-  _check(c.hp<hp and events.size()==1 and events[0].kind=="physical" and is_equal_approx(c.get("hurt_recovery_left",0.0),0.6),"史莱姆真实释放弹体并实际扣血后发布普通受击",{"before_hp":hp,"combat":c,"events":events,"point":str(point),"origin":str(origin)})
+ _check(is_equal_approx(c.hp,hp-expected_damage) and events.size()==1 and events[0].kind=="physical" and is_equal_approx(c.get("hurt_recovery_left",0.0),0.6),"史莱姆实际吐弹按队伍防御扣血并发布600毫秒普通受击："+("双人" if guarded else "单人"),{"before_hp":hp,"combat":c,"events":events,"point":str(point),"origin":str(origin)})
 
 func _slime_cast_clock() -> void:
  if slime_checkpoint.is_empty(): return

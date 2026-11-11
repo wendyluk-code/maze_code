@@ -87,10 +87,10 @@ static func advance(run: Dictionary, row: Dictionary, point: Vector2, dt: float,
   var closest:=Geometry2D.get_closest_point_to_segment(point,pos,next)
   if not a.fish_hit and c.hp>0 and not Water.protected(point) and point.distance_to(closest)<=Tuning.effect("fish","hit_radius",18.0):
    var hp_before:=float(c.hp)
-   c.hp=maxf(0,c.hp-skills.incoming_damage(run,int(Tuning.effect("fish","damage",float(stats.attack)))))
-   preload("res://scripts/maze/player_hurt_event.gd").record(c,hp_before,"fish",point,pos,hurt_feedback)
-   c.last_attacker=row.kind
-   c.flash_remaining=0.1
+   if skills.receive_damage(run,int(Tuning.effect("fish","damage",float(stats.attack)))):
+    preload("res://scripts/maze/player_hurt_event.gd").record(c,hp_before,"fish",point,pos,hurt_feedback)
+    c.last_attacker=row.kind
+    c.flash_remaining=0.1
    a.fish_hit=true
   if dry(next): phase(a,"stranded",STRANDED_TIME)
   elif a.fish_left<=0.00001 or next.distance_to(pos)<0.001:

@@ -233,7 +233,7 @@ func defeat_and_recover() -> void:
   await picture("restored_"+str(size.x))
 
 func legacy_routing() -> void:
- for region in ["maze_entry","salt_pool","trial","sparring"]:
+ for region in ["maze_entry","salt_pool","trial","legacy_story"]:
   maze.queue_free()
   await get_tree().process_frame
   sm.data=baseline.duplicate(true)
@@ -244,10 +244,21 @@ func legacy_routing() -> void:
    _check(Run.change_region(sm,region,point).success,"原换区事务建立回归入口："+region)
    path="res://scenes/maze_entry.tscn" if region=="maze_entry" else "res://scenes/maze_salt_pool.tscn"
   elif region=="trial": sm.data[Run.KEY].combat.fs01_trial=true
-  # 原剧情由question阶段提交battle起点；不能手造缺start_run/start_position的战斗档。
+  # 快照将版本2的旧切磋检查点迁移为版本3友好委托，不再等待已移除的战斗阶段。
   else: sm.data[sm.YUFENG_SALIA_KEY]={"version":2,"phase":"question","line":0}
   maze=load(path).instantiate()
   viewport.add_child(maze)
+  if region=="legacy_story":
+   _check(await until_true(func(): return maze._entry_ready and maze.yf_encounter.phase=="intro"),"旧切磋检查点实际迁移为友好初遇")
+   _check(sm.yufeng_salia_record().version==3 and maze.capture_flow.sparring()==null and maze.yf_encounter.run.is_empty(),"迁移后使用正常探索，不创建旧切磋状态")
+   _check(maze.player.input_locked and maze.yf_encounter.dialog.visible,"友好初遇对白持有输入锁")
+   var before_story: Dictionary=maze.capture_flow.display_run().combat.duplicate(true)
+   maze.capture_flow.window_focused=true
+   await key(KEY_TAB)
+   await key(KEY_Q)
+   await click()
+   _check(maze.capture_flow.display_run().combat.selected==before_story.selected and maze.capture_flow.display_run().combat.throws==before_story.throws and maze.capture_flow.locked_target_id.is_empty(),"友好对白期间Tab、Q及攻击不穿透")
+   continue
   _check(await until_true(func(): return maze._entry_ready and not maze.player.input_locked),"真实回归场景入场完成："+region)
   maze.capture_flow.window_focused=true
   await get_tree().process_frame

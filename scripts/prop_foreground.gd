@@ -37,10 +37,18 @@ func _build_layers() -> void:
 		layer.polygon = foreground
 		layer.uv = foreground
 		layer.texture = bg.texture
+		if target.has_meta("foreground_texture"):
+			layer.texture = load(str(target.get_meta("foreground_texture")))
 		layer.z_index = foreground_z_index
 		layer.visible = false
 		add_child(layer)
+		var tray := target.get_node_or_null("FreezerLayout/Tray") as Polygon2D
+		if tray != null:
+			var material := ShaderMaterial.new()
+			material.shader = preload("res://scripts/restaurant/freezer_foreground.gdshader")
+			layer.material = material
 		_layers.append({
+			"tray": tray,
 			"target": target,
 			"layer": layer,
 			"occlusion": occlusion,
@@ -61,7 +69,24 @@ func _process(_delta: float) -> void:
 		var behind := _point_is_behind(_player.global_position, entry["occlusion"])
 		layer.visible = behind
 		if behind:
+			_update_tray_cutout(entry)
 			_update_body_clip(entry)
+
+func _update_tray_cutout(entry: Dictionary) -> void:
+	var tray: Polygon2D = entry.get("tray")
+	if not is_instance_valid(tray):
+		return
+	var layer: Polygon2D = entry["layer"]
+	var material := layer.material as ShaderMaterial
+	# 采用场景当前顶点和变换，用户调整透视后无需再手动校准前景。
+	var points := PackedVector2Array()
+	points.resize(64)
+	var count := mini(tray.polygon.size(), 64)
+	for index in count:
+		points[index] = layer.to_local(tray.to_global(tray.polygon[index] + tray.offset))
+	material.set_shader_parameter("tray_visible", tray.is_visible_in_tree())
+	material.set_shader_parameter("point_count", count)
+	material.set_shader_parameter("tray_points", points)
 
 func _point_is_behind(point: Vector2, occlusion: PackedVector2Array) -> bool:
 	if not Geometry2D.is_point_in_polygon(point, occlusion):

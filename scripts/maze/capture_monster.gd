@@ -10,6 +10,7 @@ var health_bar: ProgressBar
 var hp_label: Label
 var frames: Array[Texture2D] = []
 var elapsed := 0.0
+var ahong_paralyzed := false
 var combat_label_offset := 0.0
 var combat_label_avoid: Control
 var shadow: Sprite2D
@@ -433,6 +434,7 @@ func _process(delta: float) -> void:
 	if is_instance_valid(hit_visual): hit_visual.advance(delta)
 	if is_instance_valid(heal_visual): heal_visual.advance(delta,body,float(config.width)*(1.4 if frog_front24!=null else 1.0))
 	if action_paused: return
+	if ahong_paralyzed: delta=0.0
 	elapsed += delta
 	if config.kind=="rockmane" and not rock_state.is_empty() and rock_state.hp>0:
 		rock_pose_age+=delta
@@ -518,6 +520,12 @@ func sync_action(actor: Dictionary, combat: Dictionary={}) -> void:
 		if is_instance_valid(hit_visual): hit_visual.clear()
 		if is_instance_valid(heal_visual): heal_visual.clear()
 	if is_instance_valid(return_water_visual): return_water_visual.sync(actor,combat,config.kind)
+	ahong_paralyzed=preload("res://scripts/maze/ahong_trail.gd").paralyzed(actor)
+	if ahong_paralyzed:
+		if config.kind=="wind_frog": frog_state=actor
+		if config.kind=="rockmane": rock_state=actor
+		queue_redraw()
+		return
 	if action_sheets.is_empty(): return
 	if config.kind=="thunder_eel":
 		eel_combat=combat

@@ -82,7 +82,10 @@ func handle_input(event: InputEvent) -> bool:
      slot=next
      break
   if slot>=0:
+   var previous_slot: int=int(flow.display_run().combat.get("selected",0))
    flow._select_skill(slot)
+   if int(flow.display_run().combat.get("selected",0))!=previous_slot:
+    GameAudio.play_cue(&"interact")
    return true
   return false
  if not event is InputEventMouseButton or not event.pressed or event.button_index!=MOUSE_BUTTON_LEFT: return false
@@ -90,11 +93,16 @@ func handle_input(event: InputEvent) -> bool:
  sync(run)
  var player: Node2D=flow.maze.player
  var aim: Vector2=player.position.direction_to(Run.Combat.vec(run.combat.actors[locked_target_id].position)) if not locked_target_id.is_empty() else AutoAim.direction(run,player.position,player.facing,flow.sparring()!=null)
+ if Run.Combat.Skills.kind(run,int(run.combat.get("selected",0))) in ["xiluomei","lanjiao"]:
+  var mouse_world: Vector2=player.get_viewport().get_canvas_transform().affine_inverse()*event.position
+  aim=player.position.direction_to(mouse_world)
  if seed_aim_enabled(): aim=seed_direction(player)
  if aim.is_zero_approx(): aim=player.facing
  if flow.sparring()!=null: flow.sparring().attack(aim)
  else:
   var result: Dictionary=Run.combat_attack(SaveManager,player.position,aim)
+  if result.success and result.get("fired",false):
+   GameAudio.play_attack(event.get_instance_id())
   if not result.success:
    flow.save_retry_delay=1.0
    flow.maze.show_toast("攻击保存失败，已恢复上次进度，请检查存档后重试")

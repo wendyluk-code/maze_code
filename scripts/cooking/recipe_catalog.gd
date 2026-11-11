@@ -3,14 +3,17 @@ extends RefCounted
 
 ## 首单配方配置。速度与判定区宽度集中在此，新增料理可复用同一 QTE。
 const RECIPES := {
-	"frog_soup":{"name":"凉须蛙囊汤","description":"迷宫非战斗时食用。","uses":["探索"],"exploration_category":"生命","ingredients":{"wind_frog_stomach":1,"cool_whisker_herb":1},"round_duration":5.0,"perfect_width":0.16,"good_width":0.8,"icon":"res://assets/ui/region_food/frog_soup.png"},
-	"wind_frog_bread":{"name":"风袋蛙鼓鼓包","description":"迷宫非战斗时食用。","uses":["探索"],"exploration_category":"饱腹","ingredients":{"wind_frog_stomach":1,"burrow_wheat_flour":1},"round_duration":5.0,"perfect_width":0.16,"good_width":0.8,"icon":"res://assets/ui/region_food/wind_frog_bread.png"},
+	"truffle_beetle_legs": {"name":"白松露焗剑甲腿", "description":"白松露衬托剑甲腿肉的鲜香。", "order_gold":35, "ingredients":{"white_truffle":1,"sword_beetle_leg":1}, "round_duration":5.0, "perfect_width":0.16, "good_width":0.8, "icon":"res://assets/ui/royal_food/truffle_beetle_legs.png", "icon_region":Rect2(216, 343, 879, 668)},
+	"jade_lily_silverfish": {"name":"玉兰银鳞鱼", "description":"玉兰百合与银鳞鱼肉，清润鲜嫩。", "order_gold":40, "ingredients":{"jade_lily":1,"silverfish_meat":1}, "round_duration":5.0, "perfect_width":0.16, "good_width":0.8, "icon":"res://assets/ui/royal_food/jade_lily_silverfish.png", "icon_region":Rect2(329, 439, 603, 476)},
+	"bird_nest_crab": {"name":"燕窝蟹肉盏", "description":"金丝燕窝托起鲜甜蟹肉。", "order_gold":45, "ingredients":{"golden_bird_nest":1,"mimic_crab_meat":1}, "round_duration":5.0, "perfect_width":0.16, "good_width":0.8, "icon":"res://assets/ui/royal_food/bird_nest_crab.png", "icon_region":Rect2(296, 352, 684, 599)},
+	"frog_soup":{"name":"凉须蛙囊汤","description":"蛙囊慢煨凉须草，汤鲜清润。","order_gold":25,"ingredients":{"wind_frog_stomach":1,"cool_whisker_herb":1},"round_duration":5.0,"perfect_width":0.16,"good_width":0.8,"icon":"res://assets/ui/region_food/frog_soup.png"},
+	"wind_frog_bread":{"name":"风袋蛙鼓鼓包","description":"麦香包裹鲜嫩蛙囊，蓬松饱满。","order_gold":25,"ingredients":{"wind_frog_stomach":1,"burrow_wheat_flour":1},"round_duration":5.0,"perfect_width":0.16,"good_width":0.8,"icon":"res://assets/ui/region_food/wind_frog_bread.png"},
 	"mimic_crab_gratin":{"name":"爆浆拟态蟹斗","description":"以新鲜捕获食材制作的订单料理。","order_gold":30,"ingredients":{"mimic_crab_meat":1,"lantern_fruit":1},"round_duration":5.0,"perfect_width":0.16,"good_width":0.8,"icon":"res://assets/ui/region_food/mimic_crab_gratin.png"},
 	"scorpion_lotus_fritters":{"name":"脆炸水蝎藕夹","description":"以新鲜捕获食材制作的订单料理。","order_gold":30,"ingredients":{"blind_scorpion_tail":1,"canal_lotus_root":1},"round_duration":5.0,"perfect_width":0.16,"good_width":0.8,"icon":"res://assets/ui/region_food/scorpion_lotus_fritters.png"},
 
-	"cool_slime_jelly": {"name": "清凉史莱姆冻", "description": "探索料理，放入便当盒后可在迷宫非战斗时食用。", "uses": ["探索"], "exploration_category": "生命", "ingredients": {"slime_gel": 1, "cool_whisker_herb": 1}, "round_duration": 5.0, "perfect_width": 0.16, "good_width": 0.8, "icon": "res://assets/ui/bento/cool_slime_jelly.png"},
-	"salt_crust_silverfish": {"name": "盐壳银鳞鱼", "description": "探索料理，放入便当盒后可在迷宫非战斗时食用。", "uses": ["探索"], "exploration_category": "防御", "ingredients": {"silverfish_meat": 1, "rock_salt": 1}, "round_duration": 5.0, "perfect_width": 0.16, "good_width": 0.8, "icon": "res://assets/ui/bento/salt_crust_silverfish.png"},
-	"thunder_eel_roll": {"name": "雷鳗自煎卷", "description": "探索料理，放入便当盒后可在迷宫非战斗时食用。", "uses": ["探索"], "exploration_category": "攻击", "ingredients": {"thunder_eel_belly": 1, "insulating_leaf": 1}, "round_duration": 5.0, "perfect_width": 0.16, "good_width": 0.8, "icon": "res://assets/ui/bento/thunder_eel_roll.png"},
+	"cool_slime_jelly": {"name": "清凉史莱姆冻", "description": "凝胶融入凉须草，清凉软弹。", "order_gold": 15, "ingredients": {"slime_gel": 1, "cool_whisker_herb": 1}, "round_duration": 5.0, "perfect_width": 0.16, "good_width": 0.8, "icon": "res://assets/ui/bento/cool_slime_jelly.png"},
+	"salt_crust_silverfish": {"name": "盐壳银鳞鱼", "description": "岩盐裹烤银鳞鱼，锁住鲜嫩鱼汁。", "order_gold": 25, "ingredients": {"silverfish_meat": 1, "rock_salt": 1}, "round_duration": 5.0, "perfect_width": 0.16, "good_width": 0.8, "icon": "res://assets/ui/bento/salt_crust_silverfish.png"},
+	"thunder_eel_roll": {"name": "雷鳗自煎卷", "description": "绝缘叶卷起雷鳗腹肉，煎得焦香。", "order_gold": 35, "ingredients": {"thunder_eel_belly": 1, "insulating_leaf": 1}, "round_duration": 5.0, "perfect_width": 0.16, "good_width": 0.8, "icon": "res://assets/ui/bento/thunder_eel_roll.png"},
 	"slime_candy": {"name": "弹跳史莱姆冻", "description": "以史莱姆核和月露蜜制成，软弹清甜。", "order_gold": 10, "ingredients": {"slime_shell": 1, "moondew_honey": 1}, "round_duration": 5.0, "perfect_width": 0.16, "good_width": 0.80, "icon": "res://assets/ui/ingredients/day1/bouncing_slime_pudding.png"},
 	"brick_snail_sashimi": {"name": "砖壳蜗牛刺身", "description": "砖壳蜗牛肉切片后制成，口感脆嫩，鲜味十足。", "order_gold": 20, "ingredients": {"brick_snail_meat": 1, "cooking_sake": 1}, "round_duration": 5.0, "perfect_width": 0.16, "good_width": 0.80, "icon": "res://assets/ui/ingredients/day1/brick_snail_sashimi.png"},
 	"lizard_tail_skewer": {"name": "石化蜥蜴脆皮串", "description": "石化蜥蜴尾肉烤至表皮酥脆，肉质紧实，香气浓厚。", "order_gold": 40, "ingredients": {"petrifying_lizard_tail": 1, "sour_vine_juice": 1}, "round_duration": 5.0, "perfect_width": 0.16, "good_width": 0.80, "icon": "res://assets/ui/ingredients/day1/lizard_tail_skewer.png"},
@@ -28,6 +31,9 @@ const RECIPES := {
 
 ## 只有登记为原料的物品才会出现在汤锅中；料理成品不作为原料。
 const INGREDIENTS := {
+	"white_truffle": {"name":"白松露", "source":"御风赠礼", "icon":"res://assets/ui/royal_food/white_truffle.png", "icon_region":Rect2(369, 414, 550, 485)},
+	"jade_lily": {"name":"玉兰百合", "source":"御风赠礼", "icon":"res://assets/ui/royal_food/jade_lily.png", "icon_region":Rect2(343, 382, 605, 563)},
+	"golden_bird_nest": {"name":"金丝燕窝", "source":"御风赠礼", "icon":"res://assets/ui/royal_food/golden_bird_nest.png", "icon_region":Rect2(337, 404, 595, 504)},
 	"canal_lotus_root":{"name":"细孔渠藕","icon":"res://assets/ui/region_food/canal_lotus_root.png"},
 	"lantern_fruit":{"name":"灯笼果","icon":"res://assets/ui/region_food/lantern_fruit.png"},
 	"burrow_wheat_flour":{"name":"地穴麦粉","icon":"res://assets/ui/region_food/burrow_wheat_flour.png"},
@@ -81,7 +87,7 @@ static func get_recipe(recipe_id: String) -> Dictionary:
 ## 每份订单的固定金币，与料理星级无关；无效配置拒绝结算。
 static func valid_order_gold(value: Variant) -> bool:
 	return typeof(value) in [TYPE_INT, TYPE_FLOAT] and is_finite(float(value)) \
-		and float(value) == floor(float(value)) and value >= 5 and value <= 40
+		and float(value) == floor(float(value)) and value >= 5 and value <= 45
 
 static func order_gold(recipe_id: String) -> int:
 	var value = get_recipe(recipe_id).get("order_gold")

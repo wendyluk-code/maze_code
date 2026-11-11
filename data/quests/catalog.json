@@ -27,37 +27,176 @@
     "restaurant_customer_order": {
       "type": "order",
       "title": "交付顾客料理",
-      "accept_condition": {"handler": "waiting_customer_order_accepted"},
-      "completion_condition": {"handler": "customer_order_settlement", "gold_reward": {"recipe_id": "salt_grilled_rockmane", "amount": 5, "config_field": "order_gold", "min": 5, "max": 20, "quality_scaled": false}, "customer_recipes": {"slime_candy": {"gold": 10}, "brick_snail_sashimi": {"gold": 20}, "lizard_tail_skewer": {"gold": 40}}},
+      "accept_condition": {
+        "handler": "waiting_customer_order_accepted",
+        "ordinary_service": "seated_food_stage",
+        "drink_wait_seconds": 20,
+        "food_wait_seconds": 60
+      },
+      "completion_condition": {
+        "handler": "customer_order_settlement",
+        "ordinary_service_outcomes": {
+          "served": "recipe_reward",
+          "wrong_dish": {
+            "gold": -2,
+            "reputation": 0
+          },
+          "timeout": {
+            "gold": -2,
+            "reputation": -1
+          }
+        },
+        "gold_reward": {
+          "recipe_id": "salt_grilled_rockmane",
+          "amount": 5,
+          "config_field": "order_gold",
+          "min": 5,
+          "max": 20,
+          "quality_scaled": false
+        },
+        "customer_recipes": {
+          "slime_candy": {
+            "gold": 10
+          },
+          "brick_snail_sashimi": {
+            "gold": 20
+          },
+          "lizard_tail_skewer": {
+            "gold": 40
+          }
+        }
+      },
       "subtasks": [
-        {"id": "collect_ingredients", "title": "领取食材", "handler": "customer_order_ingredients_available"},
-        {"id": "cook_dish", "title": "制作料理", "handler": "customer_order_dish_available"}
+        {
+          "id": "collect_ingredients",
+          "title": "领取食材",
+          "handler": "customer_order_ingredients_available"
+        },
+        {
+          "id": "cook_dish",
+          "title": "制作料理",
+          "handler": "customer_order_dish_available"
+        }
       ]
     },
     "chapter_1_first_order": {
       "type": "order",
       "title": "交出盐烤岩鬃肉",
-      "accept_condition": {"handler": "canonical_first_order_active"},
-      "completion_condition": {"handler": "canonical_order_settlement", "order_id": "chapter_1_first_order", "gold_reward": {"recipe_id": "salt_grilled_rockmane", "amount": 5, "config_field": "order_gold", "min": 5, "max": 20, "quality_scaled": false}},
+      "accept_condition": {
+        "handler": "canonical_first_order_active"
+      },
+      "completion_condition": {
+        "handler": "canonical_order_settlement",
+        "order_id": "chapter_1_first_order",
+        "gold_reward": {
+          "recipe_id": "salt_grilled_rockmane",
+          "amount": 5,
+          "config_field": "order_gold",
+          "min": 5,
+          "max": 20,
+          "quality_scaled": false
+        }
+      },
       "subtasks": [
-        {"id": "collect_ingredients", "title": "领取食材", "handler": "first_order_ingredients_claimed"},
-        {"id": "cook_dish", "title": "制作料理", "handler": "first_order_cooked"}
+        {
+          "id": "collect_ingredients",
+          "title": "领取食材",
+          "handler": "first_order_ingredients_claimed"
+        },
+        {
+          "id": "cook_dish",
+          "title": "制作料理",
+          "handler": "first_order_cooked"
+        }
       ]
     },
     "chapter_1_salt_pool": {
       "type": "exploration",
-      "title": "前往迷宫浅层·盐池",
-      "accept_condition": {"handler": "chapter_1_ready_to_depart"},
-      "completion_condition": {"handler": "verified_region_arrival", "floor": 1, "region_id": "old_salt_pool", "implemented": false},
-      "subtasks": []
+      "title": "探索迷宫浅层·盐池",
+      "accept_condition": {
+        "handler": "chapter_1_ready_to_depart"
+      },
+      "completion_condition": {
+        "handler": "salt_pool_captured_and_returned",
+        "region_id": "salt_pool",
+        "requires": [
+          "arrived",
+          "rockmane_defeated",
+          "rockmane_captured",
+          "successful_exploration_return"
+        ],
+        "implemented": true
+      },
+      "subtasks": [
+        {
+          "id": "capture_rockmane",
+          "title": "捕获岩鬃兽",
+          "handler": "persisted_rockmane_capture",
+          "quantity": 1
+        }
+      ]
+    },
+    "yufeng_pool_clue": {
+      "type": "exploration",
+      "title": "调查巨蛙盘踞的池中央",
+      "accept_condition": {
+        "handler": "yufeng_friendly_commission_accepted",
+        "region": "fenshui"
+      },
+      "completion_condition": {
+        "handler": "frog_pool_clue_reported",
+        "requires": [
+          "wind_frog_defeated",
+          "pool_center_inspected",
+          "report_to_yufeng"
+        ],
+        "reward_handler": "yufeng_ingredient_gift",
+        "characters": [
+          "yufeng",
+          "salia"
+        ]
+      },
+      "subtasks": [
+        {
+          "id": "defeat_frog",
+          "title": "击败池中巨蛙",
+          "handler": "persisted_frog_defeat",
+          "quantity": 1
+        },
+        {
+          "id": "inspect_pool",
+          "title": "调查池中线索",
+          "handler": "pool_inspection_completed",
+          "quantity": 1
+        }
+      ]
     },
     "elder_firewood": {
       "type": "exploration",
       "title": "帮助白虎爷爷收集木材",
-      "accept_condition": {"handler": "elder_dialogue_confirmed"},
-      "completion_condition": {"handler": "elder_firewood_delivery", "item_id": "wood", "quantity": 12, "rewards": {"moondew_honey": 3, "cooking_sake": 3, "sour_vine_juice": 3, "backpack_unlocked": true}},
-      "subtasks": [{"id": "collect_materials", "title": "收集材料", "handler": "elder_firewood_inventory_available", "item_id": "wood", "quantity": 12}]
+      "accept_condition": {
+        "handler": "elder_dialogue_confirmed"
+      },
+      "completion_condition": {
+        "handler": "elder_firewood_delivery",
+        "item_id": "wood",
+        "quantity": 12,
+        "rewards": {
+          "moondew_honey": 3,
+          "cooking_sake": 3,
+          "sour_vine_juice": 3,
+          "backpack_unlocked": true
+        }
+      },
+      "subtasks": [
+        {
+          "id": "collect_materials",
+          "title": "收集材料",
+          "handler": "elder_firewood_inventory_available",
+          "item_id": "wood",
+          "quantity": 12
+        }
+      ]
     }
   }
 }
-

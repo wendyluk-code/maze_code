@@ -1,0 +1,4 @@
+[gd_scene load_steps=2 format=3]
+[ext_resource type="Script" path="res://tools/tests/warehouse_order_preview.gd" id="1"]
+[node name="WarehouseOrderPreview" type="Node"]
+script = ExtResource("1")

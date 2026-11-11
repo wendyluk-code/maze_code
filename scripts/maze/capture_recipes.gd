@@ -1,5 +1,5 @@
 extends RefCounted
-const RECIPES := {"wind_frog":["frog_soup","wind_frog_bread"],"mimic_crab":["mimic_crab_gratin"],"blind_scorpion":["scorpion_lotus_fritters"]}
+const RECIPES := {"slime":["cool_slime_jelly"],"silverfish":["salt_crust_silverfish"],"thunder_eel":["thunder_eel_roll"],"wind_frog":["frog_soup","wind_frog_bread"],"mimic_crab":["mimic_crab_gratin"],"blind_scorpion":["scorpion_lotus_fritters"]}
 static func unlock(sm: Node, kind: String) -> void:
 	var ids: Array=sm.unlocked_recipe_ids()
 	for id in RECIPES.get(kind,[]):
@@ -10,7 +10,8 @@ static func historical(state: Dictionary) -> Array[String]:
 	var run: Variant=state.get("capture_run_v1",{})
 	if not run is Dictionary or not run.get("monsters",{}) is Dictionary: return result
 	if not load("res://scripts/maze/capture_run.gd").valid(run): return result
-	for kind in RECIPES:
+	# 保留既有历史推导范围；新三道料理由成功捕获事务解锁，不补发旧档。
+	for kind in ["wind_frog","mimic_crab","blind_scorpion"]:
 		var prefix: String=("fenshui_" if kind=="wind_frog" else "salt_pool_")+kind+"_"
 		for key in run.get("monsters",{}):
 			var row: Variant=run.monsters[key]

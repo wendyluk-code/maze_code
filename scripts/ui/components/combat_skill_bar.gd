@@ -4,6 +4,8 @@ signal selected(slot: int)
 signal details_requested(slot: int)
 const Skills = preload("res://scripts/maze/team_attack.gd")
 var buttons: Array[Button]=[]
+var key_labels: Array[Label]=[]
+var passive_slots: Array[int]=[]
 var icons: Dictionary={}
 var last_state: String=""
 var pictures: Array[TextureRect]=[]
@@ -26,7 +28,9 @@ func _ready() -> void:
 		button.custom_minimum_size=Vector2(78,80)
 		button.focus_mode=Control.FOCUS_NONE
 		button.toggle_mode=true
-		button.pressed.connect(func():selected.emit(i))
+		button.pressed.connect(func():
+			if i in passive_slots: details_requested.emit(i)
+			else: selected.emit(i))
 		button.gui_input.connect(func(event: InputEvent):
 			if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed and event.double_click and i > 0 and not button.disabled:
 				button.accept_event()
@@ -100,19 +104,34 @@ func _ready() -> void:
 		key.get_node("KeyIcon").expand_mode=TextureRect.EXPAND_IGNORE_SIZE
 		key.get_node("KeyIcon").stretch_mode=TextureRect.STRETCH_SCALE
 		var key_label := key.get_node("KeyIcon/KeyLabel") as Label
+		key_labels.append(key_label)
 		key_label.text="空格" if i==0 else str(i)
 		key_label.add_theme_font_override("font",SproutTheme.FONT_CN)
 		key_label.add_theme_font_size_override("font_size",16)
 		key_label.add_theme_color_override("font_color",SproutTheme.INK)
 
 func sync(run: Dictionary) -> void:
-	var signature := str(run.members)+str(run.combat.get("selected",0))
+	var guard: Dictionary=run.combat.get("chengyan_guard",{})
+	var guard_phase: String="护持中" if float(guard.get("invincible",0.0))>0.0000001 else ("回复中" if float(guard.get("heal_left",0.0))>0 else "")
+	var signature := str(run.members)+str(run.combat.get("selected",0))+str(run.combat.get("xiluomei_net",{}))+guard_phase+str(guard.get("used",false))+str(run.combat.get("lanjiao_charge",{}))
 	if signature==last_state: return
 	last_state=signature
+	passive_slots.clear()
 	for i in buttons.size():
 		var id: String = "hero" if i == 0 else (str(run.members[i - 1].id) if i <= run.members.size() else "")
 		rarities[i].configure_bottom_right(id, buttons[i].size + Vector2(3,3))
 		captions[i].text="默认" if i==0 else str(Growth.CHARACTERS.get(id, {}).get("name", "空位"))
+		if id=="xiluomei" and run.combat.has("xiluomei_net"):
+			captions[i].text="外潮 %.1f" % float(run.combat.xiluomei_net.left)
+		if id=="lanjiao" and run.combat.has("lanjiao_charge"):
+			captions[i].text="蓄势" if run.combat.lanjiao_charge.warmup>0 else "冲撞"
+		if id=="chengyan" and not guard_phase.is_empty(): captions[i].text=guard_phase
+		if id in ["ahong","chengyan"]: passive_slots.append(i)
+		key_labels[i].text="被动" if id in ["ahong","chengyan"] else ("空格" if i==0 else str(i))
+		key_labels[i].add_theme_font_size_override("font_size",12 if id in ["ahong","chengyan"] else 16)
+		buttons[i].tooltip_text="团队被动：战斗移动自动留下雷印，点击查看详情" if id=="ahong" else ""
+		if id=="chengyan": buttons[i].tooltip_text="团队被动：每趟首次致命伤保命，点击查看详情"
+		if id=="chengyan" and guard.get("used",false): buttons[i].tooltip_text="归流护持：本趟已触发，点击查看详情"
 		buttons[i].disabled=id.is_empty()
 		pictures[i].texture=icons.get(id)
 		badges[i].texture=factions.get(id)

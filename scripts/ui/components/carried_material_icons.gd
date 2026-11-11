@@ -10,6 +10,7 @@ const SPACING := 28.0
 const SIDE_OFFSET := 48.0
 var side := -1
 var _ids: Array = []
+var _drink_grade := -1
 
 func _process(_delta: float) -> void:
 	var actor := get_parent() as Node2D
@@ -20,6 +21,12 @@ func _process(_delta: float) -> void:
 		side = 1
 	position = Vector2(side * SIDE_OFFSET, -66)
 	var ids := SaveManager.carried_ingredients().keys()
+	var drink_grade := preload("res://scripts/restaurant/ganlu_service.gd").grade(preload("res://scripts/restaurant/ganlu_service.gd").snapshot(SaveManager).held)
+	if _drink_grade != drink_grade:
+		_drink_grade = drink_grade
+		queue_redraw()
+	if preload("res://scripts/restaurant/ganlu_service.gd").snapshot(SaveManager).held.get("phase", "") == "ready":
+		ids.append("ganlu_water")
 	var inventory := SaveManager.inventory_snapshot()
 	for recipe_id in Catalog.RECIPES:
 		if int(inventory.get(recipe_id, 0)) > 0:
@@ -32,12 +39,13 @@ func _process(_delta: float) -> void:
 		child.queue_free()
 	# 旧档即使超过三种也完整显示，不丢弃真实材料。
 	for index in ids.size():
-		var texture := IconDisplay.texture(Catalog.item_texture(str(ids[index])))
+		var texture: Texture2D = preload("res://scripts/ui/components/ganlu_art.gd").result_cup() if ids[index]=="ganlu_water" else IconDisplay.texture(Catalog.item_texture(str(ids[index])))
 		if texture == null:
 			continue
 		var icon := Sprite2D.new()
 		icon.name = str(ids[index])
 		icon.texture = texture
+		if ids[index]=="ganlu_water": icon.self_modulate.a = 0
 		icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 		icon.scale = Vector2.ONE * ICON_SIZE / maxf(texture.get_width(), texture.get_height())
 		icon.position.y = index * SPACING
@@ -51,3 +59,4 @@ func _draw() -> void:
 		draw_circle(center + Vector2(0, 1), BACKING_RADIUS, Color("c8b695"), true, -1.0, true)
 		draw_circle(center, BACKING_RADIUS, BACKING_COLOR, true, -1.0, true)
 		draw_arc(center, BACKING_RADIUS - 0.5, 0.0, TAU, 64, BORDER_COLOR, 1.0, true)
+		if icon.name=="ganlu_water": preload("res://scripts/ui/components/ganlu_cup_visual.gd").draw_cup(self,Rect2(center-Vector2(9.5,13),Vector2(19,26)),_drink_grade)

@@ -25,7 +25,9 @@ func _scenarios() -> void:
 func _catalog_and_compatibility() -> void:
  var old=load("res://output/monster-combat-20261107/baseline/scripts/maze/team_attack.gd")
  var old_combat=load("res://output/monster-combat-20261107/baseline/scripts/maze/combat_simulation.gd")
- _check(monster_rules.STATS==old_combat.STATS,"十种魔物完整基础参数与冻结M一致")
+ var configured_stats: Dictionary=old_combat.STATS.duplicate(true)
+ Run.Combat.Skills.Tuning.apply_stats(configured_stats)
+ _check(monster_rules.STATS==configured_stats,"十种魔物基础参数应用已保存配置后与冻结M一致")
  var run: Dictionary=baseline[Run.KEY].duplicate(true)
  Run.ensure_region(run,"maze_entry")
  Run.ensure_region(run,"salt_pool")

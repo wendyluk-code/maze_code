@@ -1,5 +1,6 @@
 extends "res://tools/tests/fenshui_hitstop_state.gd"
 ## 真实发射、扣血与保存事务；远程不冻结玩家动作。
+var expected_remote_hp: float=19.0
 
 func _scenarios() -> void:
  for slot in [0,1]:
@@ -13,16 +14,22 @@ func _scenarios() -> void:
 
 func _remote_reset(slot: int, ms: int) -> void:
  _reset_clock(70)
+ # 本组检查单颗弹体的停顿与回滚；默认/可配置多颗整轮由 yaya_burst 及 yaya_burst_flow 检查。
+ var tuning=Run.Combat.Skills.Tuning
+ if not tuning.values.has("effect.yaya"): tuning.values["effect.yaya"]={}
+ tuning.values["effect.yaya"]["burst_count"]=1
  if timing.has_method("configure_ranged"): timing.configure_ranged(ms)
  _check(Run.combat_command(sm,"select",slot).success,"选择远程攻击："+str(slot))
 
 func _remote_hit() -> Dictionary:
  _check(Run.combat_attack(sm,POINT,POINT.direction_to(Vector2(920,440))).success,"通过原入口发射远程攻击")
+ # 既有水膜承受四分之一伤害、正伤至少 1；预期来自出手输入，不由扣血结果倒填。
+ expected_remote_hp=20.0-maxf(1.0,float(Run.snapshot(sm).combat.shots[0].damage)*0.25)
  for i in 80:
   _tick(0.01)
   if Run.snapshot(sm).combat.actors[ID].hp<20: break
  var c: Dictionary=Run.snapshot(sm).combat.duplicate(true)
- _check(c.actors[ID].hp==19.0,"原水膜单次远程伤害保持1")
+ _check(c.actors[ID].hp==expected_remote_hp,"单颗远程攻击按出手伤害和水膜四分之一结算")
  return c
 
 func _remote_case(slot: int, ms: int) -> void:
@@ -40,7 +47,7 @@ func _remote_case(slot: int, ms: int) -> void:
   used+=0.01
  after=Run.snapshot(sm).combat.duplicate(true)
  _check(after.actors[ID].position!=hit.actors[ID].position and after.actors[ID].hit_remaining<=0.000001,"远程停顿结束原速完成击退：%d／%d" % [slot,ms])
- _check(after.hits==hit.hits and after.actors[ID].hp==19.0 and after.shots.is_empty(),"远程恢复不重复扣血或保留已命中弹体：%d／%d" % [slot,ms])
+ _check(after.hits==hit.hits and after.actors[ID].hp==expected_remote_hp and after.shots.is_empty(),"远程恢复不重复扣血或保留已命中弹体：%d／%d" % [slot,ms])
  measurements.append({"attack_slot":slot,"candidate_ms":ms,"hit":hit.actors[ID],"after":after.actors[ID]})
 
 func _remote_miss(slot: int, ms: int) -> void:
@@ -54,6 +61,7 @@ func _remote_miss(slot: int, ms: int) -> void:
 func _remote_save_failure(slot: int) -> void:
  _remote_reset(slot,50)
  _check(Run.combat_attack(sm,POINT,POINT.direction_to(Vector2(920,440))).success,"保存失败对照真实发射")
+ expected_remote_hp=20.0-maxf(1.0,float(Run.snapshot(sm).combat.shots[0].damage)*0.25)
  # 在实际命中前固定公开事务的输入，不重写伤害。
  var path: String=sm._active_save_path
  var hit_ready:=false
@@ -72,7 +80,7 @@ func _remote_save_failure(slot: int) -> void:
  sm._active_save_path=""
  _check(not _tick(0.01).success and sm.data==before and timing.state==clock,"远程命中保存失败同时回滚伤害和时钟："+str(slot))
  sm._active_save_path=path
- _check(_tick(0.01).success and Run.snapshot(sm).combat.actors[ID].hp==19.0 and timing.paused(ID),"保存恢复后同一弹体只命中一次："+str(slot))
+ _check(_tick(0.01).success and Run.snapshot(sm).combat.actors[ID].hp==expected_remote_hp and timing.paused(ID),"保存恢复后同一弹体只命中一次："+str(slot))
  for i in 25: _tick(0.01)
  _check(Run.snapshot(sm).combat.hits==1 and not timing.paused(ID),"保存恢复不重复扣血或残留暂停："+str(slot))
 

@@ -1,0 +1,39 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/restaurant/layout_prop.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/restaurant_layout/register_shadow.png" id="2"]
+
+[node name="Register" type="Node2D" groups=["restaurant_layout_props"]]
+y_sort_enabled = true
+script = ExtResource("1")
+display_name = "前台"
+interactive = true
+ui_offset = Vector2(0, -174.5687203791469)
+metadata/_edit_group_ = true
+
+[node name="Art" type="Sprite2D" parent="."]
+texture = ExtResource("2")
+scale = Vector2(0.1921884686918785, 0.19824422660059282)
+offset = Vector2(11, -395.6883825048789)
+
+[node name="Body" type="StaticBody2D" parent="."]
+
+[node name="Collision" type="CollisionPolygon2D" parent="Body"]
+polygon = PackedVector2Array(-150, -60, 135, -125, 155, -65, 140, 10, -140, 65, -155, 20)
+
+[node name="InteractionArea" type="Polygon2D" parent="."]
+visible = false
+polygon = PackedVector2Array(-150, -60, 135, -125, 155, -65, 140, 10, -140, 65, -155, 20)
+
+[node name="CustomerCounter" type="Marker2D" parent="." groups=["restaurant_layout_anchors"]]
+position = Vector2(-30, -137)
+
+[node name="Queue0" type="Marker2D" parent="." groups=["restaurant_layout_anchors"]]
+position = Vector2(-145, -155)
+
+[node name="Queue1" type="Marker2D" parent="." groups=["restaurant_layout_anchors"]]
+position = Vector2(-260, -173)
+
+[node name="GuestCamera" type="Marker2D" parent="." groups=["restaurant_layout_anchors"]]
+position = Vector2(140, -135)
+

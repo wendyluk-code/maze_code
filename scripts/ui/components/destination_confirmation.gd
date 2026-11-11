@@ -5,6 +5,7 @@ signal cancelled
 signal secondary_selected
 
 var question: Label
+var panel: PanelContainer
 var confirm_button: SproutButton
 var cancel_button: SproutButton
 var _secondary_action := false
@@ -22,7 +23,7 @@ func _ready() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(center)
-	var panel := PanelContainer.new()
+	panel = PanelContainer.new()
 	center.add_child(panel)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 24)

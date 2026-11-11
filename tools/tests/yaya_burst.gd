@@ -5,7 +5,7 @@ func check(ok: bool, label: String) -> void:
  print(("PASS " if ok else "FAIL ")+label)
  if not ok: failures.append(label)
 func fixture() -> Dictionary:
- return {"members":[{"id":"yaya","level":1}],"monsters":{},"combat":{"hp":36,"attack":20,"cooldown":0.0,"selected":1,"throws":0,"shots":[],"actors":{},"region":"fenshui"}}
+ return {"members":[{"id":"yaya","level":1,"rank":1}],"monsters":{},"combat":{"hp":36,"attack":20,"cooldown":0.0,"selected":1,"throws":0,"shots":[],"actors":{},"region":"fenshui"}}
 func _ready() -> void:
  var tuning=Skills.Tuning
  tuning.initialized=true
@@ -74,7 +74,7 @@ func _ready() -> void:
  check(is_equal_approx(float(hero.combat.action_left),0.45) and is_equal_approx(float(hero.combat.cooldown),float(Skills.Growth.active_skill("hero",1).interval)*2.0),"锅铲时长与间隔倍率消费")
  check(hero.combat.shots[0].damage==roundi(20.0*Skills.Growth.active_skill("hero",1).multiplier*0.5),"锅铲伤害倍率消费")
  var axe: Dictionary=fixture()
- axe.members=[{"id":"tieshan","level":1}]
+ axe.members=[{"id":"tieshan","level":1,"rank":1}]
  Skills.attack(axe,Vector2.ZERO,Vector2.RIGHT)
  check(axe.combat.axe_damage==roundi(20.0*Skills.Growth.active_skill("tieshan",1).multiplier*0.5),"铁山伤害倍率消费")
  check(is_equal_approx(float(axe.combat.action_left),0.72) and is_equal_approx(float(axe.combat.cooldown),float(Skills.Growth.active_skill("tieshan",1).interval)*1.5),"铁山时长与间隔倍率消费")
